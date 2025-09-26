@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 10 10 10;
+    --foreground: 250 250 250;
+    --card: 20 20 20;
+    --card-foreground: 250 250 250;
+    --popover: 20 20 20;
+    --popover-foreground: 250 250 250;
+    --primary: 220 38 38;
+    --primary-foreground: 250 250 250;
+    --secondary: 38 38 38;
+    --secondary-foreground: 250 250 250;
+    --muted: 38 38 38;
+    --muted-foreground: 163 163 163;
+    --accent: 220 38 38;
+    --accent-foreground: 250 250 250;
+    --destructive: 127 29 29;
+    --destructive-foreground: 250 250 250;
+    --border: 38 38 38;
+    --input: 38 38 38;
+    --ring: 220 38 38;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply bg-background text-foreground;
+  }
+
+  body {
+    @apply bg-background text-foreground dark;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+.pwa-install-prompt {
+  @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.drawer-backdrop {
+  @apply fixed inset-0 bg-black/50 z-40;
+}
+
+.drawer-left {
+  @apply fixed left-0 top-0 h-full w-80 bg-card z-50 transform transition-transform;
+}
+
+.drawer-right {
+  @apply fixed right-0 top-0 h-full w-80 bg-card z-50 transform transition-transform;
+}
+
+@media (min-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground rounded;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-foreground;
+  }
+}

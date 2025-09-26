@@ -1,0 +1,44 @@
+{
+  "name": "band-roadie",
+  "version": "1.2.3",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "test": "jest",
+    "db:migrate": "npx supabase migration up",
+    "db:seed": "tsx supabase/seed.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.0.0",
+    "next": "^14.2.33",
+    "next-pwa": "^5.6.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "resend": "^2.0.0",
+    "zod": "^3.22.4",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4",
+    "jest": "^29.7.0",
+    "postcss": "^8",
+    "prettier": "^3.1.1",
+    "tailwindcss": "^3.4.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5"
+  }
+}
