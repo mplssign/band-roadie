@@ -10,11 +10,16 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: (name: string) => cookieStore.get(name)?.value,
-        set: (name: string, value: string, options: CookieOptions) =>
-          cookieStore.set({ name, value, ...options }),
-        remove: (name: string, options: CookieOptions) =>
-          cookieStore.set({ name, value: '', ...options }),
+        get: async (name: string) => {
+          const cookie = cookieStore.get(name);
+          return cookie?.value ?? undefined;
+        },
+        set: async (name: string, value: string, options?: CookieOptions) => {
+          cookieStore.set(name, value, options);
+        },
+        remove: async (name: string, options?: CookieOptions) => {
+          cookieStore.set({ name, value: '', ...options });
+        },
       },
     }
   );
