@@ -1,0 +1,154 @@
+.
+├── .husky
+│   ├── _
+│   │   ├── .gitignore
+│   │   ├── applypatch-msg
+│   │   ├── commit-msg
+│   │   ├── h
+│   │   ├── husky.sh
+│   │   ├── post-applypatch
+│   │   ├── post-checkout
+│   │   ├── post-commit
+│   │   ├── post-merge
+│   │   ├── post-rewrite
+│   │   ├── pre-applypatch
+│   │   ├── pre-auto-gc
+│   │   ├── pre-commit
+│   │   ├── pre-merge-commit
+│   │   ├── pre-push
+│   │   ├── pre-rebase
+│   │   └── prepare-commit-msg
+│   └── pre-commit
+├── app
+│   ├── (auth)
+│   │   ├── callback
+│   │   ├── login
+│   │   │   └── page.tsx
+│   │   ├── logout
+│   │   │   └── route.ts
+│   │   └── signup
+│   │       └── page.tsx
+│   ├── (protected)
+│   │   ├── bands
+│   │   │   ├── [bandId]
+│   │   │   │   ├── edit
+│   │   │   │   │   └── page.tsx
+│   │   │   │   └── update
+│   │   │   ├── create
+│   │   │   │   └── page.tsx
+│   │   │   └── onboarding
+│   │   │       └── page.tsx
+│   │   ├── calendar
+│   │   ├── dashboard
+│   │   │   ├── DashboardClient.tsx
+│   │   │   └── page.tsx
+│   │   ├── members
+│   │   ├── profile
+│   │   │   └── page.tsx
+│   │   ├── setlists
+│   │   ├── settings
+│   │   │   └── profile
+│   │   │       ├── page.tsx
+│   │   │       └── ProfileSettingsForm.tsx
+│   │   └── layout.tsx
+│   ├── api
+│   │   ├── auth
+│   │   │   ├── callback
+│   │   │   ├── login
+│   │   │   └── logout
+│   │   ├── bands
+│   │   │   ├── [bandId]
+│   │   │   │   ├── members
+│   │   │   │   └── route.ts
+│   │   │   └── create
+│   │   │       └── route.ts
+│   │   ├── invites
+│   │   ├── profile
+│   │   │   └── route.ts
+│   │   └── users
+│   │       └── profile
+│   ├── auth
+│   │   └── callback
+│   │       ├── error.tsx
+│   │       ├── loading.tsx
+│   │       ├── page.tsx
+│   │       └── route.ts
+│   ├── bands
+│   │   └── onboarding
+│   ├── globals.css
+│   ├── globals.css.backup
+│   ├── layout.tsx
+│   └── page.tsx
+├── components
+│   ├── auth
+│   ├── bands
+│   ├── dashboard
+│   ├── layout
+│   │   └── AppLayout.tsx
+│   ├── members
+│   ├── navigation
+│   │   ├── BottomNav.tsx
+│   │   ├── Footer.tsx
+│   │   └── TopNav.tsx
+│   └── ui
+│       ├── Button.tsx
+│       ├── Card.tsx
+│       ├── Chip.tsx
+│       ├── Dialog.tsx
+│       ├── Drawer.tsx
+│       ├── Input.tsx
+│       ├── LoadingSpinner.tsx
+│       └── Toast.tsx
+├── hooks
+│   ├── useAuth.ts
+│   ├── useBands.ts
+│   ├── useDrawer.ts
+│   └── useToast.ts
+├── lib
+│   ├── email
+│   │   ├── templates
+│   │   │   ├── invite.tsx
+│   │   │   └── verification.tsx
+│   │   └── client.ts
+│   ├── supabase
+│   │   ├── migrations
+│   │   │   └── 001_initial_schema.sql
+│   │   ├── client.ts
+│   │   ├── middleware.ts
+│   │   ├── server-queries.ts
+│   │   └── server.ts
+│   ├── utils
+│   │   ├── formatters.ts
+│   │   ├── validators.ts
+│   │   └── zip-lookup.ts
+│   ├── constants.ts
+│   └── types.ts
+├── public
+│   ├── apple-touch-icon.png
+│   ├── band_roadie_icon.png
+│   ├── favicon-32x32.png
+│   ├── icon-192x192.png
+│   ├── icon-512x512.png
+│   ├── manifest.json
+│   ├── robots.txt
+│   └── sw.js
+├── tests
+│   └── utils
+├── .env.local
+├── .eslintrc.json
+├── .gitignore
+├── .prettierrc
+├── fix-auth-pages.sh
+├── fix-missing-components.sh
+├── fix-structure.sh
+├── folder-structure.txt
+├── middleware.ts
+├── next-env.d.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── tailwind.config.ts
+└── tsconfig.json
+
+58 directories, 94 files
