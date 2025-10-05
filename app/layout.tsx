@@ -1,26 +1,13 @@
-import type { Viewport } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { Providers } from './providers/providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export const metadata = {
-  title: "Band Roadie",
-  description: "Ultimate Band Management",
-  icons: {
-    icon: "/favicon-32x32.png",
-    apple: "/apple-touch-icon.png",
-  },
-  manifest: "/manifest.json",
-};
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#dc2626',
-  viewportFit: 'cover',
+export const metadata: Metadata = {
+  title: 'Band Roadie',
+  description: 'The ultimate band management app',
 };
 
 export default function RootLayout({
@@ -29,15 +16,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <head>
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-      </head>
-      <body className={`${inter.className} dark bg-background text-foreground min-h-screen`}>
-        {children}
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );
