@@ -1,4 +1,5 @@
-import './globals.css';
+import './globals-simple.css';
+import './theme-rose.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers/providers';
@@ -16,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
         <Providers>
           {children}

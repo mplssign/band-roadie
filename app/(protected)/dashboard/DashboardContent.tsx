@@ -3,8 +3,8 @@
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, MapPin, Plus, AlertCircle } from 'lucide-react';
-import { useState } from 'react';
-import EditRehearsalDrawer from './EditRehearsalDrawer';
+// import { useState } from 'react'; // Temporarily disabled
+// import EditRehearsalDrawer from './EditRehearsalDrawer'; // Temporarily disabled
 
 interface Band {
   id: string;
@@ -56,7 +56,7 @@ export default function DashboardContent({
   dashboardData 
 }: DashboardContentProps) {
   const router = useRouter();
-  const [isRehearsalDrawerOpen, setIsRehearsalDrawerOpen] = useState(false);
+  // const [isRehearsalDrawerOpen, setIsRehearsalDrawerOpen] = useState(false); // Temporarily disabled
 
   return (
     <>
@@ -66,7 +66,7 @@ export default function DashboardContent({
           {/* Potential Gig Card */}
           {dashboardData.potentialGig && (
             <button
-              onClick={() => router.push(`/gigs/${dashboardData.potentialGig.id}/edit`)}
+              onClick={() => dashboardData.potentialGig && router.push(`/gigs/${dashboardData.potentialGig.id}/edit`)}
               className="w-full rounded-2xl p-6 shadow-xl text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity"
             >
               <div className="flex items-start justify-between mb-4">
@@ -107,7 +107,7 @@ export default function DashboardContent({
           {/* Next Rehearsal Card */}
           {dashboardData.nextRehearsal && (
             <button
-              onClick={() => setIsRehearsalDrawerOpen(true)}
+              onClick={() => {/* setIsRehearsalDrawerOpen(true) - temporarily disabled */}}
               className="w-full rounded-2xl p-4 shadow-xl text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity"
             >
               <div className="flex items-center justify-between mb-3">
@@ -171,7 +171,7 @@ export default function DashboardContent({
         </div>
       </main>
 
-      <EditRehearsalDrawer
+      {/* <EditRehearsalDrawer
         isOpen={isRehearsalDrawerOpen}
         onClose={() => setIsRehearsalDrawerOpen(false)}
         rehearsal={dashboardData.nextRehearsal ? {
@@ -179,7 +179,7 @@ export default function DashboardContent({
           time: dashboardData.nextRehearsal.time,
           location: dashboardData.nextRehearsal.location
         } : null}
-      />
+      /> */}
     </>
   );
 }

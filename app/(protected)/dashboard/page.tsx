@@ -3,11 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
+import { Plus } from 'lucide-react';
 import { useBands } from '@/hooks/useBands';
 import { createClient } from '@/lib/supabase/client';
-import AddEventDrawer from '@/app/(protected)/calendar/AddEventDrawer';
-import EditRehearsalDrawer from '@/app/(protected)/calendar/EditRehearsalDrawer';
-import EditGigDrawer from '@/app/(protected)/calendar/EditGigDrawer';
+import Empty from '@/components/ui/empty';
+// import AddEventDrawer from '@/app/(protected)/calendar/AddEventDrawer';
+// import EditRehearsalDrawer from '@/app/(protected)/calendar/EditRehearsalDrawer';
+// import EditGigDrawer from '@/app/(protected)/calendar/EditGigDrawer';
 
 interface Rehearsal {
   id: string;
@@ -42,11 +44,11 @@ export default function DashboardPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
-  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
-  const [isEditRehearsalOpen, setIsEditRehearsalOpen] = useState(false);
-  const [isEditGigOpen, setIsEditGigOpen] = useState(false);
+  // const [isAddEventOpen, setIsAddEventOpen] = useState(false); // Calendar disabled
+  // const [isEditRehearsalOpen, setIsEditRehearsalOpen] = useState(false); // Calendar disabled
+  // const [isEditGigOpen, setIsEditGigOpen] = useState(false); // Calendar disabled
   const [loading, setLoading] = useState(true);
-  const defaultEventType: 'rehearsal' | 'gig' = 'rehearsal';
+  // const defaultEventType: 'rehearsal' | 'gig' = 'rehearsal'; // Calendar disabled
 
   // auth check
   useEffect(() => {
@@ -104,14 +106,6 @@ export default function DashboardPage() {
     );
   }
 
-  if (!currentBand) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-zinc-400">Loading dashboard...</div>
-      </div>
-    );
-  }
-
   if (bands.length === 0) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
@@ -120,20 +114,6 @@ export default function DashboardPage() {
           <p className="text-zinc-300 mb-8">
             You&apos;re not part of any bands yet. Create a new band or ask a bandmate to invite you.
           </p>
-          <div className="space-y-3">
-            <button
-              onClick={() => router.push('/bands/create')}
-              className="w-full py-3 bg-white text-black rounded-lg font-medium hover:opacity-90"
-            >
-              Create New Band
-            </button>
-            <button
-              onClick={() => router.push('/bands/join')}
-              className="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-gray-200 rounded-lg font-medium"
-            >
-              Join Existing Band
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -142,30 +122,18 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
       <div className="px-6 max-w-5xl mx-auto space-y-8">
-        <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setIsAddEventOpen(true); }}
-              className="rounded-lg bg-white text-black px-4 py-2 font-semibold hover:opacity-90"
-            >
-              Add Event
-            </button>
-            {nextRehearsal && (
-              <button
-                onClick={() => setIsEditRehearsalOpen(true)}
-                className="rounded-lg bg-zinc-900 px-4 py-2 border border-zinc-700 hover:bg-zinc-800"
-              >
-                Edit Rehearsal
-              </button>
-            )}
-          </div>
-        </header>
-
         {/* Next Rehearsal */}
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-          <h2 className="text-lg font-semibold mb-3">Next Rehearsal</h2>
-          {nextRehearsal ? (
+        {nextRehearsal ? (
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Next Rehearsal</h2>
+              <button
+                onClick={() => {/* setIsEditRehearsalOpen(true) - Calendar disabled */}}
+                className="rounded-lg bg-zinc-700 px-3 py-1 text-sm border border-zinc-600 hover:bg-zinc-600 transition-colors"
+              >
+                Edit
+              </button>
+            </div>
             <div className="grid sm:grid-cols-3 gap-4">
               <div>
                 <div className="text-zinc-400 text-sm">Date</div>
@@ -180,14 +148,61 @@ export default function DashboardPage() {
                 <div className="text-white font-medium">{nextRehearsal.location}</div>
               </div>
             </div>
-          ) : (
-            <div className="text-zinc-400">No upcoming rehearsal. Add one to get rolling.</div>
-          )}
+          </section>
+        ) : (
+          <Empty
+            title="Ready to Rock?"
+            description="No rehearsals on the books yet! Time to schedule some jam sessions and get the band back together. Rock on! 🎸"
+            actionLabel="Schedule Rehearsal"
+            onAction={() => router.push('/rehearsals/create')}
+          />
+        )}
+
+        {/* Quick Actions */}
+        <section>
+          <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
+          <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex-shrink-0 animate-gradient-border snap-start">
+              <button
+                onClick={() => router.push('/setlists/create')}
+                className="w-full p-4 hover:opacity-80 transition-opacity"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  <span className="text-base font-semibold">Create Setlist</span>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex-shrink-0 animate-gradient-border snap-start">
+              <button
+                onClick={() => router.push('/gigs/create')}
+                className="w-full p-4 hover:opacity-80 transition-opacity"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  <span className="text-base font-semibold">Create Gig</span>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex-shrink-0 animate-gradient-border snap-start">
+              <button
+                onClick={() => router.push('/calendar/block-dates')}
+                className="w-full p-4 hover:opacity-80 transition-opacity"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  <span className="text-base font-semibold whitespace-nowrap">Add Block Out Dates</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </section>
       </div>
 
-      {/* Drawers */}
-      <AddEventDrawer
+      {/* Drawers - temporarily disabled for performance review */}
+      {/* <AddEventDrawer
         isOpen={isAddEventOpen}
         onClose={() => setIsAddEventOpen(false)}
         defaultEventType={defaultEventType}
@@ -221,7 +236,7 @@ export default function DashboardPage() {
           setIsEditGigOpen(false);
           loadDashboardData();
         }}
-      />
+      /> */}
     </main>
   );
 }

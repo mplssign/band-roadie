@@ -2,26 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { useBands } from '@/hooks/useBands';
+import { Users, Phone, Mail, MapPin, CalendarDays } from 'lucide-react';
 
 type MemberRow = {
   user_id: string;
   role: string;
   joined_at: string | null;
-  users: { email: string | null; first_name: string | null; last_name: string | null } | null;
+  user: {
+    email: string;
+    first_name?: string | null;
+    last_name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    zip?: string | null;
+    birthday?: string | null;
+    roles?: string[] | null;
+    profile_completed?: boolean | null;
+  } | null;
 };
-
-type InviteRow = {
-  id: string;
-  email: string;
-  status: string;
-  created_at: string;
-  expires_at: string | null;
-};
-
 export default function MembersPage() {
   const { currentBand, loading: bandsLoading } = useBands();
   const [members, setMembers] = useState<MemberRow[]>([]);
-  const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,12 +37,10 @@ export default function MembersPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || 'Failed to load members');
         setMembers(json.members ?? []);
-        setInvites(json.invites ?? []);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Failed to load members';
         setError(msg);
         setMembers([]);
-        setInvites([]);
       } finally {
         setLoading(false);
       }
@@ -56,77 +56,129 @@ export default function MembersPage() {
     );
   }
 
+  // If no current band, this page shouldn't be accessible (bottom nav is hidden)
   if (!currentBand) {
     return (
       <div className="min-h-[70vh] bg-black text-white flex items-center justify-center">
-        <div className="text-zinc-400">No band selected.</div>
+        <div>No band selected</div>
+      </div>
+    );
+  }
+
+
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-red-400 mb-2">Error Loading Members</h2>
+          <p className="text-zinc-400 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[70vh] bg-black text-white px-6 py-8">
-      <div className="mx-auto max-w-4xl">
-        <h1 className="text-2xl font-bold">Members</h1>
-        {error && (
-          <div className="mt-4 rounded-lg border border-red-500 bg-red-950/40 p-3 text-red-200">
-            {error}
-          </div>
-        )}
-
-        <div className="mt-8 grid gap-8 md:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
-            <div className="border-b border-zinc-800 px-4 py-3">
-              <h2 className="text-lg font-semibold">Current Members</h2>
+    <div className="min-h-screen bg-background text-foreground pb-40">
+      <div className="px-6 py-6 max-w-5xl mx-auto">
+        <div className="grid gap-6">
+          {members.length === 0 ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-8 text-center">
+              <Users className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-zinc-300 mb-2">No Members Yet</h3>
+              <p className="text-zinc-500">Add bandmates to get started!</p>
             </div>
-            <div className="px-4 py-4">
-              {members.length === 0 ? (
-                <p className="text-zinc-400">No members yet.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {members.map((m) => {
-                    const name = [m.users?.first_name, m.users?.last_name].filter(Boolean).join(' ');
-                    const label = name || m.users?.email || m.user_id;
-                    return (
-                      <li key={m.user_id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2">
-                        <div>
-                          <div className="font-medium text-white">{label}</div>
-                          <div className="text-sm text-zinc-400">Role: {m.role}</div>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900">
-            <div className="border-b border-zinc-800 px-4 py-3">
-              <h2 className="text-lg font-semibold">Pending Invites</h2>
-            </div>
-            <div className="px-4 py-4">
-              {invites.length === 0 ? (
-                <p className="text-zinc-400">No pending invites.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {invites.map((i) => (
-                    <li key={i.id} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2">
-                      <div>
-                        <div className="font-medium text-white">{i.email}</div>
-                        <div className="text-sm text-zinc-400">
-                          Status: {i.status} • Expires: {i.expires_at ? new Date(i.expires_at).toLocaleDateString() : 'n/a'}
-                        </div>
-                      </div>
-                      <a href={`/invite/${i.id}`} className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-black">
-                        View
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+          ) : (
+            members.map((member) => {
+              // Use first_name and last_name from users table
+              const firstName = member.user?.first_name || "";
+              const lastName = member.user?.last_name || "";
+              // Format phone number
+              const phone = member.user?.phone || "";
+              const formattedPhone = phone.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3");
+              // Address, city, zip, birthday
+              const address = member.user?.address || "";
+              const zip = member.user?.zip || "";
+              const birthday = member.user?.birthday || "";
+              // Get city from zip code (dummy lookup)
+              let city = member.user?.city || "";
+              if (!city && zip) {
+                // Simple zip-to-city lookup (replace with real lookup as needed)
+                const zipCityMap: Record<string, string> = {
+                  "55401": "Minneapolis",
+                  "10001": "New York",
+                  "94103": "San Francisco",
+                  // Add more as needed
+                };
+                city = zipCityMap[zip] || "";
+              }
+              // Get all the user's band roles (musical instruments/roles)
+              const bandRoles: string[] = [];
+              if (member.user?.roles && Array.isArray(member.user.roles)) {
+                bandRoles.push(...member.user.roles.filter(r => typeof r === 'string' && r.trim().length > 0));
+              }
+              // Format birthday as 'Month Day'
+              let birthdayLabel = "";
+              if (birthday) {
+                const dateObj = new Date(birthday);
+                if (!isNaN(dateObj.getTime())) {
+                  const month = dateObj.toLocaleString('en-US', { month: 'long' });
+                  const day = dateObj.getDate();
+                  birthdayLabel = `${month} ${day}`;
+                }
+              }
+              return (
+                <div
+                  key={member.user_id}
+                  className="rounded-2xl border-2 border-primary bg-card p-6 flex flex-col gap-2"
+                >
+                  {/* Name */}
+                  <div className="text-2xl font-bold text-primary-foreground mb-1">
+                    {firstName} {lastName}
+                  </div>
+                  {/* Band Role Badges - Show all musical roles in a row */}
+                  {bandRoles.length > 0 && (
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {bandRoles.map((role, index) => (
+                        <span 
+                          key={index}
+                          className="inline-block px-3 py-1 border border-primary text-primary bg-transparent text-sm rounded-full font-semibold"
+                        >
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Phone Number */}
+                  <div className="text-lg text-primary-foreground mb-1 flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-primary" />
+                    {formattedPhone}
+                  </div>
+                  {/* Email */}
+                  <div className="text-base text-primary-foreground mb-2 flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-primary" />
+                    {member.user?.email || "No email"}
+                  </div>
+                  {/* Address, City */}
+                  <div className="text-base text-primary-foreground mb-2 flex items-center gap-2">
+                    <MapPin className="w-5 h-5 text-primary" />
+                    {address}{address && city ? ", " : ""}{city}
+                  </div>
+                  {/* Birthday */}
+                  <div className="text-base text-primary-foreground flex items-center gap-2">
+                    <CalendarDays className="w-5 h-5 text-primary" />
+                    <span className="font-semibold">Birthday:</span> {birthdayLabel}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ export function validateEmail(email: string): boolean {
   }
 }
 
-export function validateProfile(data: any): boolean {
+export function validateProfile(data: unknown): boolean {
   try {
     profileSchema.parse(data);
     return true;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+
 import { clsx } from 'clsx';
 import { useToast } from '@/hooks/useToast';
 

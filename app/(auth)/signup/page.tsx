@@ -9,7 +9,7 @@ export default function SignupPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    alert('Signup demo - email: ' + email);
+    // TODO: Implement actual signup logic here
     setLoading(false);
   };
 
