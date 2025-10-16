@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-// Update the import path if the alias is incorrect, or create the file if missing
 import { createClient } from '@/lib/supabase/client';
+import { getAuthCallbackUrl } from '@/lib/config/site';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,16 +15,11 @@ export default function LoginPage() {
     setLoading(true);
     setMessage(null);
 
-    // Prefer env (works on localhost:3000/3001 & production), fallback to window.origin
-    const base =
-      process.env.NEXT_PUBLIC_APP_URL ??
-      (typeof window !== 'undefined' ? window.location.origin : '');
-
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${base}/auth/callback`,
+          emailRedirectTo: getAuthCallbackUrl(),
         },
       });
 
