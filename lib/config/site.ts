@@ -6,13 +6,20 @@
  * Get the base site URL with automatic environment detection.
  * 
  * Priority:
- * 1. NEXT_PUBLIC_SITE_URL (production/preview/dev override)
- * 2. VERCEL_URL (automatic Vercel preview deployments)
- * 3. http://localhost:3000 (local dev fallback)
+ * 1. window.location.origin (client-side - always correct for current domain)
+ * 2. NEXT_PUBLIC_SITE_URL (production/preview/dev override)
+ * 3. VERCEL_URL (automatic Vercel preview deployments)
+ * 4. http://localhost:3000 (local dev fallback)
  * 
  * @returns Site URL without trailing slash
  */
 export function getBaseUrl(): string {
+  // Client-side: use current domain (works in prod, preview, and local)
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Server-side: use env vars
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
   const fromVercel = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
   return (fromEnv || fromVercel || 'http://localhost:3000').replace(/\/$/, '');

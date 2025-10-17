@@ -12,17 +12,26 @@ The app uses a centralized `getBaseUrl()` helper that automatically detects the 
 
 Located in `lib/config/site.ts`, this function determines the base URL with the following priority:
 
-1. **`NEXT_PUBLIC_SITE_URL`** - Explicit override (highest priority)
-2. **`VERCEL_URL`** - Automatic Vercel preview URL (preview deployments)
-3. **`http://localhost:3000`** - Local development fallback
+1. **`window.location.origin`** - Client-side current domain (always correct - highest priority)
+2. **`NEXT_PUBLIC_SITE_URL`** - Server-side explicit override
+3. **`VERCEL_URL`** - Server-side automatic Vercel preview URL
+4. **`http://localhost:3000`** - Server-side local development fallback
 
 ```typescript
 export function getBaseUrl(): string {
+  // Client-side: use current domain (works in prod, preview, and local)
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Server-side: use env vars
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
   const fromVercel = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
   return (fromEnv || fromVercel || 'http://localhost:3000').replace(/\/$/, '');
 }
 ```
+
+**Key Improvement:** When called from the browser (e.g., when requesting a magic link), it uses `window.location.origin` which is always the correct current domain. This ensures magic links work correctly in production, preview deployments, and local development without any configuration.
 
 ### Where It's Used
 
@@ -134,6 +143,23 @@ A key improvement is that preview deployments now automatically use the correct 
 1. Leave `NEXT_PUBLIC_SITE_URL` unset in preview environment
 2. The app will automatically use `VERCEL_URL`
 3. Add the preview URL pattern to Supabase redirect URLs
+
+### Cached PWA still uses localhost
+
+**Symptom:** Desktop shows magic links with localhost, mobile works fine
+
+**Root Cause:** Service Worker cached old code with localhost hardcoded
+
+**Solution:**
+1. **Quick fix (per user):**
+   - Open DevTools → Application → Service Workers → Unregister
+   - Application → Clear Storage → "Clear site data"
+   - Hard refresh (Cmd+Shift+R / Ctrl+Shift+F5)
+
+2. **Permanent fix (developer):**
+   - Bump `version` in `package.json` (triggers new build ID)
+   - Deploy new version
+   - Users will automatically get fresh Service Worker
 
 ## Testing
 
