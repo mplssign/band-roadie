@@ -4,14 +4,12 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/useToast';
-import { Sonsie_One } from 'next/font/google';
+import { Wordmark } from '@/components/branding/Wordmark';
 
 import { Input } from '@/components/ui/input';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { User } from '@/lib/types';
-
-const sonsieOne = Sonsie_One({ subsets: ['latin'], weight: '400' });
 
 const ROLE_OPTIONS = [
   'Lead Vocals',
@@ -436,9 +434,7 @@ const ProfileForm = ({ user, invitationId: _invitationId, invitation }: ProfileF
         {/* App Name Header - only show for new users */}
         {(!user?.first_name || !user?.last_name) && (
           <div className="mb-8 text-center">
-            <h1 className={`${sonsieOne.className} text-2xl font-semibold text-foreground`}>
-              <span className="text-primary">Band</span>Roadie
-            </h1>
+            <Wordmark className="text-foreground inline-block" />
           </div>
         )}
 

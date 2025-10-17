@@ -3,31 +3,77 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getAuthCallbackUrl } from '@/lib/config/site';
+import { Wordmark } from '@/components/branding/Wordmark';
+
+const EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'icloud.com', 'outlook.com'];
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const supabase = createClient();
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setError(null);
+    setSuccess(false);
+    
+    // Detect if email ends with one of our domains
+    const trimmed = value.trim();
+    const matched = EMAIL_DOMAINS.find((domain) => trimmed.endsWith(`@${domain}`));
+    setSelectedDomain(matched ?? null);
+  };
+
+  const appendDomain = (domain: string) => {
+    setSelectedDomain((prevSelected) => {
+      // Toggle off if already selected
+      if (prevSelected === domain) {
+        setEmail((prevInput) => {
+          const trimmed = prevInput.trim();
+          if (!trimmed) return '';
+          if (trimmed === `@${domain}`) return '';
+          if (trimmed.endsWith(`@${domain}`)) {
+            const base = trimmed.slice(0, -(`@${domain}`).length);
+            return base.trim();
+          }
+          return trimmed;
+        });
+        return null;
+      }
+
+      // Append/replace domain
+      setEmail((prevInput) => {
+        const trimmed = prevInput.trim();
+        const base = trimmed.includes('@') ? trimmed.split('@')[0] : trimmed;
+        const sanitized = base.replace(/\s+/g, '');
+        return sanitized ? `${sanitized}@${domain}` : `@${domain}`;
+      });
+
+      return domain;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage(null);
+    setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
         options: {
           emailRedirectTo: getAuthCallbackUrl(),
         },
       });
 
-      if (error) throw error;
-      setMessage('Check your email for the login link. It may take a few seconds.');
+      if (otpError) throw otpError;
+      setSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      setMessage(`Error: ${msg}`);
+      setError(msg);
+      setSuccess(false);
     } finally {
       setLoading(false);
     }
@@ -36,7 +82,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh flex items-center justify-center bg-black px-4">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-white mb-6 text-center">Band Roadie</h1>
+        <div className="mb-6 text-center">
+          <Wordmark size="xl" className="text-foreground inline-block" />
+        </div>
+        
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 rounded-xl p-6 shadow">
           <label htmlFor="email" className="block text-sm text-zinc-300 mb-2">
             Email address
@@ -47,30 +96,61 @@ export default function LoginPage() {
             inputMode="email"
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => handleEmailChange(e.target.value)}
             placeholder="you@example.com"
-            className="w-full rounded-md bg-zinc-800 text-white placeholder-zinc-500 ring-1 ring-zinc-700 focus:outline-none focus:ring-2 focus:ring-red-600 px-3 py-2 mb-4"
+            className="w-full rounded-md bg-zinc-800 text-white placeholder-zinc-500 ring-1 ring-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-600 px-3 py-2 mb-3"
             required
+            disabled={success}
+            aria-describedby={error ? 'email-error' : undefined}
           />
+
+          {/* Email domain shortcuts */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
+            {EMAIL_DOMAINS.map((domain) => {
+              const isSelected = selectedDomain === domain;
+              const isEnabled = email.trim().length > 0 && !success;
+              return (
+                <button
+                  key={domain}
+                  type="button"
+                  onClick={() => appendDomain(domain)}
+                  disabled={!isEnabled}
+                  aria-label={`Use ${domain} domain`}
+                  aria-pressed={isSelected}
+                  className={`rounded-full px-3 py-1 text-sm transition-colors flex-shrink-0 ${
+                    isSelected
+                      ? 'border-2 border-rose-600 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30'
+                      : 'border border-zinc-700 bg-zinc-800/40 text-zinc-400'
+                  } ${
+                    isEnabled ? 'hover:bg-zinc-700/60 hover:text-zinc-200' : 'opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  @{domain}
+                </button>
+              );
+            })}
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-red-600 hover:bg-red-700 disabled:opacity-50 px-4 py-2 font-medium text-white transition"
+            disabled={loading || success}
+            className="w-full rounded-md bg-rose-600 hover:bg-rose-700 active:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-600 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 font-medium text-white transition"
           >
-            {loading ? 'Sending…' : 'Send Magic Link'}
+            {loading ? 'Sending…' : success ? 'Link Sent!' : 'Send Login Link'}
           </button>
 
-          {message && (
-            <p className="mt-4 text-sm text-zinc-200 bg-zinc-800/70 rounded px-3 py-2">{message}</p>
+          {error && (
+            <p id="email-error" role="alert" className="mt-4 text-sm text-rose-400 bg-rose-950/50 rounded px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          {success && (
+            <p role="status" className="mt-4 text-sm text-emerald-400 bg-emerald-950/50 rounded px-3 py-2">
+              Check your email for a login link.
+            </p>
           )}
         </form>
-
-        <p className="mt-4 text-center text-zinc-400 text-sm">
-          Need an account?
-          <a href="/auth/signup" className="text-red-500 hover:underline ml-1">
-            Sign up
-          </a>
-        </p>
       </div>
     </div>
   );

@@ -4,12 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Menu, X, LogOut, User as UserIcon, Zap } from 'lucide-react';
-import { Sonsie_One } from 'next/font/google';
 import { useBands } from '@/contexts/BandsContext';
 import { createClient } from '@/lib/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
-
-const sonsieOne = Sonsie_One({ subsets: ['latin'], weight: '400' });
+import { Wordmark } from '@/components/branding/Wordmark';
 
 // Map Tailwind classes to hex colors
 const colorMap: Record<string, string> = {
@@ -136,7 +134,7 @@ const pathname = rawPathname ?? "";
             <Menu className="w-6 h-6" />
           </button>
 
-          <h1 className={`${sonsieOne.className} text-2xl font-semibold text-foreground`}><span className="text-primary">Band</span>Roadie</h1>
+          <Wordmark className="text-foreground" />
 
           <button
             onClick={() => setIsBandSwitcherOpen(true)}

@@ -79,7 +79,7 @@ export async function GET(req: Request) {
     }
 
     // Check if we got a valid session
-    if (!sessionData.session) {
+    if (!sessionData.session || !sessionData.user) {
       return NextResponse.redirect(
         new URL("/login?error=No session created", origin)
       );
@@ -92,6 +92,27 @@ export async function GET(req: Request) {
       return NextResponse.redirect(new URL(`/invite/${invitationId}`, origin));
     }
 
+    // Check if user has completed their profile
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('first_name, last_name')
+      .eq('id', sessionData.user.id)
+      .single();
+
+    // If profile doesn't exist or is incomplete, send to profile page
+    if (profileError || !profile || !profile.first_name || !profile.last_name) {
+      console.error("🚨 NEW USER - redirecting to profile");
+      return NextResponse.redirect(new URL("/profile?welcome=true", origin));
+    }
+
+    // Existing user with complete profile - check for 'next' param or go to dashboard
+    const next = searchParams.get('next');
+    if (next && next.startsWith('/')) {
+      console.error("🚨 EXISTING USER - redirecting to:", next);
+      return NextResponse.redirect(new URL(next, origin));
+    }
+
+    console.error("🚨 EXISTING USER - redirecting to dashboard");
     return NextResponse.redirect(new URL("/dashboard", origin));
     
   } catch (err) {
