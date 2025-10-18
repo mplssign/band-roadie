@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy } from 'react';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
@@ -14,11 +13,8 @@ import { Dialog } from '@/components/ui/Dialog';
 import { SongRow } from '@/components/setlists/SongRow';
 import { ArrowLeft, Search, Save, Plus, Edit, X } from 'lucide-react';
 
-// Dynamic import for SongSearchOverlay (client-only, no SSR)
-const SongSearchOverlay = dynamic(
-  () => import('@/components/setlists/SongSearchOverlay'),
-  { ssr: false, loading: () => null }
-);
+// Dynamic imports for performance optimization
+const SongSearchOverlay = lazy(() => import('@/components/setlists/OptimizedSongSearchOverlay'));
 
 // Define types based on actual API usage
 type TuningType = 'standard' | 'drop_d' | 'half_step' | 'full_step';
