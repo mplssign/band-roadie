@@ -40,13 +40,20 @@
 }
 
 @layer utilities {
-  .no-scrollbar {
+  .no-scrollbar, 
+  .scrollbar-hide,
+  *[style*="scrollbar-width: none"] {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
   
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  .no-scrollbar::-webkit-scrollbar, 
+  .scrollbar-hide::-webkit-scrollbar,
+  *[style*="scrollbar-width: none"]::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
   }
 
   .safe-bottom {
@@ -70,6 +77,38 @@
 
 .animate-spin {
   animation: spin 1s linear infinite;
+}
+
+@keyframes gradient-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-gradient-border {
+  position: relative;
+  padding: 2px;
+  border-radius: 0.75rem;
+  background: conic-gradient(from 0deg, #dc2626, #7c3aed, #2563eb, #dc2626);
+  animation: gradient-spin 3s linear infinite;
+}
+
+.animate-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #18181b;
+  border-radius: calc(0.75rem - 2px);
+  z-index: 1;
+}
+
+.animate-gradient-border > * {
+  position: relative;
+  z-index: 2;
+  background: transparent;
 }
 
 .drawer-backdrop {

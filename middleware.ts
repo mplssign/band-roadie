@@ -2,6 +2,28 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Public paths that never require auth or redirects
+  const PUBLIC = new Set<string>([
+    '/',
+    '/login',
+    '/signup',
+    '/auth/callback',
+  ]);
+
+  // Skip middleware for public routes, API, static assets
+  if (
+    PUBLIC.has(pathname) ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/icons') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.webmanifest'
+  ) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -54,31 +76,34 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (request.nextUrl.pathname.startsWith('/dashboard') ||
-      request.nextUrl.pathname.startsWith('/setlists') ||
-      request.nextUrl.pathname.startsWith('/calendar') ||
-      request.nextUrl.pathname.startsWith('/members') ||
-      request.nextUrl.pathname.startsWith('/profile') ||
-      request.nextUrl.pathname.startsWith('/settings')) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-  }
-
-  if (request.nextUrl.pathname.startsWith('/login') ||
-      request.nextUrl.pathname.startsWith('/signup')) {
-    if (session) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Protected routes require authentication
+  if (
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/setlists') ||
+    pathname.startsWith('/calendar') ||
+    pathname.startsWith('/members') ||
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/settings') ||
+    pathname.startsWith('/bands') ||
+    pathname.startsWith('/gigs') ||
+    pathname.startsWith('/rehearsals')
+  ) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirectedFrom', pathname);
+      return NextResponse.redirect(url);
     }
   }
 
   return response;
 }
 
+// Exclude callback and static assets from running middleware at all
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$|manifest.json|sw.js|workbox-.*).*)' 
+    '/((?!_next|api|auth/callback|favicon.ico|manifest.webmanifest|icons|.*\\.(?:png|jpg|jpeg|svg|webp|ico)).*)',
   ],
 };

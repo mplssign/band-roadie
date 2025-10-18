@@ -1,6 +1,6 @@
-self.addEventListener('install', (event) => {
+/* eslint-disable no-console, no-unused-vars, no-undef */
+self.addEventListener('install', (_event) => {
   console.log('Service Worker installed');
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

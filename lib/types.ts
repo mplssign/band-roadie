@@ -88,3 +88,39 @@ export interface Song {
   notes?: string;
   order: number;
 }
+
+// Tuning types for guitar tunings
+export type TuningType = 'standard' | 'drop_d' | 'half_step' | 'full_step';
+
+// Music song interface for search results
+export interface MusicSong {
+  id: string;
+  title: string;
+  artist: string;
+  bpm?: number;
+  tuning?: TuningType;
+  duration_seconds?: number;
+  album_artwork?: string;
+  is_live?: boolean;
+}
+
+// Setlist song interface for junction table
+export interface SetlistSong {
+  id: string;
+  setlist_id?: string;
+  song_id: string;
+  position: number;
+  bpm?: number;
+  tuning?: TuningType;
+  duration_seconds?: number;
+  songs?: {
+    id: string;
+    title: string;
+    artist?: string;
+    bpm?: number;
+    tuning?: TuningType;
+    duration_seconds?: number;
+    is_live?: boolean;
+    album_artwork?: string;
+  };
+}
