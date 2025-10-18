@@ -10,9 +10,10 @@ export async function GET(req: Request) {
   const origin = requestUrl.origin;
 
   if (code) {
-    // Create response first so we can set cookies on it
-    const response = NextResponse.next();
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
+    
+    // Track cookies that need to be set on the response
+    const cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }> = [];
     
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,12 +24,12 @@ export async function GET(req: Request) {
             return cookieStore.get(name)?.value;
           },
           set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options });
-            response.cookies.set({ name, value, ...options });
+            // Store cookies to be set on the response later
+            cookiesToSet.push({ name, value, options });
           },
           remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: "", ...options });
-            response.cookies.set({ name, value: "", ...options });
+            // Store cookie removal (empty value) to be set on the response
+            cookiesToSet.push({ name, value: "", options });
           },
         },
       }
@@ -37,7 +38,6 @@ export async function GET(req: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error("❌ Code exchange error:", error.message);
       return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
     }
 
@@ -67,10 +67,12 @@ export async function GET(req: Request) {
         }
       }
 
-      // Create redirect response and copy all cookies to it
+      // Create redirect response and set all cookies on it
       const redirectResponse = NextResponse.redirect(redirectUrl);
-      response.cookies.getAll().forEach(cookie => {
-        redirectResponse.cookies.set(cookie);
+      
+      // Apply all tracked cookies to the redirect response
+      cookiesToSet.forEach(({ name, value, options }) => {
+        redirectResponse.cookies.set(name, value, options);
       });
       
       return redirectResponse;
@@ -78,7 +80,6 @@ export async function GET(req: Request) {
   }
 
   // If no code or user not found, redirect to login
-  console.error("❌ No code or user not found");
   return NextResponse.redirect(`${origin}/login`);
 }
 
