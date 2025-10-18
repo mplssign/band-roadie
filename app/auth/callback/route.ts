@@ -9,10 +9,11 @@ export async function GET(req: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
   const origin = requestUrl.origin;
 
-  console.log("🔐 Auth callback:", { code: !!code, invitationId, next });
-
   if (code) {
+    // Create response first so we can set cookies on it
+    const response = NextResponse.next();
     const cookieStore = cookies();
+    
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -22,22 +23,12 @@ export async function GET(req: Request) {
             return cookieStore.get(name)?.value;
           },
           set(name: string, value: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value, ...options });
-            } catch (error) {
-              // The `set` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
+            cookieStore.set({ name, value, ...options });
+            response.cookies.set({ name, value, ...options });
           },
           remove(name: string, options: CookieOptions) {
-            try {
-              cookieStore.set({ name, value: "", ...options });
-            } catch (error) {
-              // The `delete` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing
-              // user sessions.
-            }
+            cookieStore.set({ name, value: "", ...options });
+            response.cookies.set({ name, value: "", ...options });
           },
         },
       }
@@ -54,30 +45,35 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      console.log("✅ User authenticated:", user.email);
-
-      // If there's an invitation, redirect there
+      // Determine redirect URL
+      let redirectUrl: string;
+      
       if (invitationId) {
-        return NextResponse.redirect(`${origin}/invite/${invitationId}`);
+        redirectUrl = `${origin}/invite/${invitationId}`;
+      } else {
+        // Check if profile is complete
+        const { data: profile } = await supabase
+          .from('users')
+          .select('first_name, last_name')
+          .eq('id', user.id)
+          .single();
+
+        // New user or incomplete profile
+        if (!profile || !profile.first_name || !profile.last_name) {
+          redirectUrl = `${origin}/profile?welcome=true`;
+        } else {
+          // Existing user with complete profile
+          redirectUrl = next.startsWith('/') ? `${origin}${next}` : `${origin}/dashboard`;
+        }
       }
 
-      // Check if profile is complete
-      const { data: profile } = await supabase
-        .from('users')
-        .select('first_name, last_name')
-        .eq('id', user.id)
-        .single();
-
-      // New user or incomplete profile
-      if (!profile || !profile.first_name || !profile.last_name) {
-        console.log("👤 New user, redirecting to profile");
-        return NextResponse.redirect(`${origin}/profile?welcome=true`);
-      }
-
-      // Existing user with complete profile
-      console.log("🎉 Existing user, redirecting to:", next);
-      const redirectUrl = next.startsWith('/') ? `${origin}${next}` : `${origin}/dashboard`;
-      return NextResponse.redirect(redirectUrl);
+      // Create redirect response and copy all cookies to it
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      response.cookies.getAll().forEach(cookie => {
+        redirectResponse.cookies.set(cookie);
+      });
+      
+      return redirectResponse;
     }
   }
 
