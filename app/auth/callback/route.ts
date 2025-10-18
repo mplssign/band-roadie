@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const origin = requestUrl.origin;
 
   if (code) {
-    const cookieStore = await cookies();
+    const cookieStore = cookies();
     
     // Track cookies that need to be set on the response
     const cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }> = [];
