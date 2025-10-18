@@ -3,6 +3,7 @@ import './theme-rose.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers/providers';
+import { OrientationGuard } from '@/components/layout/OrientationGuard';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
+        <OrientationGuard />
         <Providers>
           {children}
         </Providers>
