@@ -2,6 +2,8 @@
 
 After deploying to Vercel, configure these environment variables for correct auth redirect behavior.
 
+> **Note:** This project relies on Vercel's Project Settings in the dashboard. We don't use `vercel.json` to avoid configuration conflicts. Vercel automatically detects Next.js projects and applies appropriate build settings.
+
 ## Quick Setup
 
 Go to your Vercel project → **Settings** → **Environment Variables**
@@ -143,3 +145,16 @@ If you previously used `NEXT_PUBLIC_APP_URL`, update it:
 ```
 
 Then redeploy.
+
+## Build Configuration
+
+This project uses Vercel's automatic Next.js detection. Configure build settings in the Vercel dashboard:
+
+**Project Settings → General → Build & Development Settings:**
+- Framework Preset: `Next.js`
+- Build Command: `pnpm run build` (or leave default)
+- Install Command: `pnpm install` (or leave default)
+- Output Directory: `.next` (default)
+
+> We intentionally don't use `vercel.json` to allow dashboard settings to take precedence. This prevents "Production Overrides" warnings and makes configuration more transparent.
+
