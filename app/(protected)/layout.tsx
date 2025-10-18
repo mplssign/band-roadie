@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import TopNav from '@/components/navigation/TopNav';
 import BottomNav from '@/components/navigation/BottomNav';
 import { BandsProvider } from '@/contexts/BandsContext';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { User } from '@supabase/supabase-js';
 
 export default function ProtectedLayout({
@@ -199,6 +200,7 @@ export default function ProtectedLayout({
           </div>
         </div>
         <BottomNav />
+        <InstallPrompt />
       </div>
     </BandsProvider>
   );

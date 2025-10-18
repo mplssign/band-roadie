@@ -10,6 +10,20 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Band Roadie',
   description: 'The ultimate band management app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Band Roadie',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  },
+  icons: {
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default function RootLayout({
@@ -19,7 +33,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full dark">
-      <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
+      <head>
+        <meta name="theme-color" content="#dc2626" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
+      <body className={`${inter.className} min-h-dvh bg-background text-foreground`}>
         <OrientationGuard />
         <Providers>
           {children}

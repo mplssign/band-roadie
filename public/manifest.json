@@ -3,7 +3,7 @@
   "name": "Band Roadie",
   "short_name": "BandRoadie",
   "description": "Manage your band's rehearsals, gigs, and setlists",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
