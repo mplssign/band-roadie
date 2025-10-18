@@ -493,3 +493,5 @@ export default function AddEventDrawer({
     </Sheet>
   );
 }
+// Back-compat for CalendarContent/page imports
+export type AddEventPayload = AddEventFormValues;
