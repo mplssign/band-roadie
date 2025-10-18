@@ -9,15 +9,6 @@ export async function GET(req: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
   const origin = requestUrl.origin;
 
-  // Temporary debugging
-  console.log("🔐 Callback hit:", {
-    hasCode: !!code,
-    invitationId,
-    next,
-    origin,
-    fullUrl: req.url
-  });
-
   if (code) {
     const cookieStore = await cookies();
     
@@ -47,18 +38,13 @@ export async function GET(req: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
-      console.error("❌ Code exchange failed:", error.message);
       return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
     }
-
-    console.log("✅ Code exchange successful");
 
     // Get the user to check their profile status
     const { data: { user } } = await supabase.auth.getUser();
     
     if (user) {
-      console.log("✅ User found:", user.email, "ID:", user.id);
-      
       // Determine redirect URL
       let redirectUrl: string;
       
@@ -84,22 +70,16 @@ export async function GET(req: Request) {
       // Create redirect response and set all cookies on it
       const redirectResponse = NextResponse.redirect(redirectUrl);
       
-      console.log("🍪 Setting", cookiesToSet.length, "cookies on redirect to:", redirectUrl);
-      
       // Apply all tracked cookies to the redirect response
       cookiesToSet.forEach(({ name, value, options }) => {
         redirectResponse.cookies.set(name, value, options);
-        console.log("  - Cookie:", name, "=", value.substring(0, 20) + "...");
       });
       
       return redirectResponse;
-    } else {
-      console.error("❌ No user found after code exchange");
     }
   }
 
   // If no code or user not found, redirect to login
-  console.error("❌ Redirecting to login - no code or authentication failed");
   return NextResponse.redirect(`${origin}/login`);
 }
 
