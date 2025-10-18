@@ -155,7 +155,7 @@ export default function AddEventDrawer({
     setSelectedDays((prev) => (prev.includes(index) ? prev.filter((d) => d !== index) : [...prev, index]));
   };
 
-  const daysOfWeek = [
+  const daysOfWeek = useMemo(() => [
     { short: 'S', full: 'Sun', index: 0 },
     { short: 'M', full: 'Mon', index: 1 },
     { short: 'T', full: 'Tue', index: 2 },
@@ -163,7 +163,7 @@ export default function AddEventDrawer({
     { short: 'T', full: 'Thu', index: 4 },
     { short: 'F', full: 'Fri', index: 5 },
     { short: 'S', full: 'Sat', index: 6 },
-  ];
+  ], []);
 
   const recurrenceSummary = useMemo(() => {
     if (!isRecurring || selectedDays.length === 0) return '';
@@ -181,7 +181,7 @@ export default function AddEventDrawer({
         ? 'Every 2 weeks'
         : 'Monthly';
     return `${freq} on ${list}${until}`;
-  }, [isRecurring, selectedDays, endDate, recurringFrequency]);
+  }, [isRecurring, selectedDays, endDate, recurringFrequency, daysOfWeek]);
 
   const isValid = useMemo(() => {
     if (!date) return false;
@@ -494,4 +494,4 @@ export default function AddEventDrawer({
   );
 }
 // Back-compat for CalendarContent/page imports
-export type AddEventPayload = AddEventFormValues;
+export type AddEventPayload = SavedEvent;
