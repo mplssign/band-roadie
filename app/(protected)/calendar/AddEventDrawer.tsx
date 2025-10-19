@@ -26,6 +26,10 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type EventType = 'rehearsal' | 'gig';
 
@@ -313,16 +317,36 @@ export default function AddEventDrawer({
 
             <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="event-date">Date *</Label>
-              <Input
-                id="event-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full"
-              />
-              <div className="text-sm text-muted-foreground">
-                {formatLongDate(date) || 'Select a date'}
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="event-date"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? formatLongDate(date) : "Select a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date ? new Date(`${date}T00:00:00`) : undefined}
+                    onSelect={(selectedDate) => {
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear();
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(selectedDate.getDate()).padStart(2, '0');
+                        setDate(`${year}-${month}-${day}`);
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2 w-full min-w-0">
@@ -354,15 +378,19 @@ export default function AddEventDrawer({
                   </SelectContent>
                 </Select>
 
-                <Select value={startAmPm} onValueChange={(v) => setStartAmPm(v as 'AM' | 'PM')}>
-                  <SelectTrigger className="w-20 min-w-0">
-                    <SelectValue placeholder="AM/PM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AM">AM</SelectItem>
-                    <SelectItem value="PM">PM</SelectItem>
-                  </SelectContent>
-                </Select>
+                <ToggleGroup
+                  type="single"
+                  value={startAmPm}
+                  onValueChange={(v) => v && setStartAmPm(v as 'AM' | 'PM')}
+                  className="shrink-0"
+                >
+                  <ToggleGroupItem value="AM" className="w-14">
+                    AM
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="PM" className="w-14">
+                    PM
+                  </ToggleGroupItem>
+                </ToggleGroup>
               </div>
               <div className="text-sm text-muted-foreground">
                 Ends at {endTimeString}
@@ -376,13 +404,13 @@ export default function AddEventDrawer({
                   type="single"
                   value={duration}
                   onValueChange={(v) => v && setDuration(v)}
-                  className="flex flex-wrap gap-2 w-full min-w-0"
+                  className="grid grid-cols-4 gap-2 w-full"
                 >
                   {durations.map((d) => (
                     <ToggleGroupItem
                       key={d.value}
                       value={d.value}
-                      className="h-10 px-3 py-2 rounded-xl flex-1 sm:flex-none"
+                      className="h-10 px-2 py-2 rounded-xl"
                     >
                       {d.label}
                     </ToggleGroupItem>
@@ -431,7 +459,7 @@ export default function AddEventDrawer({
                   <>
                     <div className="space-y-2 w-full min-w-0">
                       <div className="font-medium">Days of the Week</div>
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="grid grid-cols-7 gap-1">
                         {daysOfWeek.map((d) => {
                           const active = selectedDays.includes(d.index);
                           return (
@@ -440,7 +468,7 @@ export default function AddEventDrawer({
                               type="button"
                               size="icon"
                               variant={active ? 'default' : 'secondary'}
-                              className="rounded-full w-10 h-10"
+                              className="rounded-full h-10 w-full aspect-square text-xs"
                               onClick={() => toggleDay(d.index)}
                             >
                               {d.short}
@@ -482,16 +510,38 @@ export default function AddEventDrawer({
 
                     <div className="space-y-2 w-full min-w-0">
                       <Label htmlFor="until">Until (optional)</Label>
-                      <Input
-                        id="until"
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full"
-                      />
-                      <div className="text-sm text-muted-foreground">
-                        {endDate ? formatLongDate(endDate) : 'No end date'}
-                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="until"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !endDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {endDate ? formatLongDate(endDate) : "No end date"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
+                            onSelect={(selectedDate) => {
+                              if (selectedDate) {
+                                const year = selectedDate.getFullYear();
+                                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                const day = String(selectedDate.getDate()).padStart(2, '0');
+                                setEndDate(`${year}-${month}-${day}`);
+                              } else {
+                                setEndDate('');
+                              }
+                            }}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
                       <div className="text-sm text-muted-foreground">
                         {recurrenceSummary || 'Select days and frequency'}
                       </div>
@@ -503,17 +553,20 @@ export default function AddEventDrawer({
           </div>
         </ScrollArea>
 
-        <SheetFooter className="border-t border-border px-4 py-4 gap-2">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={!isValid}
-          >
-            {eventType === 'rehearsal' ? 'Add Rehearsal' : 'Add Gig'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+        <SheetFooter className="border-t border-border px-4 py-4">
+          <div className="flex gap-2 w-full">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={!isValid}
+              className="flex-1"
+            >
+              {eventType === 'rehearsal' ? 'Add Rehearsal' : 'Add Gig'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+          </div>
         </SheetFooter>
       </SheetContent>
     </Sheet>
