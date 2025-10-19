@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 type EventType = 'rehearsal' | 'gig';
 
@@ -359,18 +360,23 @@ export default function AddEventDrawer({
 
             <div className="space-y-2 w-full min-w-0">
               <Label>Duration</Label>
-              <div className="flex gap-2 overflow-x-auto pb-1 w-full">
-                {durations.map((d) => (
-                  <Button
-                    key={d.value}
-                    type="button"
-                    variant={duration === d.value ? 'default' : 'secondary'}
-                    onClick={() => setDuration(d.value)}
-                    className="shrink-0"
-                  >
-                    {d.label}
-                  </Button>
-                ))}
+              <div className="w-full min-w-0 overflow-x-hidden">
+                <ToggleGroup
+                  type="single"
+                  value={duration}
+                  onValueChange={(v) => v && setDuration(v)}
+                  className="flex flex-wrap gap-2 w-full min-w-0"
+                >
+                  {durations.map((d) => (
+                    <ToggleGroupItem
+                      key={d.value}
+                      value={d.value}
+                      className="h-10 px-3 py-2 rounded-xl flex-1 sm:flex-none"
+                    >
+                      {d.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
             </div>
 
@@ -423,7 +429,7 @@ export default function AddEventDrawer({
                               type="button"
                               size="icon"
                               variant={active ? 'default' : 'secondary'}
-                              className="rounded-full w-10 h-10 shrink-0"
+                              className="rounded-full w-10 h-10"
                               onClick={() => toggleDay(d.index)}
                             >
                               {d.short}
@@ -440,7 +446,7 @@ export default function AddEventDrawer({
                           type="button"
                           variant={recurringFrequency === 'weekly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('weekly')}
-                          className="shrink-0"
+                          className="flex-1 sm:flex-none"
                         >
                           Weekly
                         </Button>
@@ -448,7 +454,7 @@ export default function AddEventDrawer({
                           type="button"
                           variant={recurringFrequency === 'biweekly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('biweekly')}
-                          className="shrink-0"
+                          className="flex-1 sm:flex-none"
                         >
                           Biweekly
                         </Button>
@@ -456,7 +462,7 @@ export default function AddEventDrawer({
                           type="button"
                           variant={recurringFrequency === 'monthly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('monthly')}
-                          className="shrink-0"
+                          className="flex-1 sm:flex-none"
                         >
                           Monthly
                         </Button>
