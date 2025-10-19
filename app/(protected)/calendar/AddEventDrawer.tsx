@@ -30,6 +30,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { capitalizeWords } from '@/lib/utils/formatters';
 
 type EventType = 'rehearsal' | 'gig';
 
@@ -298,7 +299,10 @@ export default function AddEventDrawer({
                 <Input
                   id="gig-name"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const capitalized = capitalizeWords(e.target.value);
+                    setTitle(capitalized);
+                  }}
                   placeholder="Enter gig name"
                   className="w-full"
                 />
@@ -327,11 +331,11 @@ export default function AddEventDrawer({
                       !date && "text-muted-foreground"
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {date ? formatLongDate(date) : "Select a date"}
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">{date ? formatLongDate(date) : "Select a date"}</span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                   <Calendar
                     mode="single"
                     selected={date ? new Date(`${date}T00:00:00`) : undefined}
@@ -431,18 +435,30 @@ export default function AddEventDrawer({
             </div>            {eventType === 'gig' && setlists.length > 0 && (
               <div className="space-y-2 w-full min-w-0">
                 <Label>Setlist (Optional)</Label>
-                <Select value={selectedSetlist || undefined} onValueChange={(value) => setSelectedSetlist(value || '')}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="No Setlist" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {setlists.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex flex-wrap gap-2 w-full min-w-0">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={!selectedSetlist ? 'secondary' : 'outline'}
+                    onClick={() => setSelectedSetlist('')}
+                    className="shrink-0"
+                  >
+                    None
+                  </Button>
+                  {setlists.map((s) => (
+                    <Button
+                      key={s.id}
+                      type="button"
+                      size="sm"
+                      variant={selectedSetlist === s.id ? 'secondary' : 'outline'}
+                      onClick={() => setSelectedSetlist(s.id)}
+                      className="shrink-0 max-w-[200px]"
+                      title={s.name}
+                    >
+                      <span className="truncate">{s.name}</span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -520,11 +536,11 @@ export default function AddEventDrawer({
                               !endDate && "text-muted-foreground"
                             )}
                           >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {endDate ? formatLongDate(endDate) : "No end date"}
+                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">{endDate ? formatLongDate(endDate) : "No end date"}</span>
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
                           <Calendar
                             mode="single"
                             selected={endDate ? new Date(`${endDate}T00:00:00`) : undefined}

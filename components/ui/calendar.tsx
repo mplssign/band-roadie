@@ -16,12 +16,12 @@ export function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn('p-3', className)}
+      className={cn('p-3 w-full max-w-full min-w-0', className)}
       classNames={{
         months:
-          'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
-        month: 'space-y-4',
-        caption: 'flex justify-center pt-1 relative items-center',
+          'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0 w-full',
+        month: 'space-y-4 w-full',
+        caption: 'flex justify-center pt-1 relative items-center w-full',
         caption_label: 'text-sm font-medium',
         nav: 'space-x-1 flex items-center',
         nav_button: cn(
@@ -31,12 +31,12 @@ export function Calendar({
         nav_button_previous: 'absolute left-1',
         nav_button_next: 'absolute right-1',
         table: 'w-full border-collapse space-y-1',
-        head_row: 'flex',
+        head_row: 'flex w-full',
         head_cell:
-          'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]',
+          'text-muted-foreground rounded-md flex-1 font-normal text-[0.8rem] w-9',
         row: 'flex w-full mt-2',
         cell:
-          'h-9 w-9 text-center text-sm p-0 relative ' +
+          'flex-1 h-9 text-center text-sm p-0 relative ' +
           '[&:has([aria-selected].day-range-end)]:rounded-r-md ' +
           '[&:has([aria-selected].day-range-start)]:rounded-l-md ' +
           '[&:has([aria-selected])]:bg-accent ' +
