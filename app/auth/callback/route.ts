@@ -9,6 +9,14 @@ export async function GET(req: Request) {
   const next = requestUrl.searchParams.get("next") ?? "/dashboard";
   const origin = requestUrl.origin;
 
+  // eslint-disable-next-line no-console
+  console.log('[Auth Callback] Request received:', {
+    code: code ? 'present' : 'missing',
+    invitationId,
+    next,
+    origin,
+  });
+
   if (code) {
     const cookieStore = cookies();
     
@@ -38,11 +46,16 @@ export async function GET(req: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (error) {
+      // eslint-disable-next-line no-console
+      console.error('[Auth Callback] Exchange code error:', error);
       return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
     }
 
     // Get the user to check their profile status
     const { data: { user } } = await supabase.auth.getUser();
+    
+    // eslint-disable-next-line no-console
+    console.log('[Auth Callback] User retrieved:', user ? `ID: ${user.id}` : 'null');
     
     if (user) {
       // Determine redirect URL
@@ -74,6 +87,9 @@ export async function GET(req: Request) {
       cookiesToSet.forEach(({ name, value, options }) => {
         redirectResponse.cookies.set(name, value, options);
       });
+      
+      // eslint-disable-next-line no-console
+      console.log('[Auth Callback] Redirecting to:', redirectUrl, 'Cookies set:', cookiesToSet.length);
       
       return redirectResponse;
     }

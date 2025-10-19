@@ -224,4 +224,3 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
     </div>
   );
 }
-export default SongSearchOverlay;
