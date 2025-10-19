@@ -37,6 +37,8 @@ interface SavedEvent {
   location: string;
 }
 
+export type AddEventPayload = SavedEvent;
+
 interface AddEventDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -246,21 +248,21 @@ export default function AddEventDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <SheetContent side="bottom" className="h-[90vh] p-0 bg-background text-foreground border-border">
+      <SheetContent side="bottom" className="h-[90vh] w-full p-0 bg-background text-foreground border-border overflow-x-hidden">
         <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle>Add Event</SheetTitle>
           <SheetDescription />
         </SheetHeader>
 
-        <ScrollArea className="h-[calc(90vh-60px-72px)]">
-          <div className="px-4 py-4 space-y-6">
-            {/* Tabs (simple buttons) */}
-            <div className="flex gap-2">
+        <ScrollArea className="h-[calc(90vh-60px-72px)] overflow-x-hidden">
+          <div className="px-4 py-4 space-y-6 w-full max-w-full overflow-x-hidden">
+            {/* Event Type Toggle */}
+            <div className="flex gap-2 w-full min-w-0">
               <Button
                 type="button"
                 variant={eventType === 'rehearsal' ? 'default' : 'secondary'}
                 onClick={() => setEventType('rehearsal')}
-                className="flex-1"
+                className="flex-1 min-w-0"
               >
                 Rehearsal
               </Button>
@@ -268,27 +270,28 @@ export default function AddEventDrawer({
                 type="button"
                 variant={eventType === 'gig' ? 'default' : 'secondary'}
                 onClick={() => setEventType('gig')}
-                className="flex-1"
+                className="flex-1 min-w-0"
               >
                 Gig
               </Button>
             </div>
 
             {eventType === 'gig' && (
-              <div className="space-y-2">
+              <div className="space-y-2 w-full min-w-0">
                 <Label htmlFor="gig-name">Gig Name *</Label>
                 <Input
                   id="gig-name"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Enter gig name"
+                  className="w-full"
                 />
 
-                <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                  <div className="space-y-1">
+                <div className="flex items-center justify-between rounded-lg border border-border p-3 w-full min-w-0">
+                  <div className="space-y-1 flex-1 min-w-0 pr-3">
                     <div className="font-medium">Potential Gig</div>
                     <div className="text-sm text-muted-foreground">
-                      Requires member confirmation before it’s confirmed
+                      Requires member confirmation before it&apos;s confirmed
                     </div>
                   </div>
                   <Switch checked={isPotentialGig} onCheckedChange={setIsPotentialGig} />
@@ -296,24 +299,25 @@ export default function AddEventDrawer({
               </div>
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="event-date">Date *</Label>
               <Input
                 id="event-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                className="w-full"
               />
               <div className="text-sm text-muted-foreground">
                 {formatDateDisplay(date) || 'Select a date'}
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               <Label>Start Time</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full min-w-0 overflow-x-hidden">
                 <Select value={startHour} onValueChange={setStartHour}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 min-w-0">
                     <SelectValue placeholder="Hour" />
                   </SelectTrigger>
                   <SelectContent>
@@ -326,7 +330,7 @@ export default function AddEventDrawer({
                 </Select>
 
                 <Select value={startMinute} onValueChange={setStartMinute}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 min-w-0">
                     <SelectValue placeholder="Min" />
                   </SelectTrigger>
                   <SelectContent>
@@ -339,7 +343,7 @@ export default function AddEventDrawer({
                 </Select>
 
                 <Select value={startAmPm} onValueChange={(v) => setStartAmPm(v as 'AM' | 'PM')}>
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger className="w-20 min-w-0">
                     <SelectValue placeholder="AM/PM" />
                   </SelectTrigger>
                   <SelectContent>
@@ -353,9 +357,9 @@ export default function AddEventDrawer({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               <Label>Duration</Label>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 w-full">
                 {durations.map((d) => (
                   <Button
                     key={d.value}
@@ -370,25 +374,23 @@ export default function AddEventDrawer({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Enter location (optional)"
+                className="w-full"
               />
-            </div>
-
-            {eventType === 'gig' && setlists.length > 0 && (
-              <div className="space-y-2">
+            </div>            {eventType === 'gig' && setlists.length > 0 && (
+              <div className="space-y-2 w-full min-w-0">
                 <Label>Setlist (Optional)</Label>
-                <Select value={selectedSetlist} onValueChange={setSelectedSetlist}>
-                  <SelectTrigger>
+                <Select value={selectedSetlist || undefined} onValueChange={(value) => setSelectedSetlist(value || '')}>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="No Setlist" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No Setlist</SelectItem>
                     {setlists.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
@@ -400,7 +402,7 @@ export default function AddEventDrawer({
             )}
 
             {eventType === 'rehearsal' && (
-              <div className="space-y-4 rounded-lg border border-border p-4">
+              <div className="space-y-4 rounded-lg border border-border p-4 w-full min-w-0">
                 <div className="flex items-center gap-3">
                   <Switch id="recurring" checked={isRecurring} onCheckedChange={setIsRecurring} />
                   <Label htmlFor="recurring" className="cursor-pointer">
@@ -410,9 +412,9 @@ export default function AddEventDrawer({
 
                 {isRecurring && (
                   <>
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full min-w-0">
                       <div className="font-medium">Days of the Week</div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         {daysOfWeek.map((d) => {
                           const active = selectedDays.includes(d.index);
                           return (
@@ -421,7 +423,7 @@ export default function AddEventDrawer({
                               type="button"
                               size="icon"
                               variant={active ? 'default' : 'secondary'}
-                              className="rounded-full w-10 h-10"
+                              className="rounded-full w-10 h-10 shrink-0"
                               onClick={() => toggleDay(d.index)}
                             >
                               {d.short}
@@ -431,13 +433,14 @@ export default function AddEventDrawer({
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full min-w-0">
                       <div className="font-medium">Frequency</div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <Button
                           type="button"
                           variant={recurringFrequency === 'weekly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('weekly')}
+                          className="shrink-0"
                         >
                           Weekly
                         </Button>
@@ -445,6 +448,7 @@ export default function AddEventDrawer({
                           type="button"
                           variant={recurringFrequency === 'biweekly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('biweekly')}
+                          className="shrink-0"
                         >
                           Biweekly
                         </Button>
@@ -452,19 +456,21 @@ export default function AddEventDrawer({
                           type="button"
                           variant={recurringFrequency === 'monthly' ? 'default' : 'secondary'}
                           onClick={() => setRecurringFrequency('monthly')}
+                          className="shrink-0"
                         >
                           Monthly
                         </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full min-w-0">
                       <Label htmlFor="until">Until (optional)</Label>
                       <Input
                         id="until"
                         type="date"
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full"
                       />
                       <div className="text-sm text-muted-foreground">
                         {recurrenceSummary || 'Select days and frequency'}
