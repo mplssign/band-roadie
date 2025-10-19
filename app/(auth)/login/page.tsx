@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getAuthCallbackUrl } from '@/lib/config/site';
 import { Wordmark } from '@/components/branding/Wordmark';
@@ -8,12 +9,34 @@ import { Wordmark } from '@/components/branding/Wordmark';
 const EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'icloud.com', 'outlook.com'];
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const supabase = createClient();
+
+  // Check for error parameters from auth callback
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    const errorCode = searchParams.get('error_code');
+    const errorDescription = searchParams.get('error_description');
+
+    if (errorParam || errorCode) {
+      let message = 'Authentication failed.';
+      
+      if (errorCode === 'otp_expired') {
+        message = 'Your login link has expired. Please request a new one.';
+      } else if (errorDescription) {
+        message = decodeURIComponent(errorDescription);
+      } else if (errorParam) {
+        message = decodeURIComponent(errorParam);
+      }
+      
+      setError(message);
+    }
+  }, [searchParams]);
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
