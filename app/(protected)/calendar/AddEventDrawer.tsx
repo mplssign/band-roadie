@@ -53,12 +53,20 @@ interface Setlist {
   name: string;
 }
 
-function formatDateDisplay(dateString: string): string {
+// Helper functions for time and date formatting
+function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
+  if (hour24 === 0) return { hour12: 12, period: 'AM' };
+  if (hour24 < 12) return { hour12: hour24, period: 'AM' };
+  if (hour24 === 12) return { hour12: 12, period: 'PM' };
+  return { hour12: hour24 - 12, period: 'PM' };
+}
+
+function formatLongDate(dateString: string): string {
   if (!dateString) return '';
   const date = new Date(`${dateString}T00:00:00`);
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
-  return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
 export default function AddEventDrawer({
@@ -151,7 +159,10 @@ export default function AddEventDrawer({
     const endMinutes = startMinutes + parseInt(duration, 10);
     const h = Math.floor(endMinutes / 60) % 24;
     const m = endMinutes % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+    
+    // Convert to 12-hour format
+    const { hour12, period } = to12h(h);
+    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
   }, [hour24, startMinute, duration]);
 
   const toggleDay = (index: number) => {
@@ -310,7 +321,7 @@ export default function AddEventDrawer({
                 className="w-full"
               />
               <div className="text-sm text-muted-foreground">
-                {formatDateDisplay(date) || 'Select a date'}
+                {formatLongDate(date) || 'Select a date'}
               </div>
             </div>
 
@@ -478,6 +489,9 @@ export default function AddEventDrawer({
                         onChange={(e) => setEndDate(e.target.value)}
                         className="w-full"
                       />
+                      <div className="text-sm text-muted-foreground">
+                        {endDate ? formatLongDate(endDate) : 'No end date'}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {recurrenceSummary || 'Select days and frequency'}
                       </div>
