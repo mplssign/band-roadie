@@ -123,7 +123,11 @@ const blockoutRanges = useMemo(() => {
   }, [events.calendarEvents, currentDate]);
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
-    const dateString = date.toISOString().split('T')[0];
+    // Use local date string (YYYY-MM-DD) to match event dates
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
     return events.calendarEvents.filter(e => e.date === dateString);
   };
 
@@ -385,7 +389,11 @@ const blockoutRanges = useMemo(() => {
                 }
                 
                 const date = new Date(year, month, day);
-                const isoDate = date.toISOString().split('T')[0];
+                // Use local date string (YYYY-MM-DD) to match event dates
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                const isoDate = `${y}-${m}-${d}`;
                 const dayEvents = getEventsForDate(date);
                 const isToday = new Date().toDateString() === date.toDateString();
                 const blockoutsForDay = blockoutRanges.filter(
