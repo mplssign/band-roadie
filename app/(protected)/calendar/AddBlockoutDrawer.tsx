@@ -1,13 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 interface AddBlockoutDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (blockout: { startDate: string; endDate: string; reason: string }) => void;
+}
+
+// Format date as "MMMM d, yyyy"
+function formatLongDate(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(`${dateString}T00:00:00`);
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
 export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlockoutDrawerProps) {
@@ -29,7 +44,13 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
   };
 
   const handleSave = () => {
-    onSave({ startDate, endDate, reason: reason || 'Blocked Out' });
+    if (!startDate) return;
+    
+    onSave({ 
+      startDate, 
+      endDate: endDate || startDate, // If no end date, use start date (single day)
+      reason: reason || 'Blocked Out' 
+    });
     showToast('Block out dates added successfully!', 'success');
     handleClose();
   };
@@ -58,35 +79,93 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-muted-foreground">Reason <span className="text-xs text-muted-foreground/60">(Optional)</span></label>
-            <input
+          <div className="space-y-2 w-full min-w-0">
+            <Label htmlFor="blockout-reason">
+              Reason <span className="text-xs text-muted-foreground/60">(Optional)</span>
+            </Label>
+            <Input
+              id="blockout-reason"
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Out of town, vacation, etc."
-              className="w-full rounded-lg border border-border/60 bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">Start Date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-lg border border-border/60 bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+            <div className="space-y-2 w-full min-w-0">
+              <Label htmlFor="blockout-start">Start Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="blockout-start"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {startDate ? formatLongDate(startDate) : "Select date"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate ? new Date(`${startDate}T00:00:00`) : undefined}
+                    onSelect={(selectedDate) => {
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear();
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(selectedDate.getDate()).padStart(2, '0');
+                        setStartDate(`${year}-${month}-${day}`);
+                      } else {
+                        setStartDate('');
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">End Date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-lg border border-border/60 bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+
+            <div className="space-y-2 w-full min-w-0">
+              <Label htmlFor="blockout-end">Until (optional)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="blockout-end"
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    <span className="truncate">
+                      {endDate ? formatLongDate(endDate) : "No end date"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
+                    onSelect={(selectedDate) => {
+                      if (selectedDate) {
+                        const year = selectedDate.getFullYear();
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const day = String(selectedDate.getDate()).padStart(2, '0');
+                        setEndDate(`${year}-${month}-${day}`);
+                      } else {
+                        setEndDate('');
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -97,24 +176,22 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
           </div>
 
           <div className="space-y-3 pt-4">
-            <button
+            <Button
               onClick={handleSave}
-              disabled={!startDate || !endDate}
-              className={`w-full py-4 rounded-lg text-lg font-medium transition-colors ${
-                startDate && endDate
-                  ? 'cursor-pointer bg-secondary text-secondary-foreground shadow shadow-secondary/30 transition-opacity hover:opacity-90'
-                  : 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-              }`}
+              disabled={!startDate}
+              className="w-full h-12 text-base"
+              variant="secondary"
             >
               Add Block Out Dates
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={handleClose}
-              className="w-full rounded-lg bg-muted/40 py-4 font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              variant="ghost"
+              className="w-full h-12 text-base"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -405,14 +405,14 @@ const blockoutRanges = useMemo(() => {
                       isToday 
                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25' 
                         : isBlockoutMiddle
-                          ? 'bg-red-500/20 text-gray-300 hover:bg-red-500/30'
+                          ? 'bg-zinc-500/20 text-gray-300 hover:bg-zinc-500/30'
                           : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
                     }`}
                   >
-                    {/* Blockout connecting line - subtle horizontal bar */}
+                    {/* Blockout connecting line - subtle gray horizontal bar */}
                     {blockoutsForDay.length > 0 && (
                       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
-                        <div className="h-0.5 w-full bg-red-500/25" />
+                        <div className="h-0.5 w-full bg-zinc-500/25" />
                       </div>
                     )}
                     {/* Day Number */}
@@ -420,23 +420,17 @@ const blockoutRanges = useMemo(() => {
                       {day}
                     </span>
                     
-                    {/* Event Indicators - Larger overlapping circles */}
-                    <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 -space-x-1">
+                    {/* Event Indicators - Clean dots at bottom */}
+                    <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
                       {dayEvents.some(e => e.type === 'rehearsal') && (
-                        <div className={`h-3 w-3 rounded-full bg-blue-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
+                        <div className={`h-1.5 w-1.5 rounded-full bg-blue-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
                       )}
-                      {dayEvents.some(e => e.type === 'gig' && !e.is_potential) && (
-                        <div className={`h-3 w-3 rounded-full bg-green-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
+                      {dayEvents.some(e => e.type === 'gig') && (
+                        <div className={`h-1.5 w-1.5 rounded-full bg-purple-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
                       )}
-                      {dayEvents.some(e => e.type === 'gig' && e.is_potential) && (
-                        <div className={`h-3 w-3 rounded-full bg-purple-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
-                      )}
-                      {/* Blockout indicators - solid red for start/end, lighter red for middle days */}
+                      {/* Blockout indicators - gray dots for start/end */}
                       {(isBlockoutStart || isBlockoutEnd) && (
-                        <div className={`h-3 w-3 rounded-full bg-red-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
-                      )}
-                      {isBlockoutMiddle && (
-                        <div className={`h-3 w-3 rounded-full bg-red-500/40 ${isToday ? 'ring-1 ring-white' : ''}`} />
+                        <div className={`h-1.5 w-1.5 rounded-full bg-zinc-400 ${isToday ? 'ring-1 ring-white' : ''}`} />
                       )}
                     </div>
                   </button>
@@ -482,13 +476,13 @@ const blockoutRanges = useMemo(() => {
                       return { label: 'Rehearsal', className: 'bg-blue-500 text-white' };
                     }
                     if (evt.type === 'gig' && evt.is_potential) {
-                      return { label: 'Potential Gig', className: 'bg-purple-500 text-white' };
+                      return { label: 'Potential Gig', className: 'bg-purple-500/80 text-white' };
                     }
                     if (evt.type === 'gig') {
-                      return { label: 'Gig', className: 'bg-green-500 text-white' };
+                      return { label: 'Gig', className: 'bg-purple-500 text-white' };
                     }
                     if (evt.type === 'blockout') {
-                      return { label: 'Block Out', className: 'bg-red-500 text-white' };
+                      return { label: 'Block Out', className: 'bg-zinc-500 text-white' };
                     }
                     return { label: 'Event', className: 'bg-muted text-foreground' };
                   })();
