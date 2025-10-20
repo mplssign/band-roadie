@@ -349,6 +349,9 @@ export default function AddEventDrawer({
                       }
                     }}
                     initialFocus
+                    captionLayout="dropdown"
+                    fromYear={2000}
+                    toYear={2050}
                   />
                 </PopoverContent>
               </Popover>
@@ -556,11 +559,18 @@ export default function AddEventDrawer({
                               }
                             }}
                             initialFocus
+                            captionLayout="dropdown"
+                            fromYear={2000}
+                            toYear={2050}
                           />
                         </PopoverContent>
                       </Popover>
-                      <div className="text-sm text-muted-foreground">
-                        {recurrenceSummary || 'Select days and frequency'}
+                    </div>
+
+                    <div className="space-y-2 w-full min-w-0">
+                      <Label>Recurrence Summary</Label>
+                      <div className="text-sm text-muted-foreground rounded-md border border-border bg-muted/20 p-3">
+                        {recurrenceSummary || 'Select days and frequency above'}
                       </div>
                     </div>
                   </>
