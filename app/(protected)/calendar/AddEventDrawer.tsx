@@ -31,6 +31,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { capitalizeWords } from '@/lib/utils/formatters';
+import { format } from 'date-fns';
+import { toDateSafe, toISODate } from '@/lib/utils/date';
 
 type EventType = 'rehearsal' | 'gig';
 
@@ -58,20 +60,12 @@ interface Setlist {
   name: string;
 }
 
-// Helper functions for time and date formatting
+// Helper function for time formatting
 function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
   if (hour24 === 0) return { hour12: 12, period: 'AM' };
   if (hour24 < 12) return { hour12: hour24, period: 'AM' };
   if (hour24 === 12) return { hour12: 12, period: 'PM' };
   return { hour12: hour24 - 12, period: 'PM' };
-}
-
-function formatLongDate(dateString: string): string {
-  if (!dateString) return '';
-  const date = new Date(`${dateString}T00:00:00`);
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                  'July', 'August', 'September', 'October', 'November', 'December'];
-  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
 // Days of week constant (moved outside component to avoid recreating on every render)
@@ -333,19 +327,20 @@ export default function AddEventDrawer({
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">{date ? formatLongDate(date) : "Select a date"}</span>
+                    {date && toDateSafe(date) ? (
+                      format(toDateSafe(date)!, "MMMM d, yyyy")
+                    ) : (
+                      <span className="text-muted-foreground">Pick a date</span>
+                    )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
                   <Calendar
                     mode="single"
-                    selected={date ? new Date(`${date}T00:00:00`) : undefined}
+                    selected={toDateSafe(date) ?? undefined}
                     onSelect={(selectedDate) => {
                       if (selectedDate) {
-                        const year = selectedDate.getFullYear();
-                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(selectedDate.getDate()).padStart(2, '0');
-                        setDate(`${year}-${month}-${day}`);
+                        setDate(toISODate(selectedDate));
                       }
                     }}
                     initialFocus
@@ -541,19 +536,20 @@ export default function AddEventDrawer({
                             )}
                           >
                             <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">{endDate ? formatLongDate(endDate) : "No end date"}</span>
+                            {endDate && toDateSafe(endDate) ? (
+                              format(toDateSafe(endDate)!, "MMMM d, yyyy")
+                            ) : (
+                              <span className="text-muted-foreground">No end date</span>
+                            )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                        <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
                           <Calendar
                             mode="single"
-                            selected={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
+                            selected={toDateSafe(endDate) ?? undefined}
                             onSelect={(selectedDate) => {
                               if (selectedDate) {
-                                const year = selectedDate.getFullYear();
-                                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                                const day = String(selectedDate.getDate()).padStart(2, '0');
-                                setEndDate(`${year}-${month}-${day}`);
+                                setEndDate(toISODate(selectedDate));
                               } else {
                                 setEndDate('');
                               }

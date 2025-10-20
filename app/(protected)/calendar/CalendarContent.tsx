@@ -11,6 +11,7 @@ import AddBlockoutDrawer from './AddBlockoutDrawer';
 import EditRehearsalDrawer from './EditRehearsalDrawer';
 import EditGigDrawer, { type GigForm } from './EditGigDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
+import { toDateSafe } from '@/lib/utils/date';
 
 interface CalendarEvent {
   id?: string;
@@ -114,22 +115,24 @@ const blockoutRanges = useMemo(() => {
         (evt) =>
           (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') && 
           typeof evt.date === 'string' && 
-          evt.date &&
-          /^\d{4}-\d{2}-\d{2}$/.test(evt.date), // Validate YYYY-MM-DD format
+          evt.date
       )
       .map((evt) => {
-        const date = new Date(`${evt.date}T00:00:00Z`);
+        const date = toDateSafe(`${evt.date}T00:00:00Z`);
         return { evt, date };
       })
       .filter(({ date }) => {
-        // Check if date is valid
-        if (Number.isNaN(date.getTime())) {
-          console.warn('Invalid date found in event:', date);
+        // Check if date is valid using toDateSafe
+        if (!date) {
+          console.warn('Invalid date found in event, skipping');
           return false;
         }
         return date.getUTCMonth() === currentMonth && date.getUTCFullYear() === currentYear;
       })
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+      .sort((a, b) => {
+        // Both dates are guaranteed to be non-null here
+        return a.date!.getTime() - b.date!.getTime();
+      }) as Array<{ evt: CalendarEvent; date: Date }>;
   }, [events.calendarEvents, currentDate]);
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {

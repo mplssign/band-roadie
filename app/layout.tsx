@@ -35,6 +35,7 @@ export default function RootLayout({
     <html lang="en" className="h-full dark">
       <head>
         <meta name="theme-color" content="#dc2626" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className={`${inter.className} min-h-dvh bg-background text-foreground`}>
