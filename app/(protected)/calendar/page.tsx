@@ -123,6 +123,12 @@ export default function CalendarPage() {
 
       if (rehearsals) {
         rehearsals.forEach(rehearsal => {
+          // Validate date format
+          if (!rehearsal.date || typeof rehearsal.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(rehearsal.date)) {
+            console.warn('Invalid rehearsal date format:', rehearsal);
+            return;
+          }
+          
           calendarEvents.push({
             id: rehearsal.id,
             date: rehearsal.date,
@@ -149,6 +155,12 @@ export default function CalendarPage() {
 
       if (gigs) {
         gigs.forEach(gig => {
+          // Validate date format
+          if (!gig.date || typeof gig.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(gig.date)) {
+            console.warn('Invalid gig date format:', gig);
+            return;
+          }
+          
           calendarEvents.push({
             id: gig.id,
             date: gig.date,
@@ -214,6 +226,12 @@ export default function CalendarPage() {
       }
 
       blockRecords.forEach((blockDate) => {
+        // Validate date format before processing
+        if (!blockDate.date || typeof blockDate.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(blockDate.date)) {
+          console.warn('Invalid blockout date format:', blockDate);
+          return;
+        }
+
         // Get user info from our map
         const userInfo = blockDate.user_id ? usersMap.get(blockDate.user_id) : null;
         

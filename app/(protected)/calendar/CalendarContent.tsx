@@ -112,13 +112,23 @@ const blockoutRanges = useMemo(() => {
     return events.calendarEvents
       .filter(
         (evt) =>
-          (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') && typeof evt.date === 'string' && evt.date,
+          (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') && 
+          typeof evt.date === 'string' && 
+          evt.date &&
+          /^\d{4}-\d{2}-\d{2}$/.test(evt.date), // Validate YYYY-MM-DD format
       )
       .map((evt) => {
         const date = new Date(`${evt.date}T00:00:00Z`);
         return { evt, date };
       })
-      .filter(({ date }) => date.getUTCMonth() === currentMonth && date.getUTCFullYear() === currentYear)
+      .filter(({ date }) => {
+        // Check if date is valid
+        if (Number.isNaN(date.getTime())) {
+          console.warn('Invalid date found in event:', date);
+          return false;
+        }
+        return date.getUTCMonth() === currentMonth && date.getUTCFullYear() === currentYear;
+      })
       .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [events.calendarEvents, currentDate]);
 
@@ -128,7 +138,12 @@ const blockoutRanges = useMemo(() => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
-    return events.calendarEvents.filter(e => e.date === dateString);
+    return events.calendarEvents.filter(e => {
+      // Validate event date format and value
+      if (!e.date || typeof e.date !== 'string') return false;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return false;
+      return e.date === dateString;
+    });
   };
 
   const handleDayClick = (date: Date, dayEvents: CalendarEvent[]) => {
