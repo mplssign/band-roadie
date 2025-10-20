@@ -74,6 +74,17 @@ function formatLongDate(dateString: string): string {
   return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
 }
 
+// Days of week constant (moved outside component to avoid recreating on every render)
+const daysOfWeek = [
+  { short: 'S', full: 'Sun', index: 0 },
+  { short: 'M', full: 'Mon', index: 1 },
+  { short: 'T', full: 'Tue', index: 2 },
+  { short: 'W', full: 'Wed', index: 3 },
+  { short: 'T', full: 'Thu', index: 4 },
+  { short: 'F', full: 'Fri', index: 5 },
+  { short: 'S', full: 'Sat', index: 6 },
+];
+
 export default function AddEventDrawer({
   isOpen,
   onClose,
@@ -173,16 +184,6 @@ export default function AddEventDrawer({
   const toggleDay = (index: number) => {
     setSelectedDays((prev) => (prev.includes(index) ? prev.filter((d) => d !== index) : [...prev, index]));
   };
-
-  const daysOfWeek = [
-    { short: 'S', full: 'Sun', index: 0 },
-    { short: 'M', full: 'Mon', index: 1 },
-    { short: 'T', full: 'Tue', index: 2 },
-    { short: 'W', full: 'Wed', index: 3 },
-    { short: 'T', full: 'Thu', index: 4 },
-    { short: 'F', full: 'Fri', index: 5 },
-    { short: 'S', full: 'Sat', index: 6 },
-  ];
 
   const recurrenceSummary = useMemo(() => {
     if (!isRecurring || selectedDays.length === 0) return '';
