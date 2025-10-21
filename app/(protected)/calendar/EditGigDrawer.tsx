@@ -41,6 +41,28 @@ const DURATIONS = [
   { value: 240, label: "4h" },
 ] as const;
 
+// Calendar alignment: weekday headers and date columns use the same 7-column grid
+const alignedCalendarClasses = {
+  months: "w-full",
+  month: "space-y-4",
+  caption: "flex justify-center pt-1 relative items-center",
+  caption_label: "text-sm font-medium",
+  nav: "space-x-1 flex items-center",
+  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+  nav_button_previous: "absolute left-1",
+  nav_button_next: "absolute right-1",
+  table: "w-full border-collapse",
+  head_row: "grid grid-cols-7 gap-1 px-3",
+  head_cell: "grid place-items-center text-[0.8rem] font-normal text-muted-foreground",
+  row: "grid grid-cols-7 gap-1 px-3",
+  cell: "relative p-0",
+  day: "h-9 w-full grid place-items-center p-0 font-normal aria-selected:opacity-100",
+  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+  day_today: "bg-accent text-accent-foreground",
+  day_outside: "text-muted-foreground opacity-50",
+  day_disabled: "text-muted-foreground opacity-50",
+} as const;
+
 const DAY_OPTIONS = [
   { short: "M", label: "Mon" },
   { short: "T", label: "Tue" },
@@ -208,7 +230,7 @@ export default function EditGigDrawer({
   const [startHour, setStartHour] = useState("7");
   const [startMinute, setStartMinute] = useState<(typeof MINUTES)[number]>("00");
   const [startPeriod, setStartPeriod] = useState<"AM" | "PM">("PM");
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [location, setLocation] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -217,7 +239,7 @@ export default function EditGigDrawer({
   const [recurringDays, setRecurringDays] = useState<(typeof DAY_OPTIONS)[number]["label"][]>([]);
   const [recurringFrequency, setRecurringFrequency] = useState<Frequency>("weekly");
   const [untilDate, setUntilDate] = useState<Date | undefined>();
-  const [untilPickerOpen, setUntilPickerOpen] = useState(false);
+  const [untilOpen, setUntilOpen] = useState(false);
 
   const [gigName, setGigName] = useState("");
   const [isPotentialGig, setIsPotentialGig] = useState(false);
@@ -243,8 +265,8 @@ export default function EditGigDrawer({
     setRecurringDays([]);
     setRecurringFrequency("weekly");
     setUntilDate(undefined);
-    setUntilPickerOpen(false);
-    setDatePickerOpen(false);
+    setUntilOpen(false);
+    setDateOpen(false);
     
     if (editingData) {
       // Store original data for change detection
@@ -541,14 +563,14 @@ export default function EditGigDrawer({
               <section className="space-y-4">
                   <div className="space-y-2">
                     <Label>Date *</Label>
-                    <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <Popover open={dateOpen} onOpenChange={setDateOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
                         className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left font-medium"
                           onClick={() => {
-                            setDatePickerOpen(true);
+                            setDateOpen(true);
                             setDateValue((prev) => prev ?? new Date());
                           }}
                         >
@@ -556,17 +578,20 @@ export default function EditGigDrawer({
                           <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto border-border bg-card p-2" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateValue}
-                          onSelect={(day) => {
-                            setDateValue(day ?? undefined);
-                            setDatePickerOpen(false);
-                          }}
-                          initialFocus
-                          className="rounded-lg bg-card"
-                        />
+                      <PopoverContent className="w-auto border-border bg-card p-0" align="start">
+                        <div className="w-[308px] p-3">
+                          <Calendar
+                            mode="single"
+                            selected={dateValue}
+                            onSelect={(day) => {
+                              setDateValue(day ?? undefined);
+                              setDateOpen(false);
+                            }}
+                            initialFocus
+                            month={dateValue ?? new Date()}
+                            classNames={alignedCalendarClasses}
+                          />
+                        </div>
                       </PopoverContent>
                     </Popover>
                     {submitAttempted && !dateValue && (
@@ -740,7 +765,7 @@ export default function EditGigDrawer({
 
                     <div className="space-y-2">
                       <Label className="text-sm">Until (optional)</Label>
-                      <Popover open={untilPickerOpen} onOpenChange={setUntilPickerOpen}>
+                      <Popover open={untilOpen} onOpenChange={setUntilOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           type="button"
@@ -751,18 +776,21 @@ export default function EditGigDrawer({
                             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto border-border bg-card p-2" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={untilDate}
-                            onSelect={(day) => {
-                              setUntilDate(day ?? undefined);
-                              setUntilPickerOpen(false);
-                            }}
-                            disabled={(date) => !!dateValue && date < dateValue}
-                            initialFocus
-                            className="rounded-lg bg-card"
-                          />
+                        <PopoverContent className="w-auto border-border bg-card p-0" align="start">
+                          <div className="w-[308px] p-3">
+                            <Calendar
+                              mode="single"
+                              selected={untilDate}
+                              onSelect={(day) => {
+                                setUntilDate(day ?? undefined);
+                                setUntilOpen(false);
+                              }}
+                              disabled={(date) => !!dateValue && date < dateValue}
+                              initialFocus
+                              month={untilDate ?? dateValue ?? new Date()}
+                              classNames={alignedCalendarClasses}
+                            />
+                          </div>
                         </PopoverContent>
                       </Popover>
                       {recurrenceHint && (

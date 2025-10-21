@@ -68,6 +68,28 @@ function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
   return { hour12: hour24 - 12, period: 'PM' };
 }
 
+// Calendar alignment: weekday headers and date columns use the same 7-column grid
+const alignedCalendarClasses = {
+  months: "w-full",
+  month: "space-y-4",
+  caption: "flex justify-center pt-1 relative items-center",
+  caption_label: "text-sm font-medium",
+  nav: "space-x-1 flex items-center",
+  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
+  nav_button_previous: "absolute left-1",
+  nav_button_next: "absolute right-1",
+  table: "w-full border-collapse",
+  head_row: "grid grid-cols-7 gap-1 px-3",
+  head_cell: "grid place-items-center text-[0.8rem] font-normal text-muted-foreground",
+  row: "grid grid-cols-7 gap-1 px-3",
+  cell: "relative p-0",
+  day: "h-9 w-full grid place-items-center p-0 font-normal aria-selected:opacity-100",
+  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+  day_today: "bg-accent text-accent-foreground",
+  day_outside: "text-muted-foreground opacity-50",
+  day_disabled: "text-muted-foreground opacity-50",
+} as const;
+
 // Days of week constant (moved outside component to avoid recreating on every render)
 const daysOfWeek = [
   { short: 'S', full: 'Sun', index: 0 },
@@ -335,19 +357,23 @@ export default function AddEventDrawer({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
-                  <Calendar
-                    mode="single"
-                    selected={toDateSafe(date) ?? undefined}
-                    onSelect={(selectedDate) => {
-                      if (selectedDate) {
-                        setDate(toISODate(selectedDate));
-                      }
-                    }}
-                    initialFocus
-                    captionLayout="dropdown"
-                    fromYear={2000}
-                    toYear={2050}
-                  />
+                  <div className="w-[308px] p-3">
+                    <Calendar
+                      mode="single"
+                      selected={toDateSafe(date) ?? undefined}
+                      onSelect={(selectedDate) => {
+                        if (selectedDate) {
+                          setDate(toISODate(selectedDate));
+                        }
+                      }}
+                      initialFocus
+                      captionLayout="dropdown"
+                      fromYear={2000}
+                      toYear={2050}
+                      month={toDateSafe(date) ?? new Date()}
+                      classNames={alignedCalendarClasses}
+                    />
+                  </div>
                 </PopoverContent>
               </Popover>
             </div>
@@ -544,21 +570,25 @@ export default function AddEventDrawer({
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
-                          <Calendar
-                            mode="single"
-                            selected={toDateSafe(endDate) ?? undefined}
-                            onSelect={(selectedDate) => {
-                              if (selectedDate) {
-                                setEndDate(toISODate(selectedDate));
-                              } else {
-                                setEndDate('');
-                              }
-                            }}
-                            initialFocus
-                            captionLayout="dropdown"
-                            fromYear={2000}
-                            toYear={2050}
-                          />
+                          <div className="w-[308px] p-3">
+                            <Calendar
+                              mode="single"
+                              selected={toDateSafe(endDate) ?? undefined}
+                              onSelect={(selectedDate) => {
+                                if (selectedDate) {
+                                  setEndDate(toISODate(selectedDate));
+                                } else {
+                                  setEndDate('');
+                                }
+                              }}
+                              month={toDateSafe(endDate) ?? new Date()}
+                              classNames={alignedCalendarClasses}
+                              initialFocus
+                              captionLayout="dropdown"
+                              fromYear={2000}
+                              toYear={2050}
+                            />
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
