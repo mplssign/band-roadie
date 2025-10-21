@@ -68,9 +68,9 @@ function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
   return { hour12: hour24 - 12, period: 'PM' };
 }
 
-// Calendar alignment: weekday headers and date columns use the same 7-column grid
-const alignedCalendarClasses = {
-  months: "w-full",
+// Shadcn default calendar classes for proper flex layout
+const shadcnCalendarClasses = {
+  months: "flex flex-col space-y-4",
   month: "space-y-4",
   caption: "flex justify-center pt-1 relative items-center",
   caption_label: "text-sm font-medium",
@@ -78,16 +78,19 @@ const alignedCalendarClasses = {
   nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
   nav_button_previous: "absolute left-1",
   nav_button_next: "absolute right-1",
-  table: "w-full border-collapse",
-  head_row: "grid grid-cols-7 gap-1 px-3",
-  head_cell: "grid place-items-center text-[0.8rem] font-normal text-muted-foreground",
-  row: "grid grid-cols-7 gap-1 px-3",
-  cell: "relative p-0",
-  day: "h-9 w-full grid place-items-center p-0 font-normal aria-selected:opacity-100",
-  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+  table: "w-full border-collapse space-y-1",
+  head_row: "flex",
+  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+  row: "flex w-full mt-2",
+  cell: "text-center text-sm p-0 relative [&:has([aria-selected].day-outside)]:bg-accent/50",
+  day: "h-9 w-9 p-0 font-normal rounded-md aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground",
+  day_range_end: "day-range-end",
+  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
   day_today: "bg-accent text-accent-foreground",
-  day_outside: "text-muted-foreground opacity-50",
+  day_outside: "day-outside text-muted-foreground opacity-50",
   day_disabled: "text-muted-foreground opacity-50",
+  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+  day_hidden: "invisible",
 } as const;
 
 // Days of week constant (moved outside component to avoid recreating on every render)
@@ -356,8 +359,8 @@ export default function AddEventDrawer({
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
-                  <div className="w-[308px] p-3">
+                <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
+                  <div className="p-3">
                     <Calendar
                       mode="single"
                       selected={toDateSafe(date) ?? undefined}
@@ -368,10 +371,9 @@ export default function AddEventDrawer({
                       }}
                       initialFocus
                       captionLayout="dropdown"
-                      fromYear={2000}
-                      toYear={2050}
-                      month={toDateSafe(date) ?? new Date()}
-                      classNames={alignedCalendarClasses}
+                      fromYear={1900}
+                      toYear={2100}
+                      classNames={shadcnCalendarClasses}
                     />
                   </div>
                 </PopoverContent>
@@ -569,8 +571,8 @@ export default function AddEventDrawer({
                             )}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom">
-                          <div className="w-[308px] p-3">
+                        <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
+                          <div className="p-3">
                             <Calendar
                               mode="single"
                               selected={toDateSafe(endDate) ?? undefined}
@@ -581,12 +583,11 @@ export default function AddEventDrawer({
                                   setEndDate('');
                                 }
                               }}
-                              month={toDateSafe(endDate) ?? new Date()}
-                              classNames={alignedCalendarClasses}
                               initialFocus
                               captionLayout="dropdown"
-                              fromYear={2000}
-                              toYear={2050}
+                              fromYear={1900}
+                              toYear={2100}
+                              classNames={shadcnCalendarClasses}
                             />
                           </div>
                         </PopoverContent>
