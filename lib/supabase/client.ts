@@ -7,10 +7,9 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // IMPORTANT: Use implicit flow for magic links
-        // PKCE flow requires code_verifier which can't be accessed server-side
-        flowType: 'implicit',
-        detectSessionInUrl: true,
+        // Use PKCE flow - server callback will exchange code for session
+        flowType: 'pkce',
+        detectSessionInUrl: false, // Server handles the callback
         persistSession: true,
         autoRefreshToken: true,
         debug: process.env.NODE_ENV === 'development',

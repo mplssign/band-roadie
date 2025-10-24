@@ -34,9 +34,9 @@ export function getSiteUrl(): string {
 
 /**
  * Get the auth callback URL for magic links and OAuth
- * For implicit flow, this should be a client page that handles the hash fragment
- * @returns Full URL to /login (client-side callback)
+ * Points to server-side route that exchanges code for session
+ * @returns Full URL to /auth/callback (server-side handler)
  */
 export function getAuthCallbackUrl(): string {
-  return `${getBaseUrl()}/login`;
+  return `${getBaseUrl()}/auth/callback`;
 }
