@@ -5,8 +5,9 @@ import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/useToast';
+import { DayDots } from '@/components/calendar/DayDots';
 import EventDrawer from './EventDrawer';
-import AddEventDrawer, { type AddEventPayload } from './AddEventDrawer';
+import AddEventDrawer from './AddEventDrawer';
 import AddBlockoutDrawer from './AddBlockoutDrawer';
 import EditRehearsalDrawer from './EditRehearsalDrawer';
 import EditGigDrawer, { type GigForm } from './EditGigDrawer';
@@ -53,14 +54,13 @@ interface CalendarContentProps {
   };
   user: User | null;
   loading?: boolean;
-  onAddEvent: (event: AddEventPayload) => void;
   onAddBlockout: (blockout: { startDate: string; endDate: string; reason: string }) => void;
   onEventUpdated: () => void;
 }
 
 // Removed unused date formatting helpers; keep simpler formatting in the parent component
 
-export default function CalendarContent({ events, user: _user, loading = false, onAddEvent, onAddBlockout, onEventUpdated }: CalendarContentProps) {
+export default function CalendarContent({ events, user: _user, loading = false, onAddBlockout, onEventUpdated }: CalendarContentProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [eventDrawerOpen, setEventDrawerOpen] = useState(false);
   const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
@@ -68,6 +68,7 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   const [selectedEvents, setSelectedEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [prefilledDate, setPrefilledDate] = useState<string>('');
+  const [defaultEventType, setDefaultEventType] = useState<'rehearsal' | 'gig'>('rehearsal');
   const [editRehearsal, setEditRehearsal] = useState<{ id: string; date: string; start_time: string; end_time: string; location: string } | null>(null);
   const [editRehearsalDrawerOpen, setEditRehearsalDrawerOpen] = useState(false);
   const [editGig, setEditGig] = useState<GigForm | null>(null);
@@ -76,6 +77,24 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   // Hooks for delete functionality
   const supabase = createClient();
   const { showToast } = useToast();
+
+  // Pre-compute events map for efficient day lookups
+  const eventsMap = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+    
+    events.calendarEvents.forEach(event => {
+      // Validate date format
+      if (!event.date || typeof event.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(event.date)) {
+        return;
+      }
+      
+      const dateKey = event.date; // Already in YYYY-MM-DD format
+      const existing = map.get(dateKey) || [];
+      map.set(dateKey, [...existing, event]);
+    });
+    
+    return map;
+  }, [events.calendarEvents]);
 
 const blockoutRanges = useMemo(() => {
   return events.calendarEvents
@@ -110,7 +129,7 @@ const blockoutRanges = useMemo(() => {
     const currentMonth = currentDate.getUTCMonth();
     const currentYear = currentDate.getUTCFullYear();
 
-    return events.calendarEvents
+    const allEvents = events.calendarEvents
       .filter(
         (evt) =>
           (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') && 
@@ -133,6 +152,41 @@ const blockoutRanges = useMemo(() => {
         // Both dates are guaranteed to be non-null here
         return a.date!.getTime() - b.date!.getTime();
       }) as Array<{ evt: CalendarEvent; date: Date }>;
+
+    // Group consecutive blockout days into single entries
+    const processedEvents: Array<{ evt: CalendarEvent; date: Date }> = [];
+    const blockoutGroupsProcessed = new Set<string>();
+
+    for (const { evt, date } of allEvents) {
+      if (evt.type === 'blockout' && evt.blockout) {
+        const blockoutKey = `${evt.blockout.startDate}-${evt.blockout.endDate}`;
+        
+        // Skip if we've already processed this blockout range
+        if (blockoutGroupsProcessed.has(blockoutKey)) {
+          continue;
+        }
+        
+        blockoutGroupsProcessed.add(blockoutKey);
+        
+        // Create a single entry for the entire blockout range
+        // Use the start date as the display date
+        const startDate = toDateSafe(`${evt.blockout.startDate}T00:00:00Z`);
+        if (startDate) {
+          processedEvents.push({
+            evt: {
+              ...evt,
+              date: evt.blockout.startDate, // Use start date for sorting
+            },
+            date: startDate,
+          });
+        }
+      } else {
+        // Non-blockout events are added as-is
+        processedEvents.push({ evt, date });
+      }
+    }
+
+    return processedEvents;
   }, [events.calendarEvents, currentDate]);
 
   const getEventsForDate = (date: Date): CalendarEvent[] => {
@@ -147,18 +201,6 @@ const blockoutRanges = useMemo(() => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return false;
       return e.date === dateString;
     });
-  };
-
-  const handleDayClick = (date: Date, dayEvents: CalendarEvent[]) => {
-    setSelectedDate(date);
-    
-    if (dayEvents.length === 0) {
-      setPrefilledDate(date.toISOString().split('T')[0]);
-      setAddEventDrawerOpen(true);
-    } else {
-      setSelectedEvents(dayEvents);
-      setEventDrawerOpen(true);
-    }
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
@@ -352,10 +394,27 @@ const blockoutRanges = useMemo(() => {
     days.push(i);
   }
 
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    const dayEvents = getEventsForDate(date);
+    
+    if (dayEvents.length === 0) {
+      // Format date as YYYY-MM-DD in local timezone to avoid off-by-one errors
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      setPrefilledDate(`${year}-${month}-${day}`);
+      setAddEventDrawerOpen(true);
+    } else {
+      setSelectedEvents(dayEvents);
+      setEventDrawerOpen(true);
+    }
+  };
+
   return (
     <>
-      <main className="flex flex-col bg-gray-900">
-        <div className="flex flex-1 flex-col px-6 pt-4">
+      <main className="flex flex-col bg-background min-h-screen">
+        <div className="flex flex-1 flex-col p-[15px]">
           
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm">
@@ -381,12 +440,12 @@ const blockoutRanges = useMemo(() => {
           </div>
           
           {/* Calendar Container */}
-          <div className="rounded-3xl bg-gray-800 p-4 shadow-2xl">
+          <div className="p-4">
             {/* Day Headers */}
             <div className="mb-2 grid grid-cols-7 gap-1">
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => {
                 const today = new Date();
-                const todayDayOfWeek = (today.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0 format
+                const todayDayOfWeek = today.getDay();
                 const isToday = index === todayDayOfWeek;
                 
                 return (
@@ -399,66 +458,28 @@ const blockoutRanges = useMemo(() => {
               })}
             </div>
 
-            {/* Calendar Grid */}
+            {/* Calendar Grid with DayDots */}
             <div className="grid grid-cols-7 gap-1">
               {days.map((day, index) => {
                 if (day === null) {
                   return <div key={`empty-${index}`} className="h-12" />;
                 }
                 
-                const date = new Date(year, month, day);
-                // Use local date string (YYYY-MM-DD) to match event dates
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const d = String(date.getDate()).padStart(2, '0');
-                const isoDate = `${y}-${m}-${d}`;
-                const dayEvents = getEventsForDate(date);
+                // Create date at noon to avoid timezone issues
+                const date = new Date(year, month, day, 12, 0, 0, 0);
                 const isToday = new Date().toDateString() === date.toDateString();
-                const blockoutsForDay = blockoutRanges.filter(
-                  (range) => isoDate >= range.startISO && isoDate <= range.endISO,
-                );
-                
-                // Check if this is the start or end of a blockout range
-                const isBlockoutStart = blockoutsForDay.some(range => range.startISO === isoDate);
-                const isBlockoutEnd = blockoutsForDay.some(range => range.endISO === isoDate);
-                const isBlockoutMiddle = blockoutsForDay.length > 0 && !isBlockoutStart && !isBlockoutEnd;
                 
                 return (
                   <button
                     key={day}
-                    onClick={() => handleDayClick(date, dayEvents)}
-                    className={`group relative flex h-12 w-full items-center justify-center rounded-xl transition-all duration-200 hover:scale-105 ${
+                    onClick={() => handleDayClick(date)}
+                    className={`group relative h-12 w-full p-1 rounded-xl border border-zinc-700/50 transition-all duration-200 hover:scale-105 ${
                       isToday 
                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25' 
-                        : isBlockoutMiddle
-                          ? 'bg-zinc-500/20 text-gray-300 hover:bg-zinc-500/30'
-                          : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                        : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
                     }`}
                   >
-                    {/* Blockout connecting line - subtle gray horizontal bar */}
-                    {blockoutsForDay.length > 0 && (
-                      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2">
-                        <div className="h-0.5 w-full bg-zinc-500/25" />
-                      </div>
-                    )}
-                    {/* Day Number */}
-                    <span className={`text-base font-medium ${isToday ? 'text-white' : ''}`}>
-                      {day}
-                    </span>
-                    
-                    {/* Event Indicators - Clean dots at bottom */}
-                    <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
-                      {dayEvents.some(e => e.type === 'rehearsal') && (
-                        <div className={`h-1.5 w-1.5 rounded-full bg-blue-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
-                      )}
-                      {dayEvents.some(e => e.type === 'gig') && (
-                        <div className={`h-1.5 w-1.5 rounded-full bg-purple-500 ${isToday ? 'ring-1 ring-white' : ''}`} />
-                      )}
-                      {/* Blockout indicators - gray dots for start/end */}
-                      {(isBlockoutStart || isBlockoutEnd) && (
-                        <div className={`h-1.5 w-1.5 rounded-full bg-zinc-400 ${isToday ? 'ring-1 ring-white' : ''}`} />
-                      )}
-                    </div>
+                    <DayDots date={date} displayMonth={currentDate} eventsMap={eventsMap} />
                   </button>
                 );
               })}
@@ -466,23 +487,24 @@ const blockoutRanges = useMemo(() => {
           </div>
 
           {/* Action Buttons */}
-          <div className="mt-8 flex gap-4">
+          <div className="mt-8 flex gap-3">
             <button
               onClick={() => {
                 setPrefilledDate('');
+                setDefaultEventType('rehearsal');
                 setAddEventDrawerOpen(true);
               }}
-              className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-primary py-4 font-medium text-primary-foreground shadow-lg shadow-primary/30 transition-opacity hover:opacity-90"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-rose-500/60 bg-card py-3 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               <span>Add Event</span>
             </button>
 
             <button
               onClick={() => setAddBlockoutDrawerOpen(true)}
-              className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-secondary py-4 font-medium text-secondary-foreground transition-opacity hover:opacity-90"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-rose-500/60 bg-card py-3 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4" />
               <span>Block Out</span>
             </button>
           </div>
@@ -499,21 +521,25 @@ const blockoutRanges = useMemo(() => {
                 {monthEvents.map(({ evt }) => {
                   const badge = (() => {
                     if (evt.type === 'rehearsal') {
-                      return { label: 'Rehearsal', className: 'bg-blue-500 text-white' };
+                      return { label: 'Rehearsal', className: 'text-white', bgColor: '#2563EB' };
                     }
                     if (evt.type === 'gig' && evt.is_potential) {
-                      return { label: 'Potential Gig', className: 'bg-purple-500/80 text-white' };
+                      return { label: 'Potential Gig', className: 'text-white', bgColor: '#ea580c' };
                     }
                     if (evt.type === 'gig') {
-                      return { label: 'Gig', className: 'bg-purple-500 text-white' };
+                      return { label: 'Gig', className: 'text-white', bgColor: '#22c55e' };
                     }
                     if (evt.type === 'blockout') {
-                      return { label: 'Block Out', className: 'bg-zinc-500 text-white' };
+                      return { label: 'Block Out', className: 'text-white', bgColor: '#dc2626' };
                     }
-                    return { label: 'Event', className: 'bg-muted text-foreground' };
+                    return { label: 'Event', className: 'bg-muted text-foreground', bgColor: undefined };
                   })();
 
                   const { month, day } = getMonthDay(evt.date);
+                  
+                  // Check if blockout spans multiple consecutive days
+                  const isMultiDayBlockout = evt.type === 'blockout' && evt.blockout && evt.blockout.startDate !== evt.blockout.endDate;
+                  const endMonthDay = isMultiDayBlockout ? getMonthDay(evt.blockout!.endDate) : null;
                   
                   // For blockout events, show date range instead of time
                   const displayText = evt.type === 'blockout' && evt.blockout 
@@ -543,7 +569,7 @@ const blockoutRanges = useMemo(() => {
                   return (
                     <div
                       key={`${evt.id ?? evt.date}-${evt.title}`}
-                      className="grid grid-cols-[20%_1fr] gap-4 rounded-2xl border border-border bg-card/80 p-4 shadow-sm cursor-pointer hover:bg-card/90 transition-colors"
+                      className={`grid ${isMultiDayBlockout ? 'grid-cols-[20%_1fr_20%]' : 'grid-cols-[20%_1fr]'} gap-4 rounded-2xl border border-border bg-card/80 p-4 shadow-sm cursor-pointer hover:bg-card/90 transition-colors`}
                       onClick={() => {
                         setSelectedEvents([evt]);
                         setSelectedDate(new Date(evt.date));
@@ -555,7 +581,10 @@ const blockoutRanges = useMemo(() => {
                         <span className="text-3xl font-medium text-foreground">{day}</span>
                       </div>
                       <div className="space-y-3">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}>
+                        <span 
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}
+                          style={badge.bgColor ? { backgroundColor: badge.bgColor } : undefined}
+                        >
                           {badge.label}
                         </span>
                         <div className="space-y-1">
@@ -566,6 +595,13 @@ const blockoutRanges = useMemo(() => {
                           )}
                         </div>
                       </div>
+                      {isMultiDayBlockout && endMonthDay && (
+                        <div className="flex flex-col items-center justify-center rounded-xl bg-muted/40 py-6 text-center text-muted-foreground">
+                          <span className="text-xs font-normal tracking-wide mb-1">Until</span>
+                          <span className="text-sm font-semibold tracking-wide">{endMonthDay.month}</span>
+                          <span className="text-3xl font-medium text-foreground">{endMonthDay.day}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -590,7 +626,8 @@ const blockoutRanges = useMemo(() => {
         isOpen={addEventDrawerOpen}
         onClose={() => setAddEventDrawerOpen(false)}
         prefilledDate={prefilledDate}
-        onSave={onAddEvent}
+        defaultEventType={defaultEventType}
+        onEventUpdated={onEventUpdated}
       />
 
       <AddBlockoutDrawer

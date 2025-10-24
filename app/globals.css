@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes spin {
+  to { --angle: 360deg; }
+}
+
+.animate-gradient-slow { animation: spin 12s linear infinite; }
+.animate-gradient-med { animation: spin 8s linear infinite; }
+.animate-gradient-fast { animation: spin 5s linear infinite; }
+.animate-gradient-slower { animation: spin 15s linear infinite; }
+.animate-gradient-faster { animation: spin 4s linear infinite; }
+.animate-gradient-11s { animation: spin 11s linear infinite; }
+.animate-gradient-9s { animation: spin 9s linear infinite; }
+.animate-gradient-7s { animation: spin 7s linear infinite; }
+.animate-gradient-6s { animation: spin 6s linear infinite; }
+
 @layer base {
   :root {
     --background: 10 10 10;
@@ -126,7 +146,7 @@
   @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
 }
 
-@keyframes spin {
+@ spin {
   to {
     transform: rotate(360deg);
   }
@@ -150,7 +170,7 @@
   padding: 2px;
   border-radius: 0.75rem;
   background: conic-gradient(from 0deg, #dc2626, #7c3aed, #2563eb, #dc2626);
-  animation: gradient-spin 3s linear infinite;
+  animation: gradient-spin var(--grad-speed, 3s) linear infinite;
 }
 
 .animate-gradient-border::before {
@@ -166,6 +186,47 @@
   position: relative;
   z-index: 2;
   background: transparent;
+}
+
+/* Rose-Violet animated gradient border variant */
+.animate-gradient-border-rose-violet {
+  position: relative;
+  padding: 2px;
+  border-radius: 0.75rem;
+  background: conic-gradient(from 0deg, #F43F5E, #9333EA, #F43F5E);
+  animation: gradient-spin var(--grad-speed, 3s) linear infinite;
+}
+
+.animate-gradient-border-rose-violet::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #18181b;
+  border-radius: calc(0.75rem - 2px);
+  z-index: 1;
+}
+
+.animate-gradient-border-rose-violet > * {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Background gradient utilities */
+.bg-gradient-gig {
+  background-image: linear-gradient(135deg, #F43F5E, #EAB308);
+}
+
+.bg-gradient-rehearsal {
+  background-image: linear-gradient(135deg, #2563EB, #9333EA);
+}
+
+/* Disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-border,
+  .animate-gradient-border-rose-violet {
+    animation: none !important;
+  }
 }
 
 .drawer-backdrop {

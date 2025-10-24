@@ -55,6 +55,7 @@ const SheetContent = React.forwardRef<
           ? "w-full max-h-[calc(100dvh-16px)]"
           : "max-h-full",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=open]:duration-300 data-[state=closed]:duration-200",
         side === "bottom"
           ? "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom rounded-t-2xl"
           : side === "top"

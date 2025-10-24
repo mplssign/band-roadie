@@ -26,13 +26,8 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { capitalizeWords } from '@/lib/utils/formatters';
-import { format } from 'date-fns';
-import { toDateSafe, toISODate } from '@/lib/utils/date';
+import { cn } from '@/lib/utils';
 
 type EventType = 'rehearsal' | 'gig';
 
@@ -51,7 +46,7 @@ interface AddEventDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   prefilledDate?: string;
-  onSave: (event: SavedEvent) => void;
+  onEventUpdated: () => void;
   defaultEventType?: EventType;
 }
 
@@ -68,30 +63,27 @@ function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
   return { hour12: hour24 - 12, period: 'PM' };
 }
 
-// Shadcn default calendar classes for proper flex layout
-const shadcnCalendarClasses = {
-  months: "flex flex-col space-y-4",
-  month: "space-y-4",
-  caption: "flex justify-center pt-1 relative items-center",
-  caption_label: "text-sm font-medium",
-  nav: "space-x-1 flex items-center",
-  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-  nav_button_previous: "absolute left-1",
-  nav_button_next: "absolute right-1",
-  table: "w-full border-collapse space-y-1",
-  head_row: "flex",
-  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-  row: "flex w-full mt-2",
-  cell: "text-center text-sm p-0 relative [&:has([aria-selected].day-outside)]:bg-accent/50",
-  day: "h-9 w-9 p-0 font-normal rounded-md aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground",
-  day_range_end: "day-range-end",
-  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-  day_today: "bg-accent text-accent-foreground",
-  day_outside: "day-outside text-muted-foreground opacity-50",
-  day_disabled: "text-muted-foreground opacity-50",
-  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-  day_hidden: "invisible",
-} as const;
+// Helper: normalize incoming values and guard invalid dates
+const toDate = (v?: Date | string | null): Date | undefined => {
+  if (!v) return undefined;
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? undefined : d;
+};
+
+// Helper function to format date display like Create Gig page
+function formatDateDisplay(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString + 'T00:00:00');
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  const dayName = days[date.getDay()];
+  const monthName = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  
+  return `${dayName}, ${monthName} ${day}, ${year}`;
+}
 
 // Days of week constant (moved outside component to avoid recreating on every render)
 const daysOfWeek = [
@@ -108,7 +100,7 @@ export default function AddEventDrawer({
   isOpen,
   onClose,
   prefilledDate = '',
-  onSave,
+  onEventUpdated,
   defaultEventType = 'rehearsal',
 }: AddEventDrawerProps) {
   const supabase = createClient();
@@ -194,7 +186,7 @@ export default function AddEventDrawer({
     const endMinutes = startMinutes + parseInt(duration, 10);
     const h = Math.floor(endMinutes / 60) % 24;
     const m = endMinutes % 60;
-    
+
     // Convert to 12-hour format
     const { hour12, period } = to12h(h);
     return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
@@ -212,13 +204,13 @@ export default function AddEventDrawer({
       .map((d) => daysOfWeek.find((x) => x.index === d)?.full ?? '')
       .filter(Boolean)
       .join(', ');
-    const until = endDate ? ` until ${new Date(endDate).toLocaleDateString()}` : '';
+    const until = endDate ? ` until ${new Date(endDate + 'T00:00:00').toLocaleDateString()}` : '';
     const freq =
       recurringFrequency === 'weekly'
         ? 'Weekly'
         : recurringFrequency === 'biweekly'
-        ? 'Every 2 weeks'
-        : 'Monthly';
+          ? 'Every 2 weeks'
+          : 'Monthly';
     return `${freq} on ${list}${until}`;
   }, [isRecurring, selectedDays, endDate, recurringFrequency]);
 
@@ -234,15 +226,24 @@ export default function AddEventDrawer({
       return;
     }
 
+    if (!date) {
+      showToast('Please select a date', 'error');
+      return;
+    }
+
+    // date is already in YYYY-MM-DD format
+    const dateString = date;
+
     try {
       if (eventType === 'rehearsal') {
         const rehearsal = {
           band_id: currentBand.id,
-          date,
+          date: dateString,
           start_time: startTimeString,
           end_time: endTimeString,
           location: location || 'TBD',
           notes: null as string | null,
+          setlist_id: selectedSetlist || null,
         };
         const { error } = await supabase.from('rehearsals').insert([rehearsal]);
         if (error) throw error;
@@ -252,7 +253,7 @@ export default function AddEventDrawer({
         const gig = {
           band_id: currentBand.id,
           name: title,
-          date,
+          date: dateString,
           start_time: startTimeString,
           end_time: endTimeString,
           location: location || 'TBD',
@@ -266,15 +267,8 @@ export default function AddEventDrawer({
         showToast(isPotentialGig ? 'Potential gig added' : 'Gig added', 'success');
       }
 
-      onSave({
-        type: eventType,
-        title: eventType === 'gig' ? title : 'Band Rehearsal',
-        date,
-        startTime: startTimeString,
-        endTime: endTimeString,
-        location,
-      });
-
+      // Trigger refresh of events
+      onEventUpdated();
       onClose();
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -341,43 +335,21 @@ export default function AddEventDrawer({
 
             <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="event-date">Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="event-date"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    {date && toDateSafe(date) ? (
-                      format(toDateSafe(date)!, "MMMM d, yyyy")
-                    ) : (
-                      <span className="text-muted-foreground">Pick a date</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                  <div className="p-3">
-                    <Calendar
-                      mode="single"
-                      selected={toDateSafe(date) ?? undefined}
-                      onSelect={(selectedDate) => {
-                        if (selectedDate) {
-                          setDate(toISODate(selectedDate));
-                        }
-                      }}
-                      initialFocus
-                      captionLayout="dropdown"
-                      fromYear={1900}
-                      toYear={2100}
-                      classNames={shadcnCalendarClasses}
-                    />
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <div className="relative cursor-pointer" onClick={() => {
+                const input = document.getElementById('event-date-input') as HTMLInputElement;
+                if (input) input.showPicker?.();
+              }}>
+                <input
+                  id="event-date-input"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-transparent focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer [color-scheme:dark]"
+                />
+                <div className="absolute inset-0 px-4 py-3 pointer-events-none text-foreground">
+                  {formatDateDisplay(date) || 'Select date'}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2 w-full min-w-0">
@@ -459,7 +431,10 @@ export default function AddEventDrawer({
                 placeholder="Enter location (optional)"
                 className="w-full"
               />
-            </div>            {eventType === 'gig' && setlists.length > 0 && (
+            </div>
+            
+            {/* Setlist Selection - Available for both rehearsals and gigs */}
+            {setlists.length > 0 && (
               <div className="space-y-2 w-full min-w-0">
                 <Label>Setlist (Optional)</Label>
                 <div className="flex flex-wrap gap-2 w-full min-w-0">
@@ -553,45 +528,21 @@ export default function AddEventDrawer({
 
                     <div className="space-y-2 w-full min-w-0">
                       <Label htmlFor="until">Until (optional)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="until"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !endDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                            {endDate && toDateSafe(endDate) ? (
-                              format(toDateSafe(endDate)!, "MMMM d, yyyy")
-                            ) : (
-                              <span className="text-muted-foreground">No end date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                          <div className="p-3">
-                            <Calendar
-                              mode="single"
-                              selected={toDateSafe(endDate) ?? undefined}
-                              onSelect={(selectedDate) => {
-                                if (selectedDate) {
-                                  setEndDate(toISODate(selectedDate));
-                                } else {
-                                  setEndDate('');
-                                }
-                              }}
-                              initialFocus
-                              captionLayout="dropdown"
-                              fromYear={1900}
-                              toYear={2100}
-                              classNames={shadcnCalendarClasses}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="relative cursor-pointer" onClick={() => {
+                        const input = document.getElementById('recurring-end-input') as HTMLInputElement;
+                        if (input) input.showPicker?.();
+                      }}>
+                        <input
+                          id="recurring-end-input"
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-transparent focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer [color-scheme:dark]"
+                        />
+                        <div className="absolute inset-0 px-4 py-3 pointer-events-none text-foreground">
+                          {formatDateDisplay(endDate) || 'No end date'}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-2 w-full min-w-0">

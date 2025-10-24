@@ -1,6 +1,6 @@
-# shadcn-only Date Picker Components
+# shadcn-only  Components
 
-Complete, production-ready date picker components built exclusively with shadcn/ui components.
+Complete, production-ready  components built exclusively with shadcn/ui components.
 
 ## Overview
 
@@ -22,7 +22,7 @@ This implementation provides:
 ## Installation
 
 Already included in this project:
-- `components/date-picker.tsx` - Date picker components
+- `components/date-picker.tsx` -  components
 - `app/examples/date-picker/page.tsx` - Live examples and documentation
 
 ## Components
@@ -362,8 +362,8 @@ All styling uses:
 ## Live Examples
 
 Visit `/examples/date-picker` to see:
-- Basic single date picker
-- Date picker with presets
+- Basic single 
+-  with presets
 - Year range limits
 - Disabled weekends
 - Basic range picker
@@ -488,7 +488,7 @@ import { getCommonDatePresets } from '@/components/date-picker';
 
 ## Contributing
 
-The date picker is part of the Band Roadie project component library. To modify:
+The  is part of the Band Roadie project component library. To modify:
 
 1. Edit `components/date-picker.tsx`
 2. Test in `/examples/date-picker`

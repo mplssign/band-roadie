@@ -1,15 +1,29 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarDays, Clock, MapPin } from 'lucide-react';
 import { useBands } from '@/hooks/useBands';
 import { createClient } from '@/lib/supabase/client';
 import Empty from '@/components/ui/empty';
-// import AddEventDrawer from '@/app/(protected)/calendar/AddEventDrawer';
-// import EditRehearsalDrawer from '@/app/(protected)/calendar/EditRehearsalDrawer';
-// import EditGigDrawer from '@/app/(protected)/calendar/EditGigDrawer';
+import { Card } from '@/components/ui/Card';
+import { GradientBorderButton } from '@/components/ui/gradient-border-button';
+
+// Lazy load the drawer to avoid initial bundle cost
+const EditRehearsalDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/EditRehearsalDrawer'),
+  { ssr: false }
+);
+const EditGigDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/EditGigDrawer'),
+  { ssr: false }
+);
+const AddEventDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/AddEventDrawer'),
+  { ssr: false }
+);
 
 interface Rehearsal {
   id: string;
@@ -19,6 +33,18 @@ interface Rehearsal {
   start_time?: string;
   end_time?: string;
   raw_date?: string;
+}
+
+interface Gig {
+  id: string;
+  name: string;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  location: string;
+  is_potential?: boolean;
+  setlist_id?: string;
+  setlist_name?: string;
 }
 
 function convertTo12Hour(time24: string): string {
@@ -37,6 +63,16 @@ function formatDateForDisplay(dateString: string): string {
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
+function formatDateWithYear(dateString: string): string {
+  if (!dateString) return '';
+  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// Shared section title styling
+const sectionTitle = "text-xl md:text-2xl font-semibold tracking-tight text-foreground";
+
 export default function DashboardPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -44,11 +80,19 @@ export default function DashboardPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
-  // const [isAddEventOpen, setIsAddEventOpen] = useState(false); // Calendar disabled
-  // const [isEditRehearsalOpen, setIsEditRehearsalOpen] = useState(false); // Calendar disabled
-  // const [isEditGigOpen, setIsEditGigOpen] = useState(false); // Calendar disabled
+  const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
-  // const defaultEventType: 'rehearsal' | 'gig' = 'rehearsal'; // Calendar disabled
+  
+  // Drawer state for editing rehearsal
+  const [rehearsalDrawerOpen, setRehearsalDrawerOpen] = useState(false);
+  const [activeRehearsal, setActiveRehearsal] = useState<Rehearsal | null>(null);
+  
+  // Drawer state for editing gig
+  const [gigDrawerOpen, setGigDrawerOpen] = useState(false);
+  const [activeGig, setActiveGig] = useState<Gig | null>(null);
+  
+  // Drawer state for adding event
+  const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
 
   // auth check
   useEffect(() => {
@@ -64,8 +108,9 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+      // Fetch next rehearsal
       const { data: rehearsals } = await supabase
         .from('rehearsals')
         .select('*')
@@ -88,10 +133,92 @@ export default function DashboardPage() {
       } else {
         setNextRehearsal(null);
       }
+
+      // Fetch upcoming gigs
+      const { data: gigs, error: gigsError } = await supabase
+        .from('gigs')
+        .select('*')
+        .eq('band_id', currentBand.id)
+        .gte('date', todayStr)
+        .order('date', { ascending: true })
+        .limit(10);
+
+      if (gigsError) {
+        console.error('Error fetching gigs:', gigsError);
+      }
+
+      if (gigs && gigs.length) {
+        // Fetch setlist names separately if needed
+        const gigsWithSetlists = await Promise.all(
+          gigs.map(async (g) => {
+            let setlist_name = undefined;
+            if (g.setlist_id) {
+              const { data: setlist } = await supabase
+                .from('setlists')
+                .select('name')
+                .eq('id', g.setlist_id)
+                .single();
+              setlist_name = setlist?.name;
+            }
+            
+            return {
+              id: g.id,
+              name: g.name,
+              date: g.date,
+              start_time: g.start_time,
+              end_time: g.end_time,
+              location: g.location,
+              is_potential: g.is_potential,
+              setlist_id: g.setlist_id,
+              setlist_name
+            };
+          })
+        );
+        
+        setUpcomingGigs(gigsWithSetlists);
+      } else {
+        setUpcomingGigs([]);
+      }
     } finally {
       setLoading(false);
     }
   }, [currentBand?.id, supabase]);
+
+  // Handler to open edit rehearsal drawer
+  const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
+    setActiveRehearsal(rehearsal);
+    setRehearsalDrawerOpen(true);
+  }, []);
+
+  const closeRehearsalDrawer = useCallback(() => {
+    setRehearsalDrawerOpen(false);
+  }, []);
+
+  const handleRehearsalUpdated = useCallback(() => {
+    setRehearsalDrawerOpen(false);
+    loadDashboardData(); // Refresh the dashboard data
+  }, [loadDashboardData]);
+
+  // Handler for add event drawer
+  const handleEventAdded = useCallback(() => {
+    setAddEventDrawerOpen(false);
+    loadDashboardData(); // Refresh the dashboard data
+  }, [loadDashboardData]);
+
+  // Handler to open edit gig drawer
+  const openEditGig = useCallback((gig: Gig) => {
+    setActiveGig(gig);
+    setGigDrawerOpen(true);
+  }, []);
+
+  const closeGigDrawer = useCallback(() => {
+    setGigDrawerOpen(false);
+  }, []);
+
+  const handleGigUpdated = useCallback(() => {
+    setGigDrawerOpen(false);
+    loadDashboardData(); // Refresh the dashboard data
+  }, [loadDashboardData]);
 
   useEffect(() => {
     if (currentBand?.id && user) loadDashboardData();
@@ -119,124 +246,288 @@ export default function DashboardPage() {
     );
   }
 
+  // Find the first potential gig
+  const potentialGig = upcomingGigs.find(g => g.is_potential);
+  const confirmedGigs = upcomingGigs.filter(g => !g.is_potential);
+
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
-      <div className="px-6 max-w-5xl mx-auto space-y-8">
+      <div className="px-6 max-w-5xl mx-auto space-y-6">
+        {/* Potential Gig */}
+        {potentialGig && (
+          <section className="rounded-2xl overflow-hidden bg-gradient-gig">
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-2 h-2 rounded-full bg-white/60"></div>
+                <h2 className="text-base font-medium text-white/90">Potential Gig</h2>
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-1">{potentialGig.name}</h3>
+              <div className="text-white/90 mb-4">{potentialGig.location}</div>
+              <div className="flex items-center gap-6 mb-6">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-white/80" />
+                  <span className="text-white font-medium">{formatDateForDisplay(potentialGig.date)}</span>
+                </div>
+                {potentialGig.start_time && potentialGig.end_time && (
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                      <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
+                    </svg>
+                    <span className="text-white font-medium">{`${convertTo12Hour(potentialGig.start_time)} - ${convertTo12Hour(potentialGig.end_time)}`}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button className="flex-1 px-4 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-white/90 transition-colors">
+                  Yes (1)
+                </button>
+                <button className="flex-1 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold border border-white/30 hover:bg-white/30 transition-colors">
+                  No (1)
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Next Rehearsal */}
         {nextRehearsal ? (
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Next Rehearsal</h2>
-              <button
-                onClick={() => {/* setIsEditRehearsalOpen(true) - Calendar disabled */}}
-                className="rounded-lg bg-zinc-700 px-3 py-1 text-sm border border-zinc-600 hover:bg-zinc-600 transition-colors"
-              >
-                Edit
-              </button>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <div className="text-zinc-400 text-sm">Date</div>
-                <div className="text-white font-medium">{nextRehearsal.date}</div>
-              </div>
-              <div>
-                <div className="text-zinc-400 text-sm">Time</div>
-                <div className="text-white font-medium">{nextRehearsal.time}</div>
-              </div>
-              <div>
-                <div className="text-zinc-400 text-sm">Location</div>
-                <div className="text-white font-medium">{nextRehearsal.location}</div>
+          <section 
+            role="button"
+            tabIndex={0}
+            aria-label={`Edit rehearsal: ${nextRehearsal.date} ${nextRehearsal.time}`}
+            onClick={() => openEditRehearsal(nextRehearsal)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openEditRehearsal(nextRehearsal);
+              }
+            }}
+            className="rounded-2xl overflow-hidden bg-gradient-rehearsal cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 transition-transform hover:scale-[1.01]"
+          >
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-white mb-4">Next Rehearsal</h2>
+              <div className="space-y-3">
+                {/* Date */}
+                <div className="flex items-center gap-2.5">
+                  <CalendarDays className="w-5 h-5 text-white/80 flex-shrink-0" />
+                  <span className="text-white font-medium">{nextRehearsal.date}</span>
+                </div>
+                
+                {/* Time */}
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-5 h-5 text-white/80 flex-shrink-0" />
+                  <span className="text-white font-medium">{nextRehearsal.time}</span>
+                </div>
+                
+                {/* Location */}
+                {nextRehearsal.location && (
+                  <div className="flex items-center gap-2.5">
+                    <MapPin className="w-5 h-5 text-white/80 flex-shrink-0" />
+                    <span 
+                      className="text-white font-medium truncate" 
+                      title={nextRehearsal.location}
+                    >
+                      {nextRehearsal.location}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </section>
         ) : (
-          <Empty
-            title="Ready to Rock?"
-            description="No rehearsals on the books yet! Time to schedule some jam sessions and get the band back together. Rock on! 🎸"
-            actionLabel="Schedule Rehearsal"
-            onAction={() => router.push('/rehearsals/create')}
-          />
+          <section className="rounded-2xl overflow-hidden bg-zinc-900">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-white mb-3">No Rehearsal Scheduled</h2>
+              <p className="text-white/80 text-sm mb-5">
+                The stage is empty and the amps are cold. Time to crank it up and get the band back together!
+              </p>
+              <button
+                onClick={() => setAddEventDrawerOpen(true)}
+                className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors backdrop-blur-sm border border-white/30"
+              >
+                <Plus className="w-4 h-4" />
+                Schedule Rehearsal
+              </button>
+            </div>
+          </section>
         )}
+
+        {/* Upcoming Gigs */}
+        <section>
+          <h2 className={sectionTitle + " mb-4"}>Upcoming Gigs</h2>
+          {confirmedGigs.length > 0 ? (
+            <div className="flex gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {confirmedGigs.map((gig, index) => {
+                // Vary animation speeds across gig cards (11s, 9s, 7s, 6s pattern)
+                const speeds = ['animate-gradient-11s', 'animate-gradient-9s', 'animate-gradient-7s', 'animate-gradient-6s'];
+                const speedClass = speeds[index % speeds.length];
+                
+                return (
+                  <div key={gig.id} className="flex-shrink-0 snap-start" style={{ maxWidth: '320px' }}>
+                    <GradientBorderButton
+                      onClick={() => openEditGig(gig)}
+                      gradientClass="bg-rose-500"
+                      wrapperClassName="w-full"
+                      className="p-6 bg-zinc-900 hover:opacity-90 transition-opacity text-left h-auto justify-start"
+                    >
+                      <div className="space-y-4">
+                        {/* Gig Name & Location - tightly grouped */}
+                        <div className="space-y-1">
+                          <h3 className="font-semibold text-white text-xl line-clamp-1 m-0">
+                            {gig.name}
+                          </h3>
+                          <div className="text-zinc-400 text-sm line-clamp-1 m-0">
+                            {gig.location}
+                          </div>
+                        </div>
+                        
+                        {/* Date & Time with Spotlight Icon */}
+                        <div className="flex items-end">
+                          <div className="space-y-1 m-0 flex-1">
+                            <div className="text-white text-sm font-medium">
+                              {formatDateWithYear(gig.date)}
+                            </div>
+                            {gig.start_time && gig.end_time && (
+                              <div className="text-zinc-400 text-sm font-medium">
+                                {`${convertTo12Hour(gig.start_time)} - ${convertTo12Hour(gig.end_time)}`}
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Spotlight Icon - 24px to the right of time, flipped */}
+                          <img 
+                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNwb3RsaWdodC1pY29uIGx1Y2lkZS1zcG90bGlnaHQiPjxwYXRoIGQ9Ik0xNS4yOTUgMTkuNTYyIDE2IDIyIi8+PHBhdGggZD0ibTE3IDE2IDMuNzU4IDIuMDk4Ii8+PHBhdGggZD0ibTE5IDEyLjUgMy4wMjYtLjU5OCIvPjxwYXRoIGQ9Ik03LjYxIDYuM2EzIDMgMCAwIDAtMy45MiAxLjNsLTEuMzggMi43OWEzIDMgMCAwIDAgMS4zIDMuOTFsNi44OSAzLjU5N2ExIDEgMCAwIDAgMS4zNDItLjQ0N2wzLjEwNi02LjIxMWExIDEgMCAwIDAtLjQ0Ny0xLjM0MXoiLz48cGF0aCBkPSJNOCA5VjIiLz48L3N2Zz4=" 
+                            alt="Spotlight"
+                            className="w-12 h-12 ml-6"
+                            style={{ 
+                              filter: 'brightness(0) saturate(100%) invert(26%) sepia(8%) saturate(381%) hue-rotate(185deg) brightness(94%) contrast(87%)',
+                              transform: 'scale(-1, -1)'
+                            }}
+                          />
+                        </div>
+                        
+                        {/* Setlist */}
+                        {gig.setlist_name && (
+                          <div className="flex items-center gap-2 m-0">
+                            <span className="text-base text-zinc-400">Setlist</span>
+                            <span className="text-sm px-3 py-1.5 rounded-full bg-purple-500/90 text-white font-medium">
+                              {gig.setlist_name}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </GradientBorderButton>
+                  </div>
+                );
+              })}
+            </div>
+          ) : potentialGig ? (
+            <div className="text-center text-zinc-500 text-sm py-4">
+              No confirmed gigs scheduled yet.
+            </div>
+          ) : (
+            <Card className="flex flex-col items-center justify-center gap-2 rounded-xl border border-rose-500 bg-zinc-900/50 p-8 text-center">
+              <CalendarDays className="h-6 w-6 text-zinc-600" aria-hidden="true" />
+              <p className="text-sm text-zinc-500">No upcoming gigs.</p>
+            </Card>
+          )}
+        </section>
 
         {/* Quick Actions */}
         <section>
-          <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-          <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            <div className="flex-shrink-0 animate-gradient-border snap-start">
-              <button
+          <h2 className={sectionTitle + " mb-4"}>Quick Actions</h2>
+          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex-shrink-0 snap-start">
+              <GradientBorderButton
+                onClick={() => setAddEventDrawerOpen(true)}
+                gradientClass="bg-rose-500"
+                className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
+              >
+                <Plus className="w-5 h-5 inline mr-2" />
+                <span className="text-base font-semibold">Schedule Rehearsal</span>
+              </GradientBorderButton>
+            </div>
+
+            <div className="flex-shrink-0 snap-start">
+              <GradientBorderButton
                 onClick={() => router.push('/setlists/create')}
-                className="w-full p-4 hover:opacity-80 transition-opacity"
+                gradientClass="bg-rose-500"
+                className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
-                <div className="flex items-center justify-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  <span className="text-base font-semibold">Create Setlist</span>
-                </div>
-              </button>
+                <Plus className="w-5 h-5 inline mr-2" />
+                <span className="text-base font-semibold">Create Setlist</span>
+              </GradientBorderButton>
             </div>
 
-            <div className="flex-shrink-0 animate-gradient-border snap-start">
-              <button
+            <div className="flex-shrink-0 snap-start">
+              <GradientBorderButton
                 onClick={() => router.push('/gigs/create')}
-                className="w-full p-4 hover:opacity-80 transition-opacity"
+                gradientClass="bg-rose-500"
+                className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
-                <div className="flex items-center justify-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  <span className="text-base font-semibold">Create Gig</span>
-                </div>
-              </button>
+                <Plus className="w-5 h-5 inline mr-2" />
+                <span className="text-base font-semibold">Create Gig</span>
+              </GradientBorderButton>
             </div>
 
-            <div className="flex-shrink-0 animate-gradient-border snap-start">
-              <button
+            <div className="flex-shrink-0 snap-start">
+              <GradientBorderButton
                 onClick={() => router.push('/calendar/block-dates')}
-                className="w-full p-4 hover:opacity-80 transition-opacity"
+                gradientClass="bg-rose-500"
+                className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
-                <div className="flex items-center justify-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  <span className="text-base font-semibold whitespace-nowrap">Add Block Out Dates</span>
-                </div>
-              </button>
+                <Plus className="w-5 h-5 inline mr-2" />
+                <span className="text-base font-semibold">Add Block Out Dates</span>
+              </GradientBorderButton>
             </div>
           </div>
         </section>
       </div>
 
-      {/* Drawers - temporarily disabled for performance review */}
-      {/* <AddEventDrawer
-        isOpen={isAddEventOpen}
-        onClose={() => setIsAddEventOpen(false)}
-        defaultEventType={defaultEventType}
-        onSave={() => {
-          setIsAddEventOpen(false);
-          loadDashboardData();
-        }}
-      />
+      {/* Edit Rehearsal Drawer */}
+      {activeRehearsal && (
+        <EditRehearsalDrawer
+          isOpen={rehearsalDrawerOpen}
+          onClose={closeRehearsalDrawer}
+          rehearsal={{
+            id: activeRehearsal.id,
+            date: activeRehearsal.raw_date ?? '',
+            start_time: activeRehearsal.start_time ?? '',
+            end_time: activeRehearsal.end_time ?? '',
+            location: activeRehearsal.location
+          }}
+          onRehearsalUpdated={handleRehearsalUpdated}
+        />
+      )}
+      
+      {/* Edit Gig Drawer */}
+      {activeGig && (
+        <EditGigDrawer
+          isOpen={gigDrawerOpen}
+          onClose={closeGigDrawer}
+          onSave={handleGigUpdated}
+          editingData={{
+            id: activeGig.id,
+            name: activeGig.name,
+            date: activeGig.date,
+            startTime: activeGig.start_time,
+            endTime: activeGig.end_time,
+            location: activeGig.location,
+            potential: activeGig.is_potential,
+            setlist: activeGig.setlist_id
+          }}
+        />
+      )}
 
-      <EditRehearsalDrawer
-        isOpen={isEditRehearsalOpen}
-        onClose={() => setIsEditRehearsalOpen(false)}
-        rehearsal={nextRehearsal ? {
-          id: nextRehearsal.id,
-          date: nextRehearsal.raw_date ?? '',
-          start_time: nextRehearsal.start_time ?? '',
-          end_time: nextRehearsal.end_time ?? '',
-          location: nextRehearsal.location
-        } : null}
-        onRehearsalUpdated={() => {
-          setIsEditRehearsalOpen(false);
-          loadDashboardData();
-        }}
+      {/* Add Event Drawer */}
+      <AddEventDrawer
+        isOpen={addEventDrawerOpen}
+        onClose={() => setAddEventDrawerOpen(false)}
+        onEventUpdated={handleEventAdded}
+        prefilledDate=""
+        defaultEventType="rehearsal"
       />
-
-      <EditGigDrawer
-        isOpen={isEditGigOpen}
-        onClose={() => setIsEditGigOpen(false)}
-        gig={null}
-        onGigUpdated={() => {
-          setIsEditGigOpen(false);
-          loadDashboardData();
-        }}
-      /> */}
     </main>
   );
 }

@@ -25,16 +25,24 @@ function LoginForm() {
 
     if (errorParam || errorCode) {
       let message = 'Authentication failed.';
-      
+
       if (errorCode === 'otp_expired') {
         message = 'Your login link has expired. Please request a new one.';
+      } else if (errorCode === 'browser_mismatch') {
+        message = 'Please open the login link in the same browser where you requested it.';
       } else if (errorDescription) {
         message = decodeURIComponent(errorDescription);
       } else if (errorParam) {
         message = decodeURIComponent(errorParam);
       }
-      
+
       setError(message);
+
+      // Log error for debugging (dev only)
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.log('[Login] Auth error:', { errorCode, errorParam, errorDescription });
+      }
     }
   }, [searchParams]);
 
@@ -42,7 +50,7 @@ function LoginForm() {
     setEmail(value);
     setError(null);
     setSuccess(false);
-    
+
     // Detect if email ends with one of our domains
     const trimmed = value.trim();
     const matched = EMAIL_DOMAINS.find((domain) => trimmed.endsWith(`@${domain}`));
@@ -108,7 +116,7 @@ function LoginForm() {
         <div className="mb-6 text-center">
           <Wordmark size="xl" className="text-foreground inline-block" />
         </div>
-        
+
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 rounded-xl p-6 shadow">
           <label htmlFor="email" className="block text-sm text-zinc-300 mb-2">
             Email address
@@ -140,13 +148,11 @@ function LoginForm() {
                   disabled={!isEnabled}
                   aria-label={`Use ${domain} domain`}
                   aria-pressed={isSelected}
-                  className={`rounded-full px-3 py-1 text-sm transition-colors flex-shrink-0 ${
-                    isSelected
+                  className={`rounded-full px-3 py-1 text-sm transition-colors flex-shrink-0 ${isSelected
                       ? 'border-2 border-rose-600 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30'
                       : 'border border-zinc-700 bg-zinc-800/40 text-zinc-400'
-                  } ${
-                    isEnabled ? 'hover:bg-zinc-700/60 hover:text-zinc-200' : 'opacity-50 cursor-not-allowed'
-                  }`}
+                    } ${isEnabled ? 'hover:bg-zinc-700/60 hover:text-zinc-200' : 'opacity-50 cursor-not-allowed'
+                    }`}
                 >
                   @{domain}
                 </button>

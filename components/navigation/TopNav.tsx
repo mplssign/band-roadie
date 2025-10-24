@@ -229,7 +229,7 @@ const pathname = rawPathname ?? "";
 
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-destructive transition-colors hover:bg-accent/40 hover:text-destructive"
+                  className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-rose-500 transition-colors hover:bg-accent/40 hover:text-rose-600"
                 >
                   <LogOut className="w-5 h-5" />
                   <span>Log Out</span>

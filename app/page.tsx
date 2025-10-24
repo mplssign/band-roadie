@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Wordmark } from '@/components/branding/Wordmark';
 
 export default function Home() {
   const router = useRouter();
@@ -12,11 +13,11 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="text-center">
-        <div className="text-4xl mb-2">🎸</div>
-        <h1 className="text-3xl font-bold text-white">Band Roadie</h1>
-        <p className="text-muted-foreground mt-2">Loading...</p>
+        <div className="text-4xl mb-4">🎸</div>
+        <Wordmark size="xl" className="text-foreground" />
+        <p className="text-zinc-400 mt-4">Loading...</p>
       </div>
     </div>
   );

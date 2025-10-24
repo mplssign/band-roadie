@@ -1,6 +1,6 @@
 import './globals-simple.css';
 import './theme-rose.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers/providers';
 import { OrientationGuard } from '@/components/layout/OrientationGuard';
@@ -16,14 +16,17 @@ export const metadata: Metadata = {
     statusBarStyle: 'black-translucent',
     title: 'Band Roadie',
   },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    viewportFit: 'cover',
-  },
   icons: {
     apple: '/apple-touch-icon.png',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

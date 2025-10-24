@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +13,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,9 +28,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBands } from "@/contexts/BandsContext";
 import { createClient } from "@/lib/supabase/client";
@@ -145,7 +150,7 @@ function formatDateDisplay(date: Date | undefined): string {
 
 function parseTimeString(timeStr: string): { hour: string; minute: string; period: "AM" | "PM" } {
   if (!timeStr) return { hour: "7", minute: "00", period: "PM" };
-  
+
   // Handle 24-hour format (e.g., "19:00")
   if (timeStr.includes(":") && !timeStr.includes("AM") && !timeStr.includes("PM")) {
     const [hourStr, minuteStr] = timeStr.split(":");
@@ -159,7 +164,7 @@ function parseTimeString(timeStr: string): { hour: string; minute: string; perio
       period
     };
   }
-  
+
   // Handle 12-hour format (e.g., "7:00 PM")
   const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (match) {
@@ -169,7 +174,7 @@ function parseTimeString(timeStr: string): { hour: string; minute: string; perio
       period: match[3].toUpperCase() as "AM" | "PM"
     };
   }
-  
+
   return { hour: "7", minute: "00", period: "PM" };
 }
 
@@ -184,12 +189,15 @@ function calculateDurationMinutes(startTime: string, endTime: string): number {
 
   const startMinutes = parseTime(startTime);
   const endMinutes = parseTime(endTime);
-  
-  let duration = endMinutes - startMinutes;
-  if (duration < 0) duration += 24 * 60; // Handle overnight events
-  
-  return duration;
+  return endMinutes > startMinutes ? endMinutes - startMinutes : 120;
 }
+
+// Helper: normalize incoming values and guard invalid dates
+const toDate = (v?: Date | string | null): Date | undefined => {
+  if (!v) return undefined;
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? undefined : d;
+};
 
 export default function EditRehearsalDrawer({
   isOpen,
@@ -203,39 +211,61 @@ export default function EditRehearsalDrawer({
   const { showToast } = useToast();
 
   const [eventType, setEventType] = useState<EventType>("rehearsal");
-  const [dateValue, setDateValue] = useState<Date | undefined>();
+  const [dateValue, setDateValue] = useState<Date | undefined>(undefined);
   const [startHour, setStartHour] = useState("7");
   const [startMinute, setStartMinute] = useState<(typeof MINUTES)[number]>("00");
   const [startPeriod, setStartPeriod] = useState<"AM" | "PM">("PM");
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [location, setLocation] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [selectedSetlist, setSelectedSetlist] = useState('');
+  const [setlists, setSetlists] = useState<Array<{ id: string; name: string }>>([]);
 
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringDays, setRecurringDays] = useState<(typeof DAY_OPTIONS)[number]["label"][]>([]);
   const [recurringFrequency, setRecurringFrequency] = useState<Frequency>("weekly");
-  const [untilDate, setUntilDate] = useState<Date | undefined>();
-  const [untilPickerOpen, setUntilPickerOpen] = useState(false);
+  const [untilDate, setUntilDate] = useState<Date | undefined>(undefined);
 
 
   const scrollAreaRef = useRef<HTMLDivElement | null>(null);
 
+  // Load setlists when band changes
+  useEffect(() => {
+    const loadSetlists = async () => {
+      if (!currentBand?.id) return;
+
+      try {
+        const { data: setlistsData } = await supabase
+          .from('setlists')
+          .select('id, name')
+          .eq('band_id', currentBand.id)
+          .order('name');
+
+        if (setlistsData) {
+          setSetlists(setlistsData);
+        }
+      } catch (error) {
+        console.error('Failed to load setlists:', error);
+      }
+    };
+
+    if (currentBand?.id) {
+      loadSetlists();
+    }
+  }, [currentBand?.id, supabase]);
+
   useEffect(() => {
     if (!isOpen || !rehearsal) return;
-    
+
     setEventType("rehearsal");
     setSubmitAttempted(false);
     setLocation(rehearsal.location || "");
-    
+
     // Parse date
     if (rehearsal.date) {
-      const date = new Date(`${rehearsal.date}T00:00:00`);
-      if (!isNaN(date.getTime())) {
-        setDateValue(date);
-      }
+      setDateValue(toDate(rehearsal.date));
     }
-    
+
     // Parse start time
     if (rehearsal.start_time) {
       const parsed = parseTimeString(rehearsal.start_time);
@@ -243,7 +273,7 @@ export default function EditRehearsalDrawer({
       setStartMinute(parsed.minute as (typeof MINUTES)[number]);
       setStartPeriod(parsed.period);
     }
-    
+
     // Calculate duration
     if (rehearsal.start_time && rehearsal.end_time) {
       const duration = calculateDurationMinutes(rehearsal.start_time, rehearsal.end_time);
@@ -251,13 +281,12 @@ export default function EditRehearsalDrawer({
     } else {
       setDurationMinutes(120);
     }
-    
+
     setIsRecurring(false);
     setRecurringDays([]);
     setRecurringFrequency("weekly");
     setUntilDate(undefined);
-    setUntilPickerOpen(false);
-    setDatePickerOpen(false);
+    setSelectedSetlist('');
   }, [isOpen, rehearsal]);
 
 
@@ -326,6 +355,9 @@ export default function EditRehearsalDrawer({
     setSubmitAttempted(true);
     if (!isValid || !dateValue || !rehearsal?.id || !currentBand?.id) return;
 
+    // Convert Date to YYYY-MM-DD format
+    const dateString = format(dateValue, 'yyyy-MM-dd');
+
     try {
       // Convert 12-hour time to 24-hour format
       const convert12to24 = (time: string): string => {
@@ -339,10 +371,11 @@ export default function EditRehearsalDrawer({
       const { error } = await supabase
         .from('rehearsals')
         .update({
-          date: toIsoDate(dateValue),
+          date: dateString,
           start_time: convert12to24(startTimeLabel),
           end_time: convert12to24(endTimeLabel),
-          location: location.trim() || 'TBD'
+          location: location.trim() || 'TBD',
+          setlist_id: selectedSetlist || null
         })
         .eq('id', rehearsal.id)
         .eq('band_id', currentBand.id);
@@ -360,7 +393,7 @@ export default function EditRehearsalDrawer({
 
   const handleDelete = async () => {
     if (!rehearsal?.id || !onDelete) return;
-    
+
     // Show confirmation dialog
     const confirmed = window.confirm('Are you sure you want to delete this rehearsal? This action cannot be undone.');
     if (!confirmed) return;
@@ -408,141 +441,167 @@ export default function EditRehearsalDrawer({
             </div>
           </div>
 
-            <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
-              <div className="mx-auto w-full max-w-md space-y-6 pb-56 pt-6">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
+            <div className="mx-auto w-full max-w-md space-y-6 pb-56 pt-6">
               <section className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Date *</Label>
-                    <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <div className="space-y-2">
+                  <Label htmlFor="rehearsal-date">Date *</Label>
+                  <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        type="button"
                         variant="outline"
-                        className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left font-medium"
-                          onClick={() => {
-                            setDatePickerOpen(true);
-                            setDateValue((prev) => prev ?? new Date());
-                          }}
-                        >
-                          <span>{formatDateDisplay(dateValue)}</span>
-                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                        <div className="p-3">
-                          <Calendar
-                            mode="single"
-                            selected={dateValue}
-                            onSelect={(day) => {
-                              setDateValue(day ?? undefined);
-                              setDatePickerOpen(false);
-                            }}
-                            initialFocus
-                            captionLayout="dropdown"
-                            fromYear={1900}
-                            toYear={2100}
-                            classNames={shadcnCalendarClasses}
-                          />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    {submitAttempted && !dateValue && (
-                      <p className="text-xs text-red-400">Date is required.</p>
-                    )}
-                  </div>
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dateValue && "text-muted-foreground"
+                        )}
+                        aria-label="Open rehearsal date picker"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateValue ? format(dateValue, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateValue}
+                        onSelect={setDateValue}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {submitAttempted && !dateValue && (
+                    <p className="text-xs text-red-400">Date is required.</p>
+                  )}
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Start Time *</Label>
-                    <div className="grid grid-cols-[repeat(2,minmax(0,1fr))_auto] gap-2">
-                      <Select value={startHour} onValueChange={setStartHour}>
-                        <SelectTrigger className="rounded-xl border-border bg-card text-sm">
-                          <SelectValue placeholder="Hour" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {HOURS.map((hour) => (
-                            <SelectItem key={hour} value={hour}>
-                              {hour}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <div className="space-y-2">
+                  <Label>Start Time *</Label>
+                  <div className="grid grid-cols-[repeat(2,minmax(0,1fr))_auto] gap-2">
+                    <Select value={startHour} onValueChange={setStartHour}>
+                      <SelectTrigger className="rounded-xl border-border bg-card text-sm">
+                        <SelectValue placeholder="Hour" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map((hour) => (
+                          <SelectItem key={hour} value={hour}>
+                            {hour}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      <Select value={startMinute} onValueChange={(value) => setStartMinute(value as (typeof MINUTES)[number])}>
-                        <SelectTrigger className="rounded-xl border-border bg-card text-sm">
-                          <SelectValue placeholder="Min" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MINUTES.map((minute) => (
-                            <SelectItem key={minute} value={minute}>
-                              {minute}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select value={startMinute} onValueChange={(value) => setStartMinute(value as (typeof MINUTES)[number])}>
+                      <SelectTrigger className="rounded-xl border-border bg-card text-sm">
+                        <SelectValue placeholder="Min" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MINUTES.map((minute) => (
+                          <SelectItem key={minute} value={minute}>
+                            {minute}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-                        {(["AM", "PM"] as const).map((period) => {
-                          const active = startPeriod === period;
-                          return (
-                            <Button
-                              key={period}
-                              type="button"
-                              size="sm"
-                              variant={active ? "default" : "secondary"}
-                              className={cn(
-                                "h-8 min-w-[48px] shrink-0 rounded-md",
-                                    active ? "text-primary-foreground" : ""
-                              )}
-                              onClick={() => setStartPeriod(period)}
-                              aria-pressed={active}
-                            >
-                              {period}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Ends at {endTimeLabel}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Duration *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {DURATIONS.map((duration) => {
-                        const active = durationMinutes === duration.value;
+                    <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+                      {(["AM", "PM"] as const).map((period) => {
+                        const active = startPeriod === period;
                         return (
                           <Button
-                            key={duration.value}
+                            key={period}
                             type="button"
+                            size="sm"
                             variant={active ? "default" : "secondary"}
-                          className={cn(
-                            "rounded-full px-4 py-2 text-sm",
-                            active ? "text-primary-foreground" : ""
-                          )}
-                            onClick={() => setDurationMinutes(duration.value)}
+                            className={cn(
+                              "h-8 min-w-[48px] shrink-0 rounded-md",
+                              active ? "text-primary-foreground" : ""
+                            )}
+                            onClick={() => setStartPeriod(period)}
                             aria-pressed={active}
                           >
-                            {duration.label}
+                            {period}
                           </Button>
                         );
                       })}
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">Ends at {endTimeLabel}</p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                <div className="space-y-2">
+                  <Label>Duration *</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {DURATIONS.map((duration) => {
+                      const active = durationMinutes === duration.value;
+                      return (
+                        <Button
+                          key={duration.value}
+                          type="button"
+                          variant={active ? "default" : "secondary"}
+                          className={cn(
+                            "rounded-full px-4 py-2 text-sm",
+                            active ? "text-primary-foreground" : ""
+                          )}
+                          onClick={() => setDurationMinutes(duration.value)}
+                          aria-pressed={active}
+                        >
+                          {duration.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
                   <Input
                     id="location"
                     value={location}
                     onChange={(event) => setLocation(event.target.value)}
                     placeholder="Enter location"
                     className="rounded-xl border-border bg-card text-sm"
-                    />
+                  />
+                </div>
+
+                {/* Setlist Selection */}
+                {setlists.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Setlist (Optional)</Label>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSetlist('')}
+                        className={cn(
+                          "px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all flex-shrink-0",
+                          !selectedSetlist
+                            ? 'bg-muted text-foreground'
+                            : 'bg-muted/50 text-muted-foreground hover:bg-muted/70'
+                        )}
+                      >
+                        No Setlist
+                      </button>
+                      {setlists.map((setlist) => (
+                        <button
+                          key={setlist.id}
+                          type="button"
+                          onClick={() => setSelectedSetlist(setlist.id)}
+                          className={cn(
+                            "px-4 py-2 rounded-full font-medium whitespace-nowrap transition-all flex-shrink-0",
+                            selectedSetlist === setlist.id
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-muted/50 text-muted-foreground hover:bg-muted/70'
+                          )}
+                        >
+                          {setlist.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </section>
+                )}
+              </section>
 
               <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+                <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
                   <div>
                     <p className="text-sm font-medium">Make this recurring</p>
                     <p className="text-xs text-muted-foreground">Turn on to repeat this rehearsal</p>
@@ -561,14 +620,14 @@ export default function EditRehearsalDrawer({
 
                 {isRecurring && (
                   <div className="space-y-4 rounded-2xl border border-border bg-card px-4 py-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Days of the Week</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {DAY_OPTIONS.map((day) => {
-                        const active = recurringDays.includes(day.label);
-                        return (
-                          <Button
-                            key={day.label}
+                    <div className="space-y-2">
+                      <Label className="text-sm">Days of the Week</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {DAY_OPTIONS.map((day) => {
+                          const active = recurringDays.includes(day.label);
+                          return (
+                            <Button
+                              key={day.label}
                               type="button"
                               size="icon"
                               variant={active ? "default" : "secondary"}
@@ -589,9 +648,9 @@ export default function EditRehearsalDrawer({
                     <div className="space-y-2">
                       <Label className="text-sm">Frequency</Label>
                       <div className="flex flex-wrap gap-2">
-                      {( [
-                        { label: "Weekly", value: "weekly" },
-                        { label: "Biweekly", value: "biweekly" },
+                        {([
+                          { label: "Weekly", value: "weekly" },
+                          { label: "Biweekly", value: "biweekly" },
                           { label: "Monthly", value: "monthly" },
                         ] as const).map((option) => {
                           const active = recurringFrequency === option.value;
@@ -615,44 +674,37 @@ export default function EditRehearsalDrawer({
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="text-sm">Until (optional)</Label>
-                      <Popover open={untilPickerOpen} onOpenChange={setUntilPickerOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium"
+                      <Label className="text-sm" htmlFor="rehearsal-until">Until (optional)</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !untilDate && "text-muted-foreground"
+                            )}
+                            aria-label="Open until date picker"
                           >
-                            <span>{untilDate ? formatDateDisplay(untilDate) : "Pick an end date"}</span>
-                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {untilDate ? format(untilDate, 'PPP') : <span>No end date</span>}
                           </Button>
                         </PopoverTrigger>
-                        <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                          <div className="p-3">
-                            <Calendar
-                              mode="single"
-                              selected={untilDate}
-                              onSelect={(day) => {
-                                setUntilDate(day ?? undefined);
-                                setUntilPickerOpen(false);
-                              }}
-                              disabled={(date) => !!dateValue && date < dateValue}
-                              initialFocus
-                              captionLayout="dropdown"
-                              fromYear={1900}
-                              toYear={2100}
-                              classNames={shadcnCalendarClasses}
-                            />
-                          </div>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={untilDate}
+                            onSelect={setUntilDate}
+                            initialFocus
+                          />
                         </PopoverContent>
                       </Popover>
                       {recurrenceHint && (
                         <p className="text-xs text-muted-foreground">{recurrenceHint}</p>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             </div>
           </ScrollArea>
         </div>

@@ -43,7 +43,24 @@ export function formatDate(date: string | Date): string {
 }
 
 export function formatTime(date: string | Date): string {
+  // Handle time-only strings like "19:00" or "14:30"
+  if (typeof date === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(date)) {
+    // Parse time string (HH:MM or HH:MM:SS)
+    const [hours, minutes] = date.split(':').map(Number);
+    const d = new Date();
+    d.setHours(hours, minutes, 0, 0);
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d);
+  }
+  
   const d = new Date(date);
+  if (isNaN(d.getTime())) {
+    return 'Time TBD';
+  }
+  
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',
@@ -52,5 +69,6 @@ export function formatTime(date: string | Date): string {
 }
 
 export function formatTimeRange(start: string | Date, end: string | Date): string {
+  if (!start || !end) return 'Time TBD';
   return `${formatTime(start)} – ${formatTime(end)}`;
 }

@@ -393,7 +393,6 @@ export default function CalendarPage() {
       }}
       user={user}
       loading={loading}
-      onAddEvent={addEvent}
       onAddBlockout={addBlockout}
       onEventUpdated={loadEvents}
     />

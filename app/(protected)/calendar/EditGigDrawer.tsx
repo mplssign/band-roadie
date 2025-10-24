@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +13,12 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,9 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Calendar as CalendarIcon, Users, AlertTriangle } from "lucide-react";
+import { Users, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBands } from "@/contexts/BandsContext";
 import { createClient } from "@/lib/supabase/client";
@@ -40,31 +46,6 @@ const DURATIONS = [
   { value: 210, label: "3h 30m" },
   { value: 240, label: "4h" },
 ] as const;
-
-// Shadcn default calendar classes for proper flex layout
-const shadcnCalendarClasses = {
-  months: "flex flex-col space-y-4",
-  month: "space-y-4",
-  caption: "flex justify-center pt-1 relative items-center",
-  caption_label: "text-sm font-medium",
-  nav: "space-x-1 flex items-center",
-  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-  nav_button_previous: "absolute left-1",
-  nav_button_next: "absolute right-1",
-  table: "w-full border-collapse space-y-1",
-  head_row: "flex",
-  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-  row: "flex w-full mt-2",
-  cell: "text-center text-sm p-0 relative [&:has([aria-selected].day-outside)]:bg-accent/50",
-  day: "h-9 w-9 p-0 font-normal rounded-md aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground",
-  day_range_end: "day-range-end",
-  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-  day_today: "bg-accent text-accent-foreground",
-  day_outside: "day-outside text-muted-foreground opacity-50",
-  day_disabled: "text-muted-foreground opacity-50",
-  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-  day_hidden: "invisible",
-} as const;
 
 const DAY_OPTIONS = [
   { short: "M", label: "Mon" },
@@ -145,18 +126,6 @@ function toIsoDate(date: Date | undefined): string | undefined {
   return date.toISOString().split("T")[0];
 }
 
-function formatDateDisplay(date: Date | undefined): string {
-  if (!date || Number.isNaN(date.getTime())) {
-    return "Pick a date";
-  }
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function buildInitials(name: string): string {
   if (!name) return "?";
   const parts = name.trim().split(/\s+/);
@@ -167,14 +136,14 @@ function buildInitials(name: string): string {
 // Parse time string (HH:MM) and return components for form
 function parseTimeString(timeStr: string) {
   if (!timeStr) return { hour: "7", minute: "00", period: "PM" as "AM" | "PM" };
-  
+
   const [hourStr, minuteStr] = timeStr.split(':');
   const hour24 = parseInt(hourStr || "19", 10);
   const minute = (minuteStr && MINUTES.includes(minuteStr as typeof MINUTES[number])) ? minuteStr as typeof MINUTES[number] : "00";
-  
+
   let hour12: string;
   let period: "AM" | "PM";
-  
+
   if (hour24 === 0) {
     hour12 = "12";
     period = "AM";
@@ -188,23 +157,30 @@ function parseTimeString(timeStr: string) {
     hour12 = (hour24 - 12).toString();
     period = "PM";
   }
-  
+
   return { hour: hour12, minute, period };
 }
 
 // Calculate duration between start and end times
 function calculateDurationMinutes(startTime: string, endTime: string): number {
   if (!startTime || !endTime) return 120;
-  
+
   const [startHour, startMin] = startTime.split(':').map(Number);
   const [endHour, endMin] = endTime.split(':').map(Number);
-  
+
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
-  
+
   const duration = endMinutes - startMinutes;
   return duration > 0 ? duration : 120;
 }
+
+// Helper: normalize incoming values and guard invalid dates
+const toDate = (v?: Date | string | null): Date | undefined => {
+  if (!v) return undefined;
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? undefined : d;
+};
 
 export type GigForm = {
   id: string;
@@ -229,11 +205,10 @@ export default function EditGigDrawer({
   const { showToast } = useToast();
 
   const [eventType, setEventType] = useState<EventType>("gig");
-  const [dateValue, setDateValue] = useState<Date | undefined>();
+  const [dateValue, setDateValue] = useState<Date | undefined>(undefined);
   const [startHour, setStartHour] = useState("7");
   const [startMinute, setStartMinute] = useState<(typeof MINUTES)[number]>("00");
   const [startPeriod, setStartPeriod] = useState<"AM" | "PM">("PM");
-  const [dateOpen, setDateOpen] = useState(false);
   const [durationMinutes, setDurationMinutes] = useState<number>(120);
   const [location, setLocation] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -241,8 +216,7 @@ export default function EditGigDrawer({
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurringDays, setRecurringDays] = useState<(typeof DAY_OPTIONS)[number]["label"][]>([]);
   const [recurringFrequency, setRecurringFrequency] = useState<Frequency>("weekly");
-  const [untilDate, setUntilDate] = useState<Date | undefined>();
-  const [untilOpen, setUntilOpen] = useState(false);
+  const [untilDate, setUntilDate] = useState<Date | undefined>(undefined);
 
   const [gigName, setGigName] = useState("");
   const [isPotentialGig, setIsPotentialGig] = useState(false);
@@ -260,7 +234,7 @@ export default function EditGigDrawer({
 
   useEffect(() => {
     if (!isOpen) return;
-    
+
     // Always set to gig mode for editing
     setEventType("gig");
     setSubmitAttempted(false);
@@ -268,34 +242,29 @@ export default function EditGigDrawer({
     setRecurringDays([]);
     setRecurringFrequency("weekly");
     setUntilDate(undefined);
-    setUntilOpen(false);
-    setDateOpen(false);
-    
+
     if (editingData) {
       // Store original data for change detection
       setOriginalData(editingData);
-      
+
       // Populate form with editing data
       setGigName(editingData.name || "");
       setIsPotentialGig(editingData.potential || false);
       setSelectedMemberIds([]);
       setSelectedSetlistId(editingData.setlist || null);
       setLocation(editingData.location || "");
-      
+
       // Parse and set date
       if (editingData.date) {
-        const dateObj = new Date(`${editingData.date}T00:00:00`);
-        if (!Number.isNaN(dateObj.getTime())) {
-          setDateValue(dateObj);
-        }
+        setDateValue(toDate(editingData.date));
       }
-      
+
       // Parse and set time
       const startTime = parseTimeString(editingData.startTime || "");
       setStartHour(startTime.hour);
       setStartMinute(startTime.minute as typeof MINUTES[number]);
       setStartPeriod(startTime.period);
-      
+
       // Calculate duration
       if (editingData.startTime && editingData.endTime) {
         const duration = calculateDurationMinutes(editingData.startTime, editingData.endTime);
@@ -346,7 +315,7 @@ export default function EditGigDrawer({
       const { data, error } = await supabase
         .from("band_members")
         .select(
-          `user_id, users:users(first_name, last_name, email)`
+          `user_id, users:user_id(first_name, last_name, email)`
         )
         .eq("band_id", currentBand.id);
 
@@ -429,36 +398,36 @@ export default function EditGigDrawer({
 
   // Check if form has required fields and if changes have been made
   const hasRequiredFields = Boolean(dateValue) && (eventType === "rehearsal" || gigName.trim().length > 0);
-  
+
   const hasChanges = useMemo(() => {
     if (!originalData) return true; // If no original data, allow saving (new item)
-    
+
     // Check for changes in each field
     const nameChanged = (originalData.name || "") !== gigName.trim();
     const locationChanged = (originalData.location || "") !== location.trim();
     const potentialChanged = (originalData.potential || false) !== isPotentialGig;
     const setlistChanged = (originalData.setlist || null) !== selectedSetlistId;
-    
+
     // Check date change
     const originalDateStr = originalData.date;
-    const currentDateStr = dateValue ? toIsoDate(dateValue) : undefined;
+    const currentDateStr = dateValue || undefined;
     const dateChanged = originalDateStr !== currentDateStr;
-    
+
     // Check time changes
     const originalStartTime = parseTimeString(originalData.startTime || "");
-    const timeChanged = originalStartTime.hour !== startHour || 
-                       originalStartTime.minute !== startMinute || 
-                       originalStartTime.period !== startPeriod;
-    
+    const timeChanged = originalStartTime.hour !== startHour ||
+      originalStartTime.minute !== startMinute ||
+      originalStartTime.period !== startPeriod;
+
     // Check duration change
-    const originalDuration = originalData.startTime && originalData.endTime ? 
-                            calculateDurationMinutes(originalData.startTime, originalData.endTime) : 120;
+    const originalDuration = originalData.startTime && originalData.endTime ?
+      calculateDurationMinutes(originalData.startTime, originalData.endTime) : 120;
     const durationChanged = originalDuration !== durationMinutes;
-    
-    return nameChanged || locationChanged || potentialChanged || setlistChanged || 
-           dateChanged || timeChanged || durationChanged;
-  }, [originalData, gigName, location, isPotentialGig, selectedSetlistId, dateValue, 
-      startHour, startMinute, startPeriod, durationMinutes]);
+
+    return nameChanged || locationChanged || potentialChanged || setlistChanged ||
+      dateChanged || timeChanged || durationChanged;
+  }, [originalData, gigName, location, isPotentialGig, selectedSetlistId, dateValue,
+    startHour, startMinute, startPeriod, durationMinutes]);
 
   const isValid = hasRequiredFields && hasChanges;
 
@@ -480,9 +449,13 @@ export default function EditGigDrawer({
     setSubmitAttempted(true);
     if (!isValid || !dateValue) return;
 
+    // Convert Date to YYYY-MM-DD format
+    const dateString = format(dateValue, 'yyyy-MM-dd');
+    const untilString = untilDate ? format(untilDate, 'yyyy-MM-dd') : undefined;
+
     const payload: AddEventPayload = {
       type: eventType,
-      date: toIsoDate(dateValue)!,
+      date: dateString,
       startTime: startTimeLabel,
       durationMinutes,
       endTime: endTimeLabel,
@@ -495,7 +468,7 @@ export default function EditGigDrawer({
           enabled: true,
           days: recurringDays,
           frequency: recurringFrequency,
-          until: toIsoDate(untilDate),
+          until: untilString,
         };
       }
     } else {
@@ -513,7 +486,7 @@ export default function EditGigDrawer({
 
   const handleDelete = async () => {
     if (!editingData?.id || !onDelete) return;
-    
+
     // Show confirmation dialog
     const confirmed = window.confirm('Are you sure you want to delete this gig? This action cannot be undone.');
     if (!confirmed) return;
@@ -561,251 +534,234 @@ export default function EditGigDrawer({
             </div>
           </div>
 
-            <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
-              <div className="mx-auto w-full max-w-md space-y-6 pb-56 pt-6">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
+            <div className="mx-auto w-full max-w-md space-y-6 pb-56 pt-6">
               <section className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Date *</Label>
-                    <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                <div className="space-y-2">
+                  <Label htmlFor="gig-date">Date *</Label>
+                  <Popover>
                     <PopoverTrigger asChild>
                       <Button
-                        type="button"
                         variant="outline"
-                        className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left font-medium"
-                          onClick={() => {
-                            setDateOpen(true);
-                            setDateValue((prev) => prev ?? new Date());
-                          }}
-                        >
-                          <span>{formatDateDisplay(dateValue)}</span>
-                          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                        <div className="p-3">
-                          <Calendar
-                            mode="single"
-                            selected={dateValue}
-                            onSelect={(day) => {
-                              setDateValue(day ?? undefined);
-                              setDateOpen(false);
-                            }}
-                            initialFocus
-                            captionLayout="dropdown"
-                            fromYear={1900}
-                            toYear={2100}
-                            classNames={shadcnCalendarClasses}
-                          />
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                    {submitAttempted && !dateValue && (
-                      <p className="text-xs text-red-400">Date is required.</p>
-                    )}
-                  </div>
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !dateValue && "text-muted-foreground"
+                        )}
+                        aria-label="Open event date picker"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateValue ? format(dateValue, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateValue}
+                        onSelect={setDateValue}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {submitAttempted && !dateValue && (
+                    <p className="text-xs text-red-400">Date is required.</p>
+                  )}
+                </div>
 
-                  <div className="space-y-2">
-                    <Label>Start Time *</Label>
-                    <div className="grid grid-cols-[repeat(2,minmax(0,1fr))_auto] gap-2">
-                      <Select value={startHour} onValueChange={setStartHour}>
-                        <SelectTrigger className="rounded-xl border-border bg-card text-sm">
-                          <SelectValue placeholder="Hour" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {HOURS.map((hour) => (
-                            <SelectItem key={hour} value={hour}>
-                              {hour}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                <div className="space-y-2">
+                  <Label>Start Time *</Label>
+                  <div className="grid grid-cols-[repeat(2,minmax(0,1fr))_auto] gap-2">
+                    <Select value={startHour} onValueChange={setStartHour}>
+                      <SelectTrigger className="rounded-xl border-border bg-card text-sm">
+                        <SelectValue placeholder="Hour" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {HOURS.map((hour) => (
+                          <SelectItem key={hour} value={hour}>
+                            {hour}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      <Select value={startMinute} onValueChange={(value) => setStartMinute(value as (typeof MINUTES)[number])}>
-                        <SelectTrigger className="rounded-xl border-border bg-card text-sm">
-                          <SelectValue placeholder="Min" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {MINUTES.map((minute) => (
-                            <SelectItem key={minute} value={minute}>
-                              {minute}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <Select value={startMinute} onValueChange={(value) => setStartMinute(value as (typeof MINUTES)[number])}>
+                      <SelectTrigger className="rounded-xl border-border bg-card text-sm">
+                        <SelectValue placeholder="Min" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MINUTES.map((minute) => (
+                          <SelectItem key={minute} value={minute}>
+                            {minute}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                      <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
-                        {(["AM", "PM"] as const).map((period) => {
-                          const active = startPeriod === period;
-                          return (
-                            <Button
-                              key={period}
-                              type="button"
-                              size="sm"
-                              variant={active ? "default" : "secondary"}
-                              className={cn(
-                                "h-8 min-w-[48px] shrink-0 rounded-md",
-                                    active ? "text-primary-foreground" : ""
-                              )}
-                              onClick={() => setStartPeriod(period)}
-                              aria-pressed={active}
-                            >
-                              {period}
-                            </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Ends at {endTimeLabel}</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Duration *</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {DURATIONS.map((duration) => {
-                        const active = durationMinutes === duration.value;
+                    <div className="flex items-center gap-1 rounded-xl border border-border bg-card p-1">
+                      {(["AM", "PM"] as const).map((period) => {
+                        const active = startPeriod === period;
                         return (
                           <Button
-                            key={duration.value}
+                            key={period}
                             type="button"
+                            size="sm"
                             variant={active ? "default" : "secondary"}
-                          className={cn(
-                            "rounded-full px-4 py-2 text-sm",
-                            active ? "text-primary-foreground" : ""
-                          )}
-                            onClick={() => setDurationMinutes(duration.value)}
+                            className={cn(
+                              "h-8 min-w-[48px] shrink-0 rounded-md",
+                              active ? "text-primary-foreground" : ""
+                            )}
+                            onClick={() => setStartPeriod(period)}
                             aria-pressed={active}
                           >
-                            {duration.label}
+                            {period}
                           </Button>
                         );
                       })}
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">Ends at {endTimeLabel}</p>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
+                <div className="space-y-2">
+                  <Label>Duration *</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {DURATIONS.map((duration) => {
+                      const active = durationMinutes === duration.value;
+                      return (
+                        <Button
+                          key={duration.value}
+                          type="button"
+                          variant={active ? "default" : "secondary"}
+                          className={cn(
+                            "rounded-full px-4 py-2 text-sm",
+                            active ? "text-primary-foreground" : ""
+                          )}
+                          onClick={() => setDurationMinutes(duration.value)}
+                          aria-pressed={active}
+                        >
+                          {duration.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="location">Location</Label>
                   <Input
                     id="location"
                     value={location}
                     onChange={(event) => setLocation(event.target.value)}
                     placeholder="Enter location"
                     className="rounded-xl border-border bg-card text-sm"
-                    />
-                  </div>
-                </section>
-
-                {eventType === 'rehearsal' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Make this recurring</p>
-                    <p className="text-xs text-muted-foreground">Turn on to repeat this rehearsal</p>
-                  </div>
-                  <Switch
-                    checked={isRecurring}
-                    onCheckedChange={(value) => {
-                      setIsRecurring(value);
-                      if (!value) {
-                        setRecurringDays([]);
-                        setUntilDate(undefined);
-                      }
-                    }}
                   />
                 </div>
+              </section>
 
-                {isRecurring && (
-                  <div className="space-y-4 rounded-2xl border border-border bg-card px-4 py-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm">Days of the Week</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {DAY_OPTIONS.map((day) => {
-                        const active = recurringDays.includes(day.label);
-                        return (
-                          <Button
-                            key={day.label}
-                              type="button"
-                              size="icon"
-                              variant={active ? "default" : "secondary"}
-                              className={cn(
-                                "h-10 w-10 rounded-full",
-                                active ? "text-primary-foreground" : ""
-                              )}
-                              onClick={() => handleDayToggle(day.label)}
-                              aria-pressed={active}
-                            >
-                              {day.short}
-                            </Button>
-                          );
-                        })}
-                      </div>
+              {eventType === 'rehearsal' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">Make this recurring</p>
+                      <p className="text-xs text-muted-foreground">Turn on to repeat this rehearsal</p>
                     </div>
+                    <Switch
+                      checked={isRecurring}
+                      onCheckedChange={(value) => {
+                        setIsRecurring(value);
+                        if (!value) {
+                          setRecurringDays([]);
+                          setUntilDate(undefined);
+                        }
+                      }}
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm">Frequency</Label>
-                      <div className="flex flex-wrap gap-2">
-                      {( [
-                        { label: "Weekly", value: "weekly" },
-                        { label: "Biweekly", value: "biweekly" },
-                          { label: "Monthly", value: "monthly" },
-                        ] as const).map((option) => {
-                          const active = recurringFrequency === option.value;
-                          return (
+                  {isRecurring && (
+                    <div className="space-y-4 rounded-2xl border border-border bg-card px-4 py-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Days of the Week</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {DAY_OPTIONS.map((day) => {
+                            const active = recurringDays.includes(day.label);
+                            return (
+                              <Button
+                                key={day.label}
+                                type="button"
+                                size="icon"
+                                variant={active ? "default" : "secondary"}
+                                className={cn(
+                                  "h-10 w-10 rounded-full",
+                                  active ? "text-primary-foreground" : ""
+                                )}
+                                onClick={() => handleDayToggle(day.label)}
+                                aria-pressed={active}
+                              >
+                                {day.short}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Frequency</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {([
+                            { label: "Weekly", value: "weekly" },
+                            { label: "Biweekly", value: "biweekly" },
+                            { label: "Monthly", value: "monthly" },
+                          ] as const).map((option) => {
+                            const active = recurringFrequency === option.value;
+                            return (
+                              <Button
+                                key={option.value}
+                                type="button"
+                                variant={active ? "default" : "secondary"}
+                                className={cn(
+                                  "rounded-full px-4 py-2 text-sm",
+                                  active ? "text-primary-foreground" : ""
+                                )}
+                                onClick={() => setRecurringFrequency(option.value)}
+                                aria-pressed={active}
+                              >
+                                {option.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm" htmlFor="until-date">Until (optional)</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
                             <Button
-                              key={option.value}
-                              type="button"
-                              variant={active ? "default" : "secondary"}
+                              variant="outline"
                               className={cn(
-                                "rounded-full px-4 py-2 text-sm",
-                                active ? "text-primary-foreground" : ""
+                                "w-full justify-start text-left font-normal",
+                                !untilDate && "text-muted-foreground"
                               )}
-                              onClick={() => setRecurringFrequency(option.value)}
-                              aria-pressed={active}
+                              aria-label="Open until date picker"
                             >
-                              {option.label}
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {untilDate ? format(untilDate, 'PPP') : <span>No end date</span>}
                             </Button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-sm">Until (optional)</Label>
-                      <Popover open={untilOpen} onOpenChange={setUntilOpen}>
-                      <PopoverTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-left text-sm font-medium"
-                          >
-                            <span>{untilDate ? formatDateDisplay(untilDate) : "Pick an end date"}</span>
-                            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="start" sideOffset={8} className="w-auto p-0">
-                          <div className="p-3">
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
                             <Calendar
                               mode="single"
                               selected={untilDate}
-                              onSelect={(day) => {
-                                setUntilDate(day ?? undefined);
-                                setUntilOpen(false);
-                              }}
-                              disabled={(date) => !!dateValue && date < dateValue}
+                              onSelect={setUntilDate}
                               initialFocus
-                              captionLayout="dropdown"
-                              fromYear={1900}
-                              toYear={2100}
-                              classNames={shadcnCalendarClasses}
                             />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      {recurrenceHint && (
-                        <p className="text-xs text-muted-foreground">{recurrenceHint}</p>
-                    )}
-                  </div>
-                </div>
-              )}
+                          </PopoverContent>
+                        </Popover>
+                        {recurrenceHint && (
+                          <p className="text-xs text-muted-foreground">{recurrenceHint}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -828,7 +784,7 @@ export default function EditGigDrawer({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium">Potential Gig</p>
-                      <p className="text-xs text-muted-foreground">Requires member confirmation</p>
+                        <p className="text-xs text-muted-foreground">Requires member confirmation</p>
                       </div>
                       <Switch
                         checked={isPotentialGig}
@@ -858,16 +814,16 @@ export default function EditGigDrawer({
                         ) : (
                           <div className="flex flex-wrap gap-2">
                             {members.map((member) => {
-                          const active = selectedMemberIds.includes(member.id);
+                              const active = selectedMemberIds.includes(member.id);
                               return (
                                 <Button
                                   key={member.id}
                                   type="button"
                                   variant={active ? "default" : "secondary"}
-                              className={cn(
-                                "flex items-center gap-2 rounded-full border px-3 py-2 text-sm",
-                                active ? "text-primary-foreground" : ""
-                              )}
+                                  className={cn(
+                                    "flex items-center gap-2 rounded-full border px-3 py-2 text-sm",
+                                    active ? "text-primary-foreground" : ""
+                                  )}
                                   onClick={() => handleMemberToggle(member.id)}
                                   aria-pressed={active}
                                 >

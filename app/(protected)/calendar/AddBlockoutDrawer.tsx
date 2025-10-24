@@ -1,14 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { X, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon, X } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+
+// Helper: normalize incoming values and guard invalid dates
+const toDate = (v?: Date | string | null): Date | undefined => {
+  if (!v) return undefined;
+  const d = v instanceof Date ? v : new Date(v);
+  return isNaN(d.getTime()) ? undefined : d;
+};
 
 interface AddBlockoutDrawerProps {
   isOpen: boolean;
@@ -16,21 +28,12 @@ interface AddBlockoutDrawerProps {
   onSave: (blockout: { startDate: string; endDate: string; reason: string }) => void;
 }
 
-// Format date as "MMMM d, yyyy"
-function formatLongDate(dateString: string): string {
-  if (!dateString) return '';
-  const date = new Date(`${dateString}T00:00:00`);
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 
-                  'July', 'August', 'September', 'October', 'November', 'December'];
-  return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-}
-
 export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlockoutDrawerProps) {
   const { showToast } = useToast();
   const [isExiting, setIsExiting] = useState(false);
   const [reason, setReason] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   const handleClose = () => {
     setIsExiting(true);
@@ -38,18 +41,22 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
       onClose();
       setIsExiting(false);
       setReason('');
-      setStartDate('');
-      setEndDate('');
+      setStartDate(undefined);
+      setEndDate(undefined);
     }, 300);
   };
 
   const handleSave = () => {
     if (!startDate) return;
-    
-    onSave({ 
-      startDate, 
-      endDate: endDate || startDate, // If no end date, use start date (single day)
-      reason: reason || 'Blocked Out' 
+
+    // Convert Date to YYYY-MM-DD format
+    const startDateString = format(startDate, 'yyyy-MM-dd');
+    const endDateString = endDate ? format(endDate, 'yyyy-MM-dd') : startDateString;
+
+    onSave({
+      startDate: startDateString,
+      endDate: endDateString, // If no end date, use start date (single day)
+      reason: reason || 'Blocked Out'
     });
     showToast('Block out dates added successfully!', 'success');
     handleClose();
@@ -60,16 +67,14 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
   return (
     <>
       <div
-        className={`fixed inset-0 bg-background/70 backdrop-blur-sm transition-opacity duration-300 ${
-          isExiting ? 'opacity-0 z-[100]' : 'opacity-50 z-[100]'
-        }`}
+        className={`fixed inset-0 bg-background/70 backdrop-blur-sm transition-opacity duration-300 ${isExiting ? 'opacity-0 z-[100]' : 'opacity-50 z-[100]'
+          }`}
         onClick={handleClose}
       />
 
       <div
-        className={`fixed bottom-0 left-0 right-0 z-[101] flex max-h-[90vh] flex-col rounded-t-3xl border-t border-border bg-card transition-transform duration-300 ease-out ${
-          isExiting ? 'translate-y-full' : 'translate-y-0'
-        }`}
+        className={`fixed bottom-0 left-0 right-0 z-[101] flex max-h-[90vh] flex-col rounded-t-3xl border-t border-border bg-card transition-transform duration-300 ease-out ${isExiting ? 'translate-y-full' : 'translate-y-0'
+          }`}
       >
         <div className="flex items-center justify-between border-b border-border/70 p-4">
           <h2 className="text-xl font-semibold text-foreground">Add Block Out Dates</h2>
@@ -99,33 +104,23 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    id="blockout-start"
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
                       !startDate && "text-muted-foreground"
                     )}
+                    aria-label="Open start date picker"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {startDate ? formatLongDate(startDate) : "Select date"}
-                    </span>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={startDate ? new Date(`${startDate}T00:00:00`) : undefined}
-                    onSelect={(selectedDate) => {
-                      if (selectedDate) {
-                        const year = selectedDate.getFullYear();
-                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(selectedDate.getDate()).padStart(2, '0');
-                        setStartDate(`${year}-${month}-${day}`);
-                      } else {
-                        setStartDate('');
-                      }
-                    }}
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
@@ -136,33 +131,23 @@ export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlocko
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    id="blockout-end"
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
                       !endDate && "text-muted-foreground"
                     )}
+                    aria-label="Open end date picker"
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                    <span className="truncate">
-                      {endDate ? formatLongDate(endDate) : "No end date"}
-                    </span>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, 'PPP') : <span>No end date</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 max-w-[calc(100vw-2rem)]" align="start">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={endDate ? new Date(`${endDate}T00:00:00`) : undefined}
-                    onSelect={(selectedDate) => {
-                      if (selectedDate) {
-                        const year = selectedDate.getFullYear();
-                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                        const day = String(selectedDate.getDate()).padStart(2, '0');
-                        setEndDate(`${year}-${month}-${day}`);
-                      } else {
-                        setEndDate('');
-                      }
-                    }}
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
