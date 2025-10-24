@@ -16,6 +16,7 @@ function LoginForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [processingAuth, setProcessingAuth] = useState(false);
   const supabase = createClient();
 
   // Handle auth callback (implicit flow)
@@ -25,8 +26,13 @@ function LoginForm() {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       
+      console.log('[Login] Hash params:', window.location.hash);
+      console.log('[Login] Access token present:', !!accessToken);
+      
       if (accessToken) {
+        setProcessingAuth(true);
         try {
+          console.log('[Login] Setting session...');
           // Set the session from the hash
           const { error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -34,11 +40,13 @@ function LoginForm() {
           });
 
           if (sessionError) throw sessionError;
+          console.log('[Login] Session set successfully');
 
           // Clear hash from URL
           window.history.replaceState(null, '', window.location.pathname);
           
           // Check if user has completed their profile
+          console.log('[Login] Checking user profile...');
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: profile } = await supabase
@@ -47,14 +55,18 @@ function LoginForm() {
               .eq('id', user.id)
               .single();
             
+            console.log('[Login] Profile data:', profile);
+            
             // Redirect to profile if user hasn't completed it
             if (!profile || !profile.first_name || !profile.last_name) {
+              console.log('[Login] Redirecting to profile (new user)');
               router.push('/profile');
               return;
             }
           }
           
           // Redirect to dashboard for existing users
+          console.log('[Login] Redirecting to dashboard (existing user)');
           router.push('/dashboard');
           return;
         } catch (err) {
@@ -159,6 +171,20 @@ function LoginForm() {
       setLoading(false);
     }
   };
+
+  // Show loading state while processing auth callback
+  if (processingAuth) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-black px-4">
+        <div className="text-center">
+          <div className="mb-4">
+            <Wordmark size="xl" className="text-foreground inline-block" />
+          </div>
+          <p className="text-zinc-400">Signing you in...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh flex items-center justify-center bg-black px-4">
