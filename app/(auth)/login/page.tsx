@@ -38,7 +38,23 @@ function LoginForm() {
           // Clear hash from URL
           window.history.replaceState(null, '', window.location.pathname);
           
-          // Redirect to dashboard
+          // Check if user has completed their profile
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: profile } = await supabase
+              .from('users')
+              .select('first_name, last_name')
+              .eq('id', user.id)
+              .single();
+            
+            // Redirect to profile if user hasn't completed it
+            if (!profile || !profile.first_name || !profile.last_name) {
+              router.push('/profile');
+              return;
+            }
+          }
+          
+          // Redirect to dashboard for existing users
           router.push('/dashboard');
           return;
         } catch (err) {
