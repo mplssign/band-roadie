@@ -30,6 +30,13 @@ export default function EditGigBottomDrawer({ isOpen, onClose, gig }: Props) {
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
+  const handleDelete = () => {
+    if (confirm('Are you sure you want to delete this gig?')) {
+      showToast('Gig deleted', 'success');
+      onClose();
+    }
+  };
+
   if (!isOpen || !gig) return null;
 
   return (
@@ -91,6 +98,16 @@ export default function EditGigBottomDrawer({ isOpen, onClose, gig }: Props) {
             className="flex-1 rounded-lg border border-border bg-muted/40 py-3 text-center font-semibold text-muted-foreground"
           >
             Close
+          </button>
+        </div>
+
+        {/* Delete Button */}
+        <div className="px-4 pb-4 text-center">
+          <button
+            onClick={handleDelete}
+            className="text-red-500 hover:text-red-400 transition-colors text-sm font-medium"
+          >
+            Delete Gig
           </button>
         </div>
       </div>
