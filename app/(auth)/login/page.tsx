@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { getAuthCallbackUrl } from '@/lib/config/site';
 import { Wordmark } from '@/components/branding/Wordmark';
@@ -9,6 +9,7 @@ import { Wordmark } from '@/components/branding/Wordmark';
 const EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'icloud.com', 'outlook.com'];
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,6 +17,39 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const supabase = createClient();
+
+  // Handle auth callback (implicit flow)
+  useEffect(() => {
+    const handleAuthCallback = async () => {
+      // Check if this is an auth callback
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      
+      if (accessToken) {
+        try {
+          // Set the session from the hash
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || '',
+          });
+
+          if (sessionError) throw sessionError;
+
+          // Clear hash from URL
+          window.history.replaceState(null, '', window.location.pathname);
+          
+          // Redirect to dashboard
+          router.push('/dashboard');
+          return;
+        } catch (err) {
+          console.error('Auth callback error:', err);
+          setError(err instanceof Error ? err.message : 'Authentication failed');
+        }
+      }
+    };
+
+    handleAuthCallback();
+  }, [router, supabase]);
 
   // Check for error parameters from auth callback
   useEffect(() => {

@@ -7,14 +7,13 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // Use PKCE flow for better security
-        flowType: 'pkce',
-        // Automatically detect redirect URLs from browser context
+        // IMPORTANT: Use implicit flow for magic links
+        // PKCE flow requires code_verifier which can't be accessed server-side
+        flowType: 'implicit',
         detectSessionInUrl: true,
-        // Persist session in localStorage (default, but explicit for clarity)
         persistSession: true,
-        // Store code_verifier in localStorage for magic links
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        autoRefreshToken: true,
+        debug: process.env.NODE_ENV === 'development',
       },
     },
   );

@@ -45,6 +45,12 @@ export async function GET(req: Request) {
     );
   }
 
+  // Debug logging in development
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[Auth Callback] Received code:', code.substring(0, 10) + '...');
+  }
+
   const cookieStore = cookies();
 
   // Create server client with cookie handling
@@ -78,6 +84,9 @@ export async function GET(req: Request) {
   const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
   if (exchangeError) {
+    // eslint-disable-next-line no-console
+    console.error('[Auth Callback] Exchange error:', exchangeError.message);
+
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(exchangeError.message)}`,
       302,
