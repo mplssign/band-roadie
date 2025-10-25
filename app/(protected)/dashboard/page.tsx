@@ -93,6 +93,7 @@ export default function DashboardPage() {
   
   // Drawer state for adding event
   const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
+  const [defaultEventType, setDefaultEventType] = useState<'rehearsal' | 'gig'>('rehearsal');
 
   // auth check
   useEffect(() => {
@@ -186,8 +187,9 @@ export default function DashboardPage() {
 
   // Handler to open edit rehearsal drawer
   const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
-    setActiveRehearsal(rehearsal);
-    setRehearsalDrawerOpen(true);
+    // Open add event drawer with rehearsal type pre-selected
+    setDefaultEventType('rehearsal');
+    setAddEventDrawerOpen(true);
   }, []);
 
   const closeRehearsalDrawer = useCallback(() => {
@@ -207,8 +209,9 @@ export default function DashboardPage() {
 
   // Handler to open edit gig drawer
   const openEditGig = useCallback((gig: Gig) => {
-    setActiveGig(gig);
-    setGigDrawerOpen(true);
+    // Open add event drawer with gig type pre-selected
+    setDefaultEventType('gig');
+    setAddEventDrawerOpen(true);
   }, []);
 
   const closeGigDrawer = useCallback(() => {
@@ -343,7 +346,10 @@ export default function DashboardPage() {
                 The stage is empty and the amps are cold. Time to crank it up and get the band back together!
               </p>
               <button
-                onClick={() => setAddEventDrawerOpen(true)}
+                onClick={() => {
+                  setDefaultEventType('rehearsal');
+                  setAddEventDrawerOpen(true);
+                }}
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors backdrop-blur-sm border border-white/30"
               >
                 <Plus className="w-4 h-4" />
@@ -440,7 +446,10 @@ export default function DashboardPage() {
           <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
-                onClick={() => setAddEventDrawerOpen(true)}
+                onClick={() => {
+                  setDefaultEventType('rehearsal');
+                  setAddEventDrawerOpen(true);
+                }}
                 gradientClass="bg-rose-500"
                 className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
@@ -526,7 +535,7 @@ export default function DashboardPage() {
         onClose={() => setAddEventDrawerOpen(false)}
         onEventUpdated={handleEventAdded}
         prefilledDate=""
-        defaultEventType="rehearsal"
+        defaultEventType={defaultEventType}
       />
     </main>
   );
