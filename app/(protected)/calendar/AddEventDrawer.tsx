@@ -29,7 +29,28 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { capitalizeWords } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
+type DrawerMode = 'add' | 'edit';
+
 type EventType = 'rehearsal' | 'gig';
+
+export interface EventPayload {
+  id: string;
+  type: EventType;
+  title: string;
+  date: Date;                  // real Date object
+  startHour: number;           // 1..12
+  startMinute: number;         // 0, 15, 30, 45
+  startAmPm: 'AM' | 'PM';
+  durationMinutes: number;     // e.g., 60, 90, 120
+  location?: string;
+  setlistId?: string | null;
+  setlistName?: string | null;
+  isPotential?: boolean;       // for gigs
+  recurring?: {
+    enabled: boolean;
+    rule?: string;
+  };
+}
 
 interface SavedEvent {
   type: EventType;
@@ -48,6 +69,8 @@ interface AddEventDrawerProps {
   prefilledDate?: string;
   onEventUpdated: () => void;
   defaultEventType?: EventType;
+  mode?: DrawerMode;
+  event?: EventPayload;
 }
 
 interface Setlist {
@@ -102,12 +125,15 @@ export default function AddEventDrawer({
   prefilledDate = '',
   onEventUpdated,
   defaultEventType = 'rehearsal',
+  mode = 'add',
+  event,
 }: AddEventDrawerProps) {
   const supabase = createClient();
   const { currentBand } = useBands();
   const { showToast } = useToast();
 
   const [eventType, setEventType] = useState<EventType>(defaultEventType);
+  const [eventId, setEventId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [startHour, setStartHour] = useState('7');
@@ -125,7 +151,54 @@ export default function AddEventDrawer({
   const [recurringFrequency, setRecurringFrequency] = useState<'weekly' | 'biweekly' | 'monthly'>('weekly');
   const [endDate, setEndDate] = useState('');
 
-  useEffect(() => setEventType(defaultEventType), [defaultEventType]);
+  // Initialize from event payload when in edit mode
+  useEffect(() => {
+    if (!isOpen) return; // Only initialize when drawer is open
+    
+    if (mode === 'edit' && event) {
+      setEventId(event.id);
+      setEventType(event.type);
+      setTitle(event.title || '');
+      
+      // Convert Date to YYYY-MM-DD string
+      const dateObj = event.date instanceof Date ? event.date : new Date(event.date);
+      if (!isNaN(dateObj.getTime())) {
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        setDate(`${year}-${month}-${day}`);
+      }
+      
+      setStartHour(String(event.startHour));
+      setStartMinute(String(event.startMinute).padStart(2, '0'));
+      setStartAmPm(event.startAmPm);
+      setDuration(String(event.durationMinutes));
+      setLocation(event.location || '');
+      setSelectedSetlist(event.setlistId || '');
+      setIsPotentialGig(event.isPotential || false);
+      
+      if (event.recurring?.enabled) {
+        setIsRecurring(true);
+        // Parse recurring rule if needed
+      }
+    } else if (mode === 'add') {
+      // Reset for add mode
+      setEventType(defaultEventType);
+      setEventId('');
+      setTitle('');
+      setDate(prefilledDate || '');
+      setStartHour('7');
+      setStartMinute('00');
+      setStartAmPm('PM');
+      setDuration('120');
+      setLocation('');
+      setSelectedSetlist('');
+      setIsPotentialGig(false);
+      setIsRecurring(false);
+      setSelectedDays(prefilledDate ? [new Date(`${prefilledDate}T00:00:00`).getDay()] : []);
+      setEndDate('');
+    }
+  }, [mode, event, defaultEventType, isOpen, prefilledDate]);
 
   const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => `${i + 1}`), []);
   const minutes = useMemo(() => ['00', '15', '30', '45'], []);
@@ -235,36 +308,79 @@ export default function AddEventDrawer({
     const dateString = date;
 
     try {
-      if (eventType === 'rehearsal') {
-        const rehearsal = {
-          band_id: currentBand.id,
-          date: dateString,
-          start_time: startTimeString,
-          end_time: endTimeString,
-          location: location || 'TBD',
-          notes: null as string | null,
-          setlist_id: selectedSetlist || null,
-        };
-        const { error } = await supabase.from('rehearsals').insert([rehearsal]);
-        if (error) throw error;
-        showToast('Rehearsal scheduled', 'success');
+      if (mode === 'edit') {
+        // UPDATE existing event
+        if (!eventId) {
+          showToast('No event ID provided for update', 'error');
+          return;
+        }
+
+        if (eventType === 'rehearsal') {
+          const rehearsal = {
+            date: dateString,
+            start_time: startTimeString,
+            end_time: endTimeString,
+            location: location || 'TBD',
+            setlist_id: selectedSetlist || null,
+          };
+          const { error } = await supabase
+            .from('rehearsals')
+            .update(rehearsal)
+            .eq('id', eventId);
+          if (error) throw error;
+          showToast('Rehearsal updated', 'success');
+        } else {
+          const chosen = setlists.find((s) => s.id === selectedSetlist);
+          const gig = {
+            name: title,
+            date: dateString,
+            start_time: startTimeString,
+            end_time: endTimeString,
+            location: location || 'TBD',
+            is_potential: isPotentialGig,
+            setlist_id: selectedSetlist || null,
+            setlist_name: chosen?.name ?? null,
+          };
+          const { error } = await supabase
+            .from('gigs')
+            .update(gig)
+            .eq('id', eventId);
+          if (error) throw error;
+          showToast('Gig updated', 'success');
+        }
       } else {
-        const chosen = setlists.find((s) => s.id === selectedSetlist);
-        const gig = {
-          band_id: currentBand.id,
-          name: title,
-          date: dateString,
-          start_time: startTimeString,
-          end_time: endTimeString,
-          location: location || 'TBD',
-          is_potential: isPotentialGig,
-          setlist_id: selectedSetlist || null,
-          setlist_name: chosen?.name ?? null,
-          notes: null as string | null,
-        };
-        const { error } = await supabase.from('gigs').insert([gig]);
-        if (error) throw error;
-        showToast(isPotentialGig ? 'Potential gig added' : 'Gig added', 'success');
+        // INSERT new event
+        if (eventType === 'rehearsal') {
+          const rehearsal = {
+            band_id: currentBand.id,
+            date: dateString,
+            start_time: startTimeString,
+            end_time: endTimeString,
+            location: location || 'TBD',
+            notes: null as string | null,
+            setlist_id: selectedSetlist || null,
+          };
+          const { error } = await supabase.from('rehearsals').insert([rehearsal]);
+          if (error) throw error;
+          showToast('Rehearsal scheduled', 'success');
+        } else {
+          const chosen = setlists.find((s) => s.id === selectedSetlist);
+          const gig = {
+            band_id: currentBand.id,
+            name: title,
+            date: dateString,
+            start_time: startTimeString,
+            end_time: endTimeString,
+            location: location || 'TBD',
+            is_potential: isPotentialGig,
+            setlist_id: selectedSetlist || null,
+            setlist_name: chosen?.name ?? null,
+            notes: null as string | null,
+          };
+          const { error } = await supabase.from('gigs').insert([gig]);
+          if (error) throw error;
+          showToast(isPotentialGig ? 'Potential gig added' : 'Gig added', 'success');
+        }
       }
 
       // Trigger refresh of events
@@ -281,7 +397,7 @@ export default function AddEventDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? onClose() : null)}>
       <SheetContent side="bottom" className="h-[90vh] w-full p-0 bg-background text-foreground border-border overflow-x-hidden">
         <SheetHeader className="border-b border-border px-4 py-3">
-          <SheetTitle>Add Event</SheetTitle>
+          <SheetTitle>{mode === 'edit' ? 'Edit Event' : 'Add Event'}</SheetTitle>
           <SheetDescription />
         </SheetHeader>
 
@@ -292,7 +408,8 @@ export default function AddEventDrawer({
               <Button
                 type="button"
                 variant={eventType === 'rehearsal' ? 'default' : 'secondary'}
-                onClick={() => setEventType('rehearsal')}
+                onClick={() => mode === 'add' && setEventType('rehearsal')}
+                disabled={mode === 'edit' && eventType !== 'rehearsal'}
                 className="flex-1 min-w-0"
               >
                 Rehearsal
@@ -300,7 +417,8 @@ export default function AddEventDrawer({
               <Button
                 type="button"
                 variant={eventType === 'gig' ? 'default' : 'secondary'}
-                onClick={() => setEventType('gig')}
+                onClick={() => mode === 'add' && setEventType('gig')}
+                disabled={mode === 'edit' && eventType !== 'gig'}
                 className="flex-1 min-w-0"
               >
                 Gig
@@ -566,7 +684,10 @@ export default function AddEventDrawer({
               disabled={!isValid}
               className="flex-1"
             >
-              {eventType === 'rehearsal' ? 'Add Rehearsal' : 'Add Gig'}
+              {mode === 'edit' 
+                ? `Update ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+                : `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+              }
             </Button>
             <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
               Cancel

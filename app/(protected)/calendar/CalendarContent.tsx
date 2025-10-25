@@ -6,9 +6,7 @@ import { useToast } from '@/hooks/useToast';
 import { DayDots } from '@/components/calendar/DayDots';
 import EventDrawer from './EventDrawer';
 import AddBlockoutDrawer from './AddBlockoutDrawer';
-import AddEventDrawer from './AddEventDrawer';
-import EditRehearsalDrawer from './EditRehearsalDrawer';
-import EditGigDrawer, { type GigForm } from './EditGigDrawer';
+import AddEventDrawer, { type EventPayload } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
 import { toDateSafe } from '@/lib/utils/date';
 
@@ -62,19 +60,40 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [eventDrawerOpen, setEventDrawerOpen] = useState(false);
   const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
+  const [addEventMode, setAddEventMode] = useState<'add' | 'edit'>('add');
   const [addEventDefaultType, setAddEventDefaultType] = useState<'rehearsal' | 'gig'>('rehearsal');
+  const [editEventPayload, setEditEventPayload] = useState<EventPayload | undefined>(undefined);
   const [addBlockoutDrawerOpen, setAddBlockoutDrawerOpen] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [prefilledDate, setPrefilledDate] = useState<string>('');
-  const [editRehearsal, setEditRehearsal] = useState<{ id: string; date: string; start_time: string; end_time: string; location: string; setlist_id?: string | null } | null>(null);
-  const [editRehearsalDrawerOpen, setEditRehearsalDrawerOpen] = useState(false);
-  const [editGig, setEditGig] = useState<GigForm | null>(null);
-  const [editGigDrawerOpen, setEditGigDrawerOpen] = useState(false);
 
   // Hooks for delete functionality
   const supabase = createClient();
   const { showToast } = useToast();
+
+  // Helper to parse time string to hour/minute/ampm
+  const parseTime = (timeStr: string): { hour: number; minute: number; ampm: 'AM' | 'PM' } => {
+    if (!timeStr) return { hour: 7, minute: 0, ampm: 'PM' };
+    const [hourStr, minuteStr] = timeStr.split(':');
+    const hour24 = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    
+    if (hour24 === 0) return { hour: 12, minute, ampm: 'AM' };
+    if (hour24 < 12) return { hour: hour24, minute, ampm: 'AM' };
+    if (hour24 === 12) return { hour: 12, minute, ampm: 'PM' };
+    return { hour: hour24 - 12, minute, ampm: 'PM' };
+  };
+
+  // Helper to calculate duration from start and end time
+  const calculateDuration = (startTime: string, endTime: string): number => {
+    if (!startTime || !endTime) return 120; // default 2 hours
+    const [startHour, startMin] = startTime.split(':').map(Number);
+    const [endHour, endMin] = endTime.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    return endMinutes - startMinutes;
+  };
 
   // Pre-compute events map for efficient day lookups
   const eventsMap = useMemo(() => {
@@ -204,29 +223,50 @@ const blockoutRanges = useMemo(() => {
   const handleEditEvent = (event: CalendarEvent) => {
     setEventDrawerOpen(false);
     setSelectedEvents([]);
+    
     if (event.type === 'rehearsal' && event.id) {
-      const start = event.start_time ?? '19:00';
-      const end = event.end_time ?? '21:00';
-      setEditRehearsal({
+      const dateObj = new Date(event.date + 'T00:00:00');
+      const { hour, minute, ampm } = parseTime(event.start_time || '19:00');
+      const duration = calculateDuration(event.start_time || '19:00', event.end_time || '21:00');
+      
+      const payload: EventPayload = {
         id: event.id,
-        date: event.date,
-        start_time: start,
-        end_time: end,
-        location: event.location ?? 'TBD',
-      });
-      setEditRehearsalDrawerOpen(true);
+        type: 'rehearsal',
+        title: '',
+        date: dateObj,
+        startHour: hour,
+        startMinute: minute,
+        startAmPm: ampm,
+        durationMinutes: duration,
+        location: event.location || 'TBD',
+        setlistId: event.setlist_id,
+      };
+      
+      setEditEventPayload(payload);
+      setAddEventMode('edit');
+      setAddEventDrawerOpen(true);
     } else if (event.type === 'gig' && event.id) {
-      setEditGig({
+      const dateObj = new Date(event.date + 'T00:00:00');
+      const { hour, minute, ampm } = parseTime(event.start_time || '19:00');
+      const duration = calculateDuration(event.start_time || '19:00', event.end_time || '21:00');
+      
+      const payload: EventPayload = {
         id: event.id,
-        name: event.title,
-        date: event.date,
-        start_time: event.start_time ?? '19:00',
-        end_time: event.end_time ?? '21:00',
-        location: event.location ?? 'TBD',
-        is_potential: event.is_potential ?? false,
-        setlist_id: event.setlist_id ?? null,
-      });
-      setEditGigDrawerOpen(true);
+        type: 'gig',
+        title: event.title,
+        date: dateObj,
+        startHour: hour,
+        startMinute: minute,
+        startAmPm: ampm,
+        durationMinutes: duration,
+        location: event.location || 'TBD',
+        setlistId: event.setlist_id,
+        isPotential: event.is_potential,
+      };
+      
+      setEditEventPayload(payload);
+      setAddEventMode('edit');
+      setAddEventDrawerOpen(true);
     }
   };
 
@@ -490,6 +530,8 @@ const blockoutRanges = useMemo(() => {
               onClick={() => {
                 setPrefilledDate('');
                 setAddEventDefaultType('rehearsal');
+                setAddEventMode('add');
+                setEditEventPayload(undefined);
                 setAddEventDrawerOpen(true);
               }}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-rose-500/60 bg-card py-3 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
@@ -635,45 +677,24 @@ const blockoutRanges = useMemo(() => {
         onSave={onAddBlockout}
       />
 
-      {/* Edit drawer for existing rehearsals */}
-      <EditRehearsalDrawer
-        isOpen={editRehearsalDrawerOpen}
+      {/* Unified Add/Edit Event Drawer */}
+      <AddEventDrawer
+        isOpen={addEventDrawerOpen}
         onClose={() => {
-          setEditRehearsalDrawerOpen(false);
-          setEditRehearsal(null);
+          setAddEventDrawerOpen(false);
+          setEditEventPayload(undefined);
+          setAddEventMode('add');
         }}
-        rehearsal={editRehearsal}
-        onRehearsalUpdated={() => {
-          setEditRehearsalDrawerOpen(false);
-          setEditRehearsal(null);
+        prefilledDate={prefilledDate}
+        defaultEventType={addEventDefaultType}
+        onEventUpdated={() => {
+          setAddEventDrawerOpen(false);
+          setEditEventPayload(undefined);
+          setAddEventMode('add');
           onEventUpdated();
         }}
-        onDelete={handleDeleteRehearsal}
-      />
-
-      <EditGigDrawer
-        isOpen={editGigDrawerOpen}
-        onClose={() => {
-          setEditGigDrawerOpen(false);
-          setEditGig(null);
-        }}
-        editingData={editGig ? {
-          id: editGig.id,
-          name: editGig.name,
-          date: editGig.date,
-          startTime: editGig.start_time,
-          endTime: editGig.end_time,
-          location: editGig.location,
-          setlist: editGig.setlist_id || undefined,
-          potential: editGig.is_potential
-        } : undefined}
-        onSave={async (_event) => {
-          // Handle gig update here
-          setEditGigDrawerOpen(false);
-          setEditGig(null);
-          onEventUpdated();
-        }}
-        onDelete={handleDeleteGig}
+        mode={addEventMode}
+        event={editEventPayload}
       />
     </>
   );
