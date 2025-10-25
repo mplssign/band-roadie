@@ -16,6 +16,14 @@ const EditRehearsalDrawer = dynamic(
   () => import('@/app/(protected)/calendar/EditRehearsalDrawer'),
   { ssr: false }
 );
+const EditGigDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/EditGigDrawer'),
+  { ssr: false }
+);
+const AddEventDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/AddEventDrawer'),
+  { ssr: false }
+);
 
 interface Rehearsal {
   id: string;
@@ -75,28 +83,16 @@ export default function DashboardPage() {
   const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Unified drawer state for EditRehearsalDrawer (handles add/edit for both rehearsals and gigs)
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMode, setDrawerMode] = useState<'add' | 'edit'>('add');
-  const [drawerEventType, setDrawerEventType] = useState<'rehearsal' | 'gig'>('rehearsal');
-  const [editingRehearsal, setEditingRehearsal] = useState<{
-    id: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    location: string;
-    setlist_id?: string | null;
-  } | null>(null);
-  const [editingGig, setEditingGig] = useState<{
-    id: string;
-    name: string;
-    date: string;
-    start_time: string;
-    end_time: string;
-    location: string;
-    is_potential?: boolean;
-    setlist_id?: string | null;
-  } | null>(null);
+  // Drawer state for editing rehearsal
+  const [rehearsalDrawerOpen, setRehearsalDrawerOpen] = useState(false);
+  const [activeRehearsal, setActiveRehearsal] = useState<Rehearsal | null>(null);
+  
+  // Drawer state for editing gig
+  const [gigDrawerOpen, setGigDrawerOpen] = useState(false);
+  const [activeGig, setActiveGig] = useState<Gig | null>(null);
+  
+  // Drawer state for adding event
+  const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
 
   // auth check
   useEffect(() => {
@@ -190,60 +186,37 @@ export default function DashboardPage() {
 
   // Handler to open edit rehearsal drawer
   const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
-    // Set up drawer for editing a rehearsal
-    setEditingRehearsal({
-      id: rehearsal.id,
-      date: rehearsal.raw_date ?? '',
-      start_time: rehearsal.start_time ?? '',
-      end_time: rehearsal.end_time ?? '',
-      location: rehearsal.location || '',
-    });
-    setEditingGig(null);
-    setDrawerMode('edit');
-    setDrawerEventType('rehearsal');
-    setDrawerOpen(true);
+    setActiveRehearsal(rehearsal);
+    setRehearsalDrawerOpen(true);
   }, []);
 
   const closeRehearsalDrawer = useCallback(() => {
-    setDrawerOpen(false);
+    setRehearsalDrawerOpen(false);
   }, []);
 
   const handleRehearsalUpdated = useCallback(() => {
-    setDrawerOpen(false);
+    setRehearsalDrawerOpen(false);
     loadDashboardData(); // Refresh the dashboard data
   }, [loadDashboardData]);
 
   // Handler for add event drawer
   const handleEventAdded = useCallback(() => {
-    setDrawerOpen(false);
+    setAddEventDrawerOpen(false);
     loadDashboardData(); // Refresh the dashboard data
   }, [loadDashboardData]);
 
   // Handler to open edit gig drawer
   const openEditGig = useCallback((gig: Gig) => {
-    // Set up drawer for editing a gig
-    setEditingGig({
-      id: gig.id,
-      name: gig.name || '',
-      date: gig.date ?? '',
-      start_time: gig.start_time ?? '',
-      end_time: gig.end_time ?? '',
-      location: gig.location || '',
-      is_potential: gig.is_potential ?? false,
-      setlist_id: gig.setlist_id || null,
-    });
-    setEditingRehearsal(null);
-    setDrawerMode('edit');
-    setDrawerEventType('gig');
-    setDrawerOpen(true);
+    setActiveGig(gig);
+    setGigDrawerOpen(true);
   }, []);
 
   const closeGigDrawer = useCallback(() => {
-    setDrawerOpen(false);
+    setGigDrawerOpen(false);
   }, []);
 
   const handleGigUpdated = useCallback(() => {
-    setDrawerOpen(false);
+    setGigDrawerOpen(false);
     loadDashboardData(); // Refresh the dashboard data
   }, [loadDashboardData]);
 
@@ -370,13 +343,7 @@ export default function DashboardPage() {
                 The stage is empty and the amps are cold. Time to crank it up and get the band back together!
               </p>
               <button
-                onClick={() => {
-                  setDrawerMode('add');
-                  setDrawerEventType('rehearsal');
-                  setEditingRehearsal(null);
-                  setEditingGig(null);
-                  setDrawerOpen(true);
-                }}
+                onClick={() => setAddEventDrawerOpen(true)}
                 className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors backdrop-blur-sm border border-white/30"
               >
                 <Plus className="w-4 h-4" />
@@ -473,13 +440,7 @@ export default function DashboardPage() {
           <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
-                onClick={() => {
-                  setDrawerMode('add');
-                  setDrawerEventType('rehearsal');
-                  setEditingRehearsal(null);
-                  setEditingGig(null);
-                  setDrawerOpen(true);
-                }}
+                onClick={() => setAddEventDrawerOpen(true)}
                 gradientClass="bg-rose-500"
                 className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
@@ -524,19 +485,48 @@ export default function DashboardPage() {
         </section>
       </div>
 
-      {/* Unified EditRehearsalDrawer for add/edit of rehearsals and gigs from dashboard */}
-      <EditRehearsalDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onRehearsalUpdated={drawerMode === 'edit' 
-          ? (drawerEventType === 'rehearsal' ? handleRehearsalUpdated : handleGigUpdated)
-          : handleEventAdded
-        }
-        mode={drawerMode}
-        eventType={drawerEventType}
-        rehearsal={editingRehearsal}
-        gig={editingGig}
-        defaultEventType={drawerEventType}
+      {/* Edit Rehearsal Drawer */}
+      {activeRehearsal && (
+        <EditRehearsalDrawer
+          isOpen={rehearsalDrawerOpen}
+          onClose={closeRehearsalDrawer}
+          rehearsal={{
+            id: activeRehearsal.id,
+            date: activeRehearsal.raw_date ?? '',
+            start_time: activeRehearsal.start_time ?? '',
+            end_time: activeRehearsal.end_time ?? '',
+            location: activeRehearsal.location
+          }}
+          onRehearsalUpdated={handleRehearsalUpdated}
+        />
+      )}
+      
+      {/* Edit Gig Drawer */}
+      {activeGig && (
+        <EditGigDrawer
+          isOpen={gigDrawerOpen}
+          onClose={closeGigDrawer}
+          onSave={handleGigUpdated}
+          editingData={{
+            id: activeGig.id,
+            name: activeGig.name,
+            date: activeGig.date,
+            startTime: activeGig.start_time,
+            endTime: activeGig.end_time,
+            location: activeGig.location,
+            potential: activeGig.is_potential,
+            setlist: activeGig.setlist_id
+          }}
+        />
+      )}
+
+      {/* Add Event Drawer */}
+      <AddEventDrawer
+        isOpen={addEventDrawerOpen}
+        onClose={() => setAddEventDrawerOpen(false)}
+        onEventUpdated={handleEventAdded}
+        prefilledDate=""
+        defaultEventType="rehearsal"
       />
     </main>
   );

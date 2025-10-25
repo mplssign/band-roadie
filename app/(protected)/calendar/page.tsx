@@ -6,7 +6,7 @@ import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
 import CalendarContent from './CalendarContent';
-import type { AddEventPayload } from './EditRehearsalDrawer';
+import type { AddEventPayload } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
 import { groupBlockoutsIntoRanges } from '@/lib/utils/blockouts';
 import type { BlockoutRow } from '@/lib/utils/blockouts';
@@ -308,13 +308,13 @@ export default function CalendarPage() {
           .from('gigs')
           .insert([{
             band_id: currentBand.id,
-            name: event.gig?.name || 'Untitled Gig',
+            name: event.title || 'Untitled Gig',
             date: event.date,
             start_time: toTwentyFourHour(event.startTime),
             end_time: toTwentyFourHour(event.endTime),
             location: event.location || 'TBD',
-            is_potential: event.gig?.potential ?? false,
-            setlist_id: event.gig?.setlist || null,
+            is_potential: false,
+            setlist_id: null,
             setlist_name: null,
           }]);
 

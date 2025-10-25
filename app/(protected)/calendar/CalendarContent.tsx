@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/useToast';
 import { DayDots } from '@/components/calendar/DayDots';
 import EventDrawer from './EventDrawer';
 import AddBlockoutDrawer from './AddBlockoutDrawer';
+import AddEventDrawer from './AddEventDrawer';
 import EditRehearsalDrawer from './EditRehearsalDrawer';
 import EditGigDrawer, { type GigForm } from './EditGigDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
@@ -620,11 +621,10 @@ const blockoutRanges = useMemo(() => {
       />
 
       {/* Unified drawer for adding events (both rehearsals and gigs) */}
-      <EditRehearsalDrawer
+      <AddEventDrawer
         isOpen={addEventDrawerOpen}
         onClose={() => setAddEventDrawerOpen(false)}
-        onRehearsalUpdated={onEventUpdated}
-        mode="add"
+        onEventUpdated={onEventUpdated}
         prefilledDate={prefilledDate}
         defaultEventType={addEventDefaultType}
       />
