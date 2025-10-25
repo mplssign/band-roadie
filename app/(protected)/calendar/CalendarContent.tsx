@@ -1,5 +1,3 @@
-'use client';
-
 import { useMemo, useState } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
@@ -7,7 +5,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/useToast';
 import { DayDots } from '@/components/calendar/DayDots';
 import EventDrawer from './EventDrawer';
-import AddEventDrawer from './AddEventDrawer';
 import AddBlockoutDrawer from './AddBlockoutDrawer';
 import EditRehearsalDrawer from './EditRehearsalDrawer';
 import EditGigDrawer, { type GigForm } from './EditGigDrawer';
@@ -64,12 +61,12 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [eventDrawerOpen, setEventDrawerOpen] = useState(false);
   const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
+  const [addEventDefaultType, setAddEventDefaultType] = useState<'rehearsal' | 'gig'>('rehearsal');
   const [addBlockoutDrawerOpen, setAddBlockoutDrawerOpen] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [prefilledDate, setPrefilledDate] = useState<string>('');
-  const [defaultEventType, setDefaultEventType] = useState<'rehearsal' | 'gig'>('rehearsal');
-  const [editRehearsal, setEditRehearsal] = useState<{ id: string; date: string; start_time: string; end_time: string; location: string } | null>(null);
+  const [editRehearsal, setEditRehearsal] = useState<{ id: string; date: string; start_time: string; end_time: string; location: string; setlist_id?: string | null } | null>(null);
   const [editRehearsalDrawerOpen, setEditRehearsalDrawerOpen] = useState(false);
   const [editGig, setEditGig] = useState<GigForm | null>(null);
   const [editGigDrawerOpen, setEditGigDrawerOpen] = useState(false);
@@ -491,7 +488,7 @@ const blockoutRanges = useMemo(() => {
             <button
               onClick={() => {
                 setPrefilledDate('');
-                setDefaultEventType('rehearsal');
+                setAddEventDefaultType('rehearsal');
                 setAddEventDrawerOpen(true);
               }}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-rose-500/60 bg-card py-3 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
@@ -622,12 +619,14 @@ const blockoutRanges = useMemo(() => {
         onDeleteBlockout={handleDeleteBlockout}
       />
 
-      <AddEventDrawer
+      {/* Unified drawer for adding events (both rehearsals and gigs) */}
+      <EditRehearsalDrawer
         isOpen={addEventDrawerOpen}
         onClose={() => setAddEventDrawerOpen(false)}
+        onRehearsalUpdated={onEventUpdated}
+        mode="add"
         prefilledDate={prefilledDate}
-        defaultEventType={defaultEventType}
-        onEventUpdated={onEventUpdated}
+        defaultEventType={addEventDefaultType}
       />
 
       <AddBlockoutDrawer
@@ -636,6 +635,7 @@ const blockoutRanges = useMemo(() => {
         onSave={onAddBlockout}
       />
 
+      {/* Edit drawer for existing rehearsals */}
       <EditRehearsalDrawer
         isOpen={editRehearsalDrawerOpen}
         onClose={() => {

@@ -6,8 +6,10 @@ import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
 import CalendarContent from './CalendarContent';
-import type { AddEventPayload } from './AddEventDrawer';
+import type { AddEventPayload } from './EditRehearsalDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
+import { groupBlockoutsIntoRanges } from '@/lib/utils/blockouts';
+import type { BlockoutRow } from '@/lib/utils/blockouts';
 
 interface CalendarEvent {
   id?: string;
@@ -225,15 +227,23 @@ export default function CalendarPage() {
         }
       }
 
-      blockRecords.forEach((blockDate) => {
-        // Validate date format before processing
-        if (!blockDate.date || typeof blockDate.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(blockDate.date)) {
-          console.warn('Invalid blockout date format:', blockDate);
-          return;
-        }
+      // Group consecutive blockout days into ranges
+      const blockoutRows: BlockoutRow[] = blockRecords
+        .filter(bd => bd.date && typeof bd.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bd.date))
+        .map(bd => ({
+          id: bd.id,
+          user_id: bd.user_id || '',
+          date: bd.date,
+          reason: bd.reason,
+          band_id: currentBand.id,
+        }));
 
+      const groupedBlockoutRanges = groupBlockoutsIntoRanges(blockoutRows);
+
+      // Convert grouped ranges to CalendarEvent format
+      groupedBlockoutRanges.forEach((range) => {
         // Get user info from our map
-        const userInfo = blockDate.user_id ? usersMap.get(blockDate.user_id) : null;
+        const userInfo = range.user_id ? usersMap.get(range.user_id) : null;
         
         const emailIdentifier = typeof userInfo?.email === 'string' ? userInfo.email.split('@')[0] : 'Member';
         const firstName = (userInfo?.first_name || emailIdentifier || 'Band').trim();
@@ -243,23 +253,20 @@ export default function CalendarPage() {
         const initials = (initialsBase.slice(0, 1) + (lastName.slice(0, 1) || '')).toUpperCase() || displayName.substring(0, 2).toUpperCase();
         const color = getBlockoutColor(displayName);
 
-        const startDate = blockDate.date;
-        const endDate = blockDate.date; // Single date blockout
-
         blockoutRanges.push({
-          id: blockDate.id,
-          date: startDate,
+          id: range.sourceIds[0], // Use first ID for the range
+          date: range.start_date,
           type: 'blockout',
           title: `${firstName} Out`,
-          location: blockDate.reason && blockDate.reason !== 'Blocked Out' ? blockDate.reason : undefined,
+          location: range.reason && range.reason !== 'Blocked Out' ? range.reason : undefined,
           blockedBy: {
             name: displayName,
             initials,
             color,
           },
           blockout: {
-            startDate,
-            endDate,
+            startDate: range.start_date,
+            endDate: range.end_date,
             color,
             name: displayName,
           },
@@ -301,13 +308,13 @@ export default function CalendarPage() {
           .from('gigs')
           .insert([{
             band_id: currentBand.id,
-            name: event.title,
+            name: event.gig?.name || 'Untitled Gig',
             date: event.date,
             start_time: toTwentyFourHour(event.startTime),
             end_time: toTwentyFourHour(event.endTime),
             location: event.location || 'TBD',
-            is_potential: false,
-            setlist_id: null,
+            is_potential: event.gig?.potential ?? false,
+            setlist_id: event.gig?.setlist || null,
             setlist_name: null,
           }]);
 

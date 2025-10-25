@@ -3,9 +3,9 @@ import { APP_URL } from '@/lib/constants';
 export function getInviteEmailHtml(
   bandName: string,
   inviterName: string,
-  recipientEmail: string
+  ctaUrl: string
 ): string {
-  const joinUrl = `${APP_URL}/signup?email=${encodeURIComponent(recipientEmail)}`;
+  const joinUrl = ctaUrl;
   
   return `
     <!DOCTYPE html>

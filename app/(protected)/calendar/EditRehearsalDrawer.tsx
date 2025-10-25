@@ -93,6 +93,7 @@ const DAY_TO_FULL: Record<(typeof DAY_OPTIONS)[number]["label"], string> = {
 
 type EventType = "rehearsal" | "gig";
 type Frequency = "weekly" | "biweekly" | "monthly";
+type DrawerMode = "add" | "edit";
 
 export type AddEventPayload = {
   type: EventType;
@@ -120,13 +121,34 @@ export type EditRehearsalDrawerProps = {
   onClose: () => void;
   onRehearsalUpdated: () => void;
   onDelete?: (rehearsalId: string) => void;
-  rehearsal: {
+  // Mode: 'add' for creating new events, 'edit' for modifying existing ones
+  mode?: DrawerMode;
+  // Event type: determines if we're working with rehearsals or gigs
+  eventType?: EventType;
+  // For edit mode: pass existing event data
+  rehearsal?: {
     id: string;
     date: string;
     start_time: string;
     end_time: string;
     location: string;
+    setlist_id?: string | null;
   } | null;
+  // For gig edit mode: pass gig data
+  gig?: {
+    id: string;
+    name: string;
+    date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
+    is_potential?: boolean;
+    setlist_id?: string | null;
+  } | null;
+  // For add mode: optional prefilled date
+  prefilledDate?: string;
+  // For add mode: default event type selection
+  defaultEventType?: EventType;
 };
 
 function toIsoDate(date: Date | undefined): string | undefined {
@@ -204,13 +226,20 @@ export default function EditRehearsalDrawer({
   onClose,
   onRehearsalUpdated,
   onDelete,
+  mode = 'edit',
+  eventType: propEventType,
   rehearsal,
+  gig,
+  prefilledDate,
+  defaultEventType = 'rehearsal',
 }: EditRehearsalDrawerProps) {
   const { currentBand } = useBands();
   const supabase = createClient();
   const { showToast } = useToast();
 
-  const [eventType, setEventType] = useState<EventType>("rehearsal");
+  const [eventType, setEventType] = useState<EventType>(defaultEventType);
+  const [gigName, setGigName] = useState("");
+  const [isPotentialGig, setIsPotentialGig] = useState(false);
   const [dateValue, setDateValue] = useState<Date | undefined>(undefined);
   const [startHour, setStartHour] = useState("7");
   const [startMinute, setStartMinute] = useState<(typeof MINUTES)[number]>("00");
@@ -255,39 +284,100 @@ export default function EditRehearsalDrawer({
   }, [currentBand?.id, supabase]);
 
   useEffect(() => {
-    if (!isOpen || !rehearsal) return;
+    if (!isOpen) return;
 
-    setEventType("rehearsal");
+    // Reset form state
     setSubmitAttempted(false);
-    setLocation(rehearsal.location || "");
-
-    // Parse date
-    if (rehearsal.date) {
-      setDateValue(toDate(rehearsal.date));
-    }
-
-    // Parse start time
-    if (rehearsal.start_time) {
-      const parsed = parseTimeString(rehearsal.start_time);
-      setStartHour(parsed.hour);
-      setStartMinute(parsed.minute as (typeof MINUTES)[number]);
-      setStartPeriod(parsed.period);
-    }
-
-    // Calculate duration
-    if (rehearsal.start_time && rehearsal.end_time) {
-      const duration = calculateDurationMinutes(rehearsal.start_time, rehearsal.end_time);
-      setDurationMinutes(duration);
-    } else {
-      setDurationMinutes(120);
-    }
-
     setIsRecurring(false);
     setRecurringDays([]);
     setRecurringFrequency("weekly");
     setUntilDate(undefined);
     setSelectedSetlist('');
-  }, [isOpen, rehearsal]);
+
+    if (mode === 'add') {
+      // Add mode: initialize with empty/default values
+      setEventType(propEventType || defaultEventType);
+      setGigName("");
+      setIsPotentialGig(false);
+      setLocation("");
+      setStartHour("7");
+      setStartMinute("00");
+      setStartPeriod("PM");
+      setDurationMinutes(120);
+      
+      // Use prefilled date if provided, otherwise undefined
+      if (prefilledDate) {
+        setDateValue(toDate(prefilledDate));
+      } else {
+        setDateValue(undefined);
+      }
+    } else if (mode === 'edit') {
+      // Edit mode: populate from existing data
+      if (rehearsal) {
+        setEventType("rehearsal");
+        setGigName("");
+        setIsPotentialGig(false);
+        setLocation(rehearsal.location || "");
+
+        // Parse date
+        if (rehearsal.date) {
+          setDateValue(toDate(rehearsal.date));
+        }
+
+        // Parse start time
+        if (rehearsal.start_time) {
+          const parsed = parseTimeString(rehearsal.start_time);
+          setStartHour(parsed.hour);
+          setStartMinute(parsed.minute as (typeof MINUTES)[number]);
+          setStartPeriod(parsed.period);
+        }
+
+        // Calculate duration
+        if (rehearsal.start_time && rehearsal.end_time) {
+          const duration = calculateDurationMinutes(rehearsal.start_time, rehearsal.end_time);
+          setDurationMinutes(duration);
+        } else {
+          setDurationMinutes(120);
+        }
+
+        // Set setlist if available
+        if (rehearsal.setlist_id) {
+          setSelectedSetlist(rehearsal.setlist_id);
+        }
+      } else if (gig) {
+        setEventType("gig");
+        setGigName(gig.name || "");
+        setIsPotentialGig(gig.is_potential ?? false);
+        setLocation(gig.location || "");
+
+        // Parse date
+        if (gig.date) {
+          setDateValue(toDate(gig.date));
+        }
+
+        // Parse start time
+        if (gig.start_time) {
+          const parsed = parseTimeString(gig.start_time);
+          setStartHour(parsed.hour);
+          setStartMinute(parsed.minute as (typeof MINUTES)[number]);
+          setStartPeriod(parsed.period);
+        }
+
+        // Calculate duration
+        if (gig.start_time && gig.end_time) {
+          const duration = calculateDurationMinutes(gig.start_time, gig.end_time);
+          setDurationMinutes(duration);
+        } else {
+          setDurationMinutes(120);
+        }
+
+        // Set setlist if available
+        if (gig.setlist_id) {
+          setSelectedSetlist(gig.setlist_id);
+        }
+      }
+    }
+  }, [isOpen, mode, rehearsal, gig, prefilledDate, propEventType, defaultEventType]);
 
 
 
@@ -353,59 +443,128 @@ export default function EditRehearsalDrawer({
 
   const handleSubmit = async () => {
     setSubmitAttempted(true);
-    if (!isValid || !dateValue || !rehearsal?.id || !currentBand?.id) return;
+    if (!isValid || !dateValue || !currentBand?.id) return;
+
+    // Validate gig name if event type is gig
+    if (eventType === 'gig' && !gigName.trim()) {
+      showToast("Gig name is required", "error");
+      return;
+    }
 
     // Convert Date to YYYY-MM-DD format
     const dateString = format(dateValue, 'yyyy-MM-dd');
 
+    // Convert 12-hour time to 24-hour format
+    const convert12to24 = (time: string): string => {
+      const { hour, minute, period } = parseTimeString(time);
+      let hour24 = parseInt(hour, 10);
+      if (period === "PM" && hour24 !== 12) hour24 += 12;
+      if (period === "AM" && hour24 === 12) hour24 = 0;
+      return `${hour24.toString().padStart(2, "0")}:${minute}`;
+    };
+
+    const startTime24 = convert12to24(startTimeLabel);
+    const endTime24 = convert12to24(endTimeLabel);
+
     try {
-      // Convert 12-hour time to 24-hour format
-      const convert12to24 = (time: string): string => {
-        const { hour, minute, period } = parseTimeString(time);
-        let hour24 = parseInt(hour, 10);
-        if (period === "PM" && hour24 !== 12) hour24 += 12;
-        if (period === "AM" && hour24 === 12) hour24 = 0;
-        return `${hour24.toString().padStart(2, "0")}:${minute}`;
-      };
+      if (eventType === 'rehearsal') {
+        if (mode === 'edit' && rehearsal?.id) {
+          // Update existing rehearsal
+          const { error } = await supabase
+            .from('rehearsals')
+            .update({
+              date: dateString,
+              start_time: startTime24,
+              end_time: endTime24,
+              location: location.trim() || 'TBD',
+              setlist_id: selectedSetlist || null
+            })
+            .eq('id', rehearsal.id)
+            .eq('band_id', currentBand.id);
 
-      const { error } = await supabase
-        .from('rehearsals')
-        .update({
-          date: dateString,
-          start_time: convert12to24(startTimeLabel),
-          end_time: convert12to24(endTimeLabel),
-          location: location.trim() || 'TBD',
-          setlist_id: selectedSetlist || null
-        })
-        .eq('id', rehearsal.id)
-        .eq('band_id', currentBand.id);
+          if (error) throw error;
+          showToast("Rehearsal updated successfully", "success");
+        } else if (mode === 'add') {
+          // Create new rehearsal
+          const { error } = await supabase
+            .from('rehearsals')
+            .insert([{
+              band_id: currentBand.id,
+              date: dateString,
+              start_time: startTime24,
+              end_time: endTime24,
+              location: location.trim() || 'TBD',
+              setlist_id: selectedSetlist || null
+            }]);
 
-      if (error) throw error;
+          if (error) throw error;
+          showToast("Rehearsal scheduled successfully", "success");
+        }
+      } else if (eventType === 'gig') {
+        if (mode === 'edit' && gig?.id) {
+          // Update existing gig
+          const { error } = await supabase
+            .from('gigs')
+            .update({
+              name: gigName.trim(),
+              date: dateString,
+              start_time: startTime24,
+              end_time: endTime24,
+              location: location.trim() || 'TBD',
+              is_potential: isPotentialGig,
+              setlist_id: selectedSetlist || null
+            })
+            .eq('id', gig.id)
+            .eq('band_id', currentBand.id);
 
-      showToast("Rehearsal updated successfully", "success");
+          if (error) throw error;
+          showToast("Gig updated successfully", "success");
+        } else if (mode === 'add') {
+          // Create new gig
+          const { error } = await supabase
+            .from('gigs')
+            .insert([{
+              band_id: currentBand.id,
+              name: gigName.trim(),
+              date: dateString,
+              start_time: startTime24,
+              end_time: endTime24,
+              location: location.trim() || 'TBD',
+              is_potential: isPotentialGig,
+              setlist_id: selectedSetlist || null
+            }]);
+
+          if (error) throw error;
+          showToast("Gig scheduled successfully", "success");
+        }
+      }
+
       onRehearsalUpdated();
       onClose();
     } catch (error) {
-      console.error('Failed to update rehearsal:', error);
-      showToast("Failed to update rehearsal", "error");
+      console.error(`Failed to ${mode} ${eventType}:`, error);
+      showToast(`Failed to ${mode} ${eventType}`, "error");
     }
   };
 
   const handleDelete = async () => {
-    if (!rehearsal?.id || !onDelete) return;
+    if (!onDelete) return;
+    
+    const eventId = rehearsal?.id || gig?.id;
+    if (!eventId) return;
 
     // Show confirmation dialog
-    const confirmed = window.confirm('Are you sure you want to delete this rehearsal? This action cannot be undone.');
+    const confirmed = window.confirm(`Are you sure you want to delete this ${eventType}? This action cannot be undone.`);
     if (!confirmed) return;
 
     try {
       // Call the parent's delete handler
-      onDelete(rehearsal.id);
+      onDelete(eventId);
       onClose();
-      showToast('Rehearsal deleted successfully', 'success');
+      showToast(`${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'} deleted successfully`, 'success');
     } catch (error) {
-      console.error('Error deleting rehearsal:', error);
-      showToast('Failed to delete rehearsal', 'error');
+      console.error(`Error deleting ${eventType}:`, error);
+      showToast(`Failed to delete ${eventType}`, 'error');
     }
   };
 
@@ -416,7 +575,12 @@ export default function EditRehearsalDrawer({
         className="mx-auto flex h-[90vh] w-full max-w-md flex-col border-border bg-background px-0 pb-0 text-foreground overflow-visible"
       >
         <SheetHeader className="border-b border-border px-4 py-4">
-          <SheetTitle className="text-xl font-semibold">Edit Rehearsal</SheetTitle>
+          <SheetTitle className="text-xl font-semibold">
+            {mode === 'add' 
+              ? `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+              : `Edit ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+            }
+          </SheetTitle>
         </SheetHeader>
 
         <div className="flex h-full w-full flex-col">
@@ -424,17 +588,19 @@ export default function EditRehearsalDrawer({
             <div className="flex w-full gap-2">
               <Button
                 type="button"
-                variant="default"
+                variant={eventType === "rehearsal" ? "default" : "secondary"}
                 className="flex-1 text-primary-foreground"
-                disabled
+                disabled={mode === 'edit'}
+                onClick={() => mode === 'add' && setEventType("rehearsal")}
               >
                 Rehearsal
               </Button>
               <Button
                 type="button"
-                variant="secondary"
+                variant={eventType === "gig" ? "default" : "secondary"}
                 className="flex-1"
-                disabled
+                disabled={mode === 'edit'}
+                onClick={() => mode === 'add' && setEventType("gig")}
               >
                 Gig
               </Button>
@@ -444,6 +610,37 @@ export default function EditRehearsalDrawer({
           <ScrollArea ref={scrollAreaRef} className="flex-1 px-4">
             <div className="mx-auto w-full max-w-md space-y-6 pb-56 pt-6">
               <section className="space-y-4">
+                {/* Gig Name Field (only shown for gigs) */}
+                {eventType === 'gig' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="gig-name">Gig Name *</Label>
+                    <Input
+                      id="gig-name"
+                      value={gigName}
+                      onChange={(event) => setGigName(event.target.value)}
+                      placeholder="Enter gig name"
+                      className="rounded-xl border-border bg-card text-sm"
+                    />
+                    {submitAttempted && eventType === 'gig' && !gigName.trim() && (
+                      <p className="text-xs text-red-400">Gig name is required.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Potential Gig Toggle (only shown for gigs) */}
+                {eventType === 'gig' && (
+                  <div className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">Potential Gig</p>
+                      <p className="text-xs text-muted-foreground">Mark as tentative/unconfirmed</p>
+                    </div>
+                    <Switch
+                      checked={isPotentialGig}
+                      onCheckedChange={setIsPotentialGig}
+                    />
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="rehearsal-date">Date *</Label>
                   <Popover>
@@ -717,7 +914,10 @@ export default function EditRehearsalDrawer({
               disabled={!isValid}
               className="h-12 w-full rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
             >
-              Update Rehearsal
+              {mode === 'add' 
+                ? `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+                : `Update ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+              }
             </Button>
             <Button
               type="button"
@@ -727,13 +927,13 @@ export default function EditRehearsalDrawer({
             >
               Cancel
             </Button>
-            {rehearsal?.id && onDelete && (
+            {mode === 'edit' && (rehearsal?.id || gig?.id) && onDelete && (
               <button
                 type="button"
                 onClick={handleDelete}
                 className="w-full text-center text-sm text-rose-600 hover:text-rose-700 underline py-2"
               >
-                Delete Rehearsal
+                Delete {eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}
               </button>
             )}
           </div>

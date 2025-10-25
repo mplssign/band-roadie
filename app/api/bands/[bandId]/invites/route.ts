@@ -20,81 +20,101 @@ const payloadSchema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: { bandId: string } }) {
-  const supabase = createClient();
-  const admin = adminClient();
+  try {
+    const supabase = createClient();
+    const admin = adminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const { data: membership } = await admin
-    .from('band_members')
-    .select('role')
-    .eq('band_id', params.bandId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+    const { data: membership } = await admin
+      .from('band_members')
+      .select('role')
+      .eq('band_id', params.bandId)
+      .eq('user_id', user.id)
+      .maybeSingle();
 
-  if (!membership || membership.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin role required' }, { status: 403 });
-  }
+    if (!membership || membership.role !== 'admin') {
+      return NextResponse.json({ error: 'Admin role required' }, { status: 403 });
+    }
 
-  const body = await req.json().catch(() => null);
-  const parsed = payloadSchema.safeParse(body);
+    const body = await req.json().catch(() => null);
+    const parsed = payloadSchema.safeParse(body);
 
-  if (!parsed.success) {
-    const message = parsed.error.errors.map((err) => err.message).join(', ');
-    return NextResponse.json({ error: message }, { status: 400 });
-  }
+    if (!parsed.success) {
+      const message = parsed.error.errors.map((err) => err.message).join(', ');
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
 
-  const { emails } = parsed.data;
+    const { emails } = parsed.data;
 
-  const { data: bandRow, error: bandError } = await admin
-    .from('bands')
-    .select('name')
-    .eq('id', params.bandId)
-    .single();
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[API /api/bands/${params.bandId}/invites] POST request from user ${user.id} for ${emails.length} email(s)`);
+    }
 
-  if (bandError || !bandRow) {
-    return NextResponse.json({ error: 'Band not found' }, { status: 404 });
-  }
+    const { data: bandRow, error: bandError } = await admin
+      .from('bands')
+      .select('name')
+      .eq('id', params.bandId)
+      .single();
 
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('first_name, last_name, email')
-    .eq('id', user.id)
-    .single();
+    if (bandError || !bandRow) {
+      return NextResponse.json({ error: 'Band not found' }, { status: 404 });
+    }
 
-  const inviterName =
-    userProfile?.first_name && userProfile?.last_name
-      ? `${userProfile.first_name} ${userProfile.last_name}`
-      : userProfile?.email || user.email || 'A band member';
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('first_name, last_name, email')
+      .eq('id', user.id)
+      .single();
 
-  const { failedInvites, sentCount } = await sendBandInvites({
-    supabase,
-    bandId: params.bandId,
-    bandName: bandRow.name,
-    inviterId: user.id,
-    inviterName,
-    emails,
-  });
+    const inviterName =
+      userProfile?.first_name && userProfile?.last_name
+        ? `${userProfile.first_name} ${userProfile.last_name}`
+        : userProfile?.email || user.email || 'A band member';
 
-  if (failedInvites.length > 0) {
+    const { failedInvites, sentCount } = await sendBandInvites({
+      supabase,
+      bandId: params.bandId,
+      bandName: bandRow.name,
+      inviterId: user.id,
+      inviterName,
+      emails,
+    });
+
+    if (failedInvites.length > 0) {
+      console.error(`[API /api/bands/${params.bandId}/invites] ${failedInvites.length} invite(s) failed:`, failedInvites);
+      return NextResponse.json(
+        {
+          ok: false,
+          invitesSent: sentCount,
+          failedInvites,
+          error: 'Some invites could not be delivered',
+        },
+        { status: 207 },
+      );
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[API /api/bands/${params.bandId}/invites] Successfully sent ${sentCount} invite(s)`);
+    }
+
+    return NextResponse.json({ ok: true, invitesSent: sentCount });
+  } catch (error) {
+    console.error(`[API /api/bands/${params.bandId}/invites] Unhandled error:`, error);
     return NextResponse.json(
-      {
-        ok: false,
-        invitesSent: sentCount,
-        failedInvites,
-        error: 'Some invites could not be delivered',
-      },
-      { status: 207 },
+      { 
+        error: 'Failed to process invitations', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }, 
+      { status: 500 }
     );
   }
-
-  return NextResponse.json({ ok: true, invitesSent: sentCount });
 }
 
 const deleteSchema = z.object({

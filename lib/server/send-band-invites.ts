@@ -5,6 +5,16 @@ import { sendEmail } from '@/lib/email/client';
 import { getInviteEmailHtml } from '@/lib/email/templates/invite';
 import { getBandMemberAddedEmailHtml } from '@/lib/email/templates/member-added';
 
+/**
+ * Band Invitation Flow:
+ * 1. Check if user exists by email (line ~39)
+ * 2. If exists and not a member: add to band_members, send "added" email (lines ~79-95)
+ * 3. If doesn't exist: create/update band_invitations row (lines ~148-187)
+ * 4. Generate magic link with Supabase admin API (lines ~211-232) or fallback to /invite/:id
+ * 5. Send invite email via Resend (lines ~235-240)
+ * 6. Mark invitation as 'sent' or 'error' in DB (lines ~242-264)
+ */
+
 type SendBandInvitesParams = {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
   supabase: SupabaseClient<any>;
@@ -33,6 +43,11 @@ export async function sendBandInvites({
   for (const rawEmail of uniqueEmails) {
     const normalizedEmail = rawEmail.trim().toLowerCase();
     if (!normalizedEmail) continue;
+
+    // Log: Starting invite process
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[invite.create] Starting invite for ${normalizedEmail} to band ${bandId}`);
+    }
 
     // Check if this user already exists
     const { data: existingUserRows, error: existingUserError } = await supabase
@@ -104,11 +119,14 @@ export async function sendBandInvites({
               ? result.error
               : 'Failed to send band notification';
 
-        console.error(`Failed to send added-member email to ${normalizedEmail}:`, result.error);
+        console.error(`[invite.send] ERROR sending added-member email to ${normalizedEmail}:`, result.error);
         failedInvites.push({ email: normalizedEmail, error: reason });
         continue;
       }
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[invite.send] SUCCESS sent added-member email to ${normalizedEmail}`);
+      }
       sentCount += 1;
       continue;
     }
@@ -184,9 +202,15 @@ export async function sendBandInvites({
 
     if (!invitation || !invitation.id) {
       const reason = 'Invalid invitation record';
-      console.error(`Invalid invitation for ${normalizedEmail}`);
+      console.error(`[invite.create] ERROR invalid invitation for ${normalizedEmail}`);
       failedInvites.push({ email: normalizedEmail, error: reason });
       continue;
+    }
+
+    // Log: Invitation created with ID
+    const tokenPreview = invitation.id.substring(0, 8); // First 8 chars of UUID
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[invite.create] Created invitation ${tokenPreview}... for ${normalizedEmail}`);
     }
 
     // Build a CTA URL. For users that don't exist yet we prefer to generate
@@ -222,11 +246,19 @@ export async function sendBandInvites({
 
         if (!genError && genData && genData.properties && genData.properties.action_link) {
           ctaUrl = genData.properties.action_link as string;
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`[invite.magiclink] Generated magic link for ${normalizedEmail}, redirect to invitation=${invitation.id}`);
+          }
         }
       }
     } catch (err) {
       // Non-fatal — we'll use the standard invite URL
-      console.error('Failed to generate magic link for invite:', err);
+      console.error('[invite.magiclink] ERROR generating magic link:', err);
+    }
+
+    // Log: Final CTA URL
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[invite.send] Sending email to ${normalizedEmail} with CTA: ${ctaUrl}`);
     }
 
     const emailHtml = getInviteEmailHtml(bandName, inviterName, ctaUrl);
@@ -243,9 +275,12 @@ export async function sendBandInvites({
         .eq('id', invitation.id);
 
       if (statusError) {
-        console.error('Failed to mark invitation as sent:', statusError);
+        console.error('[invite.update] ERROR marking invitation as sent:', statusError);
       }
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[invite.send] SUCCESS sent invite email to ${normalizedEmail}, marked as 'sent'`);
+      }
       sentCount += 1;
     } else {
       const reason =
@@ -255,14 +290,14 @@ export async function sendBandInvites({
             ? result.error
             : 'Unknown error sending invite';
 
-      console.error(`Failed to send invite email to ${normalizedEmail}:`, result.error);
+      console.error(`[invite.send] ERROR sending invite email to ${normalizedEmail}:`, result.error);
 
       const { error: statusError } = await supabase
         .from('band_invitations')
         .update({ status: 'error' })
         .eq('id', invitation.id);
       if (statusError) {
-        console.error('Failed to mark invitation as errored:', statusError);
+        console.error('[invite.update] ERROR marking invitation as errored:', statusError);
       }
 
       failedInvites.push({ email: normalizedEmail, error: reason });
