@@ -1,11 +1,11 @@
 export function formatPhoneNumber(value: string): string {
   const phone = value.replace(/\D/g, '');
   const match = phone.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
-  
+
   if (!match) return value;
-  
+
   const [, area, prefix, line] = match;
-  
+
   if (line) {
     return `(${area}) ${prefix}-${line}`;
   } else if (prefix) {
@@ -13,7 +13,7 @@ export function formatPhoneNumber(value: string): string {
   } else if (area) {
     return `(${area}`;
   }
-  
+
   return '';
 }
 
@@ -27,7 +27,7 @@ export function getInitials(name: string): string {
     return words[0].substring(0, 2).toUpperCase();
   }
   return words
-    .map(word => word[0])
+    .map((word) => word[0])
     .join('')
     .toUpperCase()
     .substring(0, 3);
@@ -55,12 +55,12 @@ export function formatTime(date: string | Date): string {
       hour12: true,
     }).format(d);
   }
-  
+
   const d = new Date(date);
   if (isNaN(d.getTime())) {
     return 'Time TBD';
   }
-  
+
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
     minute: '2-digit',

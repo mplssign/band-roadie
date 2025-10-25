@@ -23,7 +23,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -44,7 +44,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -64,7 +64,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -85,7 +85,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(2);
     // Sorted by start_date descending (most recent first)
     expect(result[0]).toEqual({
@@ -115,7 +115,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -136,7 +136,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -157,13 +157,13 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(2);
-    
+
     // Both have same start date, so order might vary - check both exist
-    const user1Range = result.find(r => r.user_id === user1);
-    const user2Range = result.find(r => r.user_id === user2);
-    
+    const user1Range = result.find((r) => r.user_id === user1);
+    const user2Range = result.find((r) => r.user_id === user2);
+
     expect(user1Range).toEqual({
       user_id: user1,
       start_date: '2025-10-26',
@@ -172,7 +172,7 @@ describe('groupBlockoutsIntoRanges', () => {
       sourceIds: ['1', '2'],
       band_id: bandId,
     });
-    
+
     expect(user2Range).toEqual({
       user_id: user2,
       start_date: '2025-10-26',
@@ -191,7 +191,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0]).toEqual({
       user_id: user1,
@@ -205,24 +205,24 @@ describe('groupBlockoutsIntoRanges', () => {
 
   it('should preserve notes and reason from first row in range', () => {
     const rows: BlockoutRow[] = [
-      { 
-        id: '1', 
-        user_id: user1, 
-        date: '2025-10-26', 
+      {
+        id: '1',
+        user_id: user1,
+        date: '2025-10-26',
         notes: 'Vacation',
         reason: 'Personal',
-        band_id: bandId 
+        band_id: bandId,
       },
-      { 
-        id: '2', 
-        user_id: user1, 
+      {
+        id: '2',
+        user_id: user1,
         date: '2025-10-27',
-        band_id: bandId 
+        band_id: bandId,
       },
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0].notes).toBe('Vacation');
     expect(result[0].reason).toBe('Personal');
@@ -235,7 +235,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(1);
     expect(result[0].sourceIds).toEqual([]);
   });
@@ -248,7 +248,7 @@ describe('groupBlockoutsIntoRanges', () => {
     ];
 
     const result = groupBlockoutsIntoRanges(rows);
-    
+
     expect(result).toHaveLength(3);
     expect(result[0].start_date).toBe('2025-10-20');
     expect(result[1].start_date).toBe('2025-10-15');

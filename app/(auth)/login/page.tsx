@@ -150,8 +150,8 @@ function LoginForm() {
                   aria-label={`Use ${domain} domain`}
                   aria-pressed={isSelected}
                   className={`rounded-full px-3 py-1 text-sm transition-colors flex-shrink-0 ${isSelected
-                      ? 'border-2 border-rose-600 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30'
-                      : 'border border-zinc-700 bg-zinc-800/40 text-zinc-400'
+                    ? 'border-2 border-rose-600 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30'
+                    : 'border border-zinc-700 bg-zinc-800/40 text-zinc-400'
                     } ${isEnabled ? 'hover:bg-zinc-700/60 hover:text-zinc-200' : 'opacity-50 cursor-not-allowed'
                     }`}
                 >

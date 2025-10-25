@@ -77,13 +77,13 @@ function daysBetween(start: string, end: string): number {
 
 /**
  * Group blockout rows into contiguous date ranges per user.
- * 
+ *
  * Algorithm:
  * 1. Group rows by user_id
  * 2. For each user, sort dates ascending
  * 3. Merge consecutive/overlapping dates into ranges
  * 4. Return array of BlockoutRange objects
- * 
+ *
  * @param rows - Array of blockout rows from database
  * @returns Array of merged blockout ranges
  */
@@ -127,7 +127,7 @@ export function groupBlockoutsIntoRanges(rows: BlockoutRow[]): BlockoutRange[] {
       } else {
         // Check if this date continues the current range
         const lastDate = currentRange.dates[currentRange.dates.length - 1];
-        
+
         // Check if consecutive or overlapping
         if (isNextDay(lastDate, row.date) || row.date === lastDate) {
           // Extend current range

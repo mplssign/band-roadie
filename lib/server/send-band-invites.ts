@@ -65,7 +65,7 @@ export async function sendBandInvites({
 
     const existingUser = Array.isArray(existingUserRows) ? existingUserRows[0] : null;
 
-  if (existingUser?.id) {
+    if (existingUser?.id) {
       const { data: membershipRows, error: membershipError } = await supabase
         .from('band_members')
         .select('id')
@@ -119,7 +119,10 @@ export async function sendBandInvites({
               ? result.error
               : 'Failed to send band notification';
 
-        console.error(`[invite.send] ERROR sending added-member email to ${normalizedEmail}:`, result.error);
+        console.error(
+          `[invite.send] ERROR sending added-member email to ${normalizedEmail}:`,
+          result.error,
+        );
         failedInvites.push({ email: normalizedEmail, error: reason });
         continue;
       }
@@ -149,7 +152,7 @@ export async function sendBandInvites({
       continue;
     }
 
-  let invitation = Array.isArray(invitationRows) ? invitationRows[0] : null;
+    let invitation = Array.isArray(invitationRows) ? invitationRows[0] : null;
 
     if (invitation?.status === 'accepted') {
       // Invitation already accepted; member should already be in the band
@@ -224,9 +227,13 @@ export async function sendBandInvites({
       // admin client. This requires SUPABASE_SERVICE_ROLE_KEY to be set in
       // the environment where this runs.
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const admin = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { persistSession: false },
-        });
+        const admin = createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_ROLE_KEY,
+          {
+            auth: { persistSession: false },
+          },
+        );
 
         // generate_link endpoint supports redirect_to which will be encoded
         // into the generated action_link. We pass a redirect that includes
@@ -247,7 +254,9 @@ export async function sendBandInvites({
         if (!genError && genData && genData.properties && genData.properties.action_link) {
           ctaUrl = genData.properties.action_link as string;
           if (process.env.NODE_ENV !== 'production') {
-            console.log(`[invite.magiclink] Generated magic link for ${normalizedEmail}, redirect to invitation=${invitation.id}`);
+            console.log(
+              `[invite.magiclink] Generated magic link for ${normalizedEmail}, redirect to invitation=${invitation.id}`,
+            );
           }
         }
       }
@@ -279,7 +288,9 @@ export async function sendBandInvites({
       }
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`[invite.send] SUCCESS sent invite email to ${normalizedEmail}, marked as 'sent'`);
+        console.log(
+          `[invite.send] SUCCESS sent invite email to ${normalizedEmail}, marked as 'sent'`,
+        );
       }
       sentCount += 1;
     } else {
@@ -290,7 +301,10 @@ export async function sendBandInvites({
             ? result.error
             : 'Unknown error sending invite';
 
-      console.error(`[invite.send] ERROR sending invite email to ${normalizedEmail}:`, result.error);
+      console.error(
+        `[invite.send] ERROR sending invite email to ${normalizedEmail}:`,
+        result.error,
+      );
 
       const { error: statusError } = await supabase
         .from('band_invitations')

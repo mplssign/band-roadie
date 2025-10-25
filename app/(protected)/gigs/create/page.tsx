@@ -30,12 +30,12 @@ function formatDateDisplay(dateString: string): string {
   const date = new Date(dateString + 'T00:00:00');
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-  
+
   const dayName = days[date.getDay()];
   const monthName = months[date.getMonth()];
   const day = date.getDate();
   const year = date.getFullYear();
-  
+
   return `${dayName}, ${monthName} ${day}, ${year}`;
 }
 
@@ -134,20 +134,20 @@ export default function CreateGigPage() {
   };
 
   const calculateEndTime = () => {
-    const hour24 = startAmPm === 'PM' && startHour !== '12' ? parseInt(startHour) + 12 : 
-                   startAmPm === 'AM' && startHour === '12' ? 0 : parseInt(startHour);
-    
+    const hour24 = startAmPm === 'PM' && startHour !== '12' ? parseInt(startHour) + 12 :
+      startAmPm === 'AM' && startHour === '12' ? 0 : parseInt(startHour);
+
     const startMinutes = hour24 * 60 + parseInt(startMinute);
     const endMinutes = startMinutes + parseInt(duration);
     const endHour = Math.floor(endMinutes / 60) % 24;
     const endMin = endMinutes % 60;
-    
+
     return `${endHour.toString().padStart(2, '0')}:${endMin.toString().padStart(2, '0')}`;
   };
 
   const getStartTimeString = () => {
-    const hour24 = startAmPm === 'PM' && startHour !== '12' ? parseInt(startHour) + 12 : 
-                   startAmPm === 'AM' && startHour === '12' ? 0 : parseInt(startHour);
+    const hour24 = startAmPm === 'PM' && startHour !== '12' ? parseInt(startHour) + 12 :
+      startAmPm === 'AM' && startHour === '12' ? 0 : parseInt(startHour);
     return `${hour24.toString().padStart(2, '0')}:${startMinute}`;
   };
 
@@ -388,7 +388,8 @@ export default function CreateGigPage() {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }

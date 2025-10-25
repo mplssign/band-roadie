@@ -59,10 +59,10 @@ const SheetContent = React.forwardRef<
         side === "bottom"
           ? "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom rounded-t-2xl"
           : side === "top"
-          ? "data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top rounded-b-2xl"
-          : side === "left"
-          ? "data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
-          : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
+            ? "data-[state=open]:slide-in-from-top data-[state=closed]:slide-out-to-top rounded-b-2xl"
+            : side === "left"
+              ? "data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+              : "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
         className
       )}
       {...props}

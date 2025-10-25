@@ -99,12 +99,12 @@ function formatDateDisplay(dateString: string): string {
   const date = new Date(dateString + 'T00:00:00');
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  
+
   const dayName = days[date.getDay()];
   const monthName = months[date.getMonth()];
   const day = date.getDate();
   const year = date.getFullYear();
-  
+
   return `${dayName}, ${monthName} ${day}, ${year}`;
 }
 
@@ -154,12 +154,12 @@ export default function AddEventDrawer({
   // Initialize from event payload when in edit mode
   useEffect(() => {
     if (!isOpen) return; // Only initialize when drawer is open
-    
+
     if (mode === 'edit' && event) {
       setEventId(event.id);
       setEventType(event.type);
       setTitle(event.title || '');
-      
+
       // Convert Date to YYYY-MM-DD string
       const dateObj = event.date instanceof Date ? event.date : new Date(event.date);
       if (!isNaN(dateObj.getTime())) {
@@ -168,7 +168,7 @@ export default function AddEventDrawer({
         const day = String(dateObj.getDate()).padStart(2, '0');
         setDate(`${year}-${month}-${day}`);
       }
-      
+
       setStartHour(String(event.startHour));
       setStartMinute(String(event.startMinute).padStart(2, '0'));
       setStartAmPm(event.startAmPm);
@@ -176,7 +176,7 @@ export default function AddEventDrawer({
       setLocation(event.location || '');
       setSelectedSetlist(event.setlistId || '');
       setIsPotentialGig(event.isPotential || false);
-      
+
       if (event.recurring?.enabled) {
         setIsRecurring(true);
         // Parse recurring rule if needed
@@ -550,7 +550,7 @@ export default function AddEventDrawer({
                 className="w-full"
               />
             </div>
-            
+
             {/* Setlist Selection - Available for both rehearsals and gigs */}
             {setlists.length > 0 && (
               <div className="space-y-2 w-full min-w-0">
@@ -684,7 +684,7 @@ export default function AddEventDrawer({
               disabled={!isValid}
               className="flex-1"
             >
-              {mode === 'edit' 
+              {mode === 'edit'
                 ? `Update ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
                 : `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
               }

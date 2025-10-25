@@ -9,11 +9,13 @@ This document maps the complete invite flow, required configuration, and debuggi
 ## Invite Flow (File + Line References)
 
 ### 1. **Client Trigger**
+
 - **File**: `app/(protected)/bands/[bandId]/edit/page.tsx`
 - **Lines**: 312-335
 - **Action**: User adds email(s) and clicks "Save" → `fetch('/api/bands/${bandId}/invites', { method: 'POST', body: JSON.stringify({ emails }) })`
 
 ### 2. **API Route Handler**
+
 - **File**: `app/api/bands/[bandId]/invites/route.ts`
 - **Lines**: 22-98
 - **Actions**:
@@ -24,6 +26,7 @@ This document maps the complete invite flow, required configuration, and debuggi
   - Returns success or partial failure (207 Multi-Status) with `failedInvites` array
 
 ### 3. **Invite Processing Core**
+
 - **File**: `lib/server/send-band-invites.ts`
 - **Lines**: 1-274
 - **Flow**:
@@ -40,6 +43,7 @@ This document maps the complete invite flow, required configuration, and debuggi
      - Mark invitation as `'sent'` or `'error'` in DB (lines 242-264)
 
 ### 4. **Email Sending**
+
 - **File**: `lib/email/client.ts`
 - **Lines**: 1-47
 - **Actions**:
@@ -49,6 +53,7 @@ This document maps the complete invite flow, required configuration, and debuggi
   - Returns `{ success: true, data }` or `{ success: false, error }`
 
 ### 5. **Email Template**
+
 - **File**: `lib/email/templates/invite.tsx`
 - **Lines**: 3-147
 - **Content**:
@@ -57,6 +62,7 @@ This document maps the complete invite flow, required configuration, and debuggi
   - Styled HTML with band name, inviter name, feature list
 
 ### 6. **Accept Flow**
+
 - **File**: `app/api/invitations/[invitationId]/accept/route.ts`
 - **Action**: When user clicks link, validates invitation and adds to band
 
@@ -65,6 +71,7 @@ This document maps the complete invite flow, required configuration, and debuggi
 ## Required Environment Variables
 
 ### Production & Preview Deployments (Vercel)
+
 ```bash
 RESEND_API_KEY=re_...          # Resend API key (required)
 RESEND_FROM_EMAIL=noreply@bandroadie.com  # From address (must be verified in Resend)
@@ -75,6 +82,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ```
 
 ### Development (Local)
+
 ```bash
 RESEND_API_KEY=re_...          # Same as production OR use Resend test mode
 RESEND_FROM_EMAIL=noreply@bandroadie.com
@@ -88,13 +96,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ## Redirect URLs Configuration
 
 ### Supabase Auth (Dashboard → Authentication → URL Configuration)
+
 Add these redirect URLs:
+
 - Production: `https://bandroadie.com/auth/callback`
 - Production (www): `https://www.bandroadie.com/auth/callback`
 - Preview: `https://*.vercel.app/auth/callback`
 - Dev: `http://localhost:3000/auth/callback`
 
 ### Magic Link Flow
+
 1. User clicks magic link from email → Supabase auth endpoint
 2. Redirects to: `${baseUrl}/auth/callback?invitation={invitationId}`
 3. Callback route (`app/auth/callback/route.ts`) exchanges code for session
@@ -106,6 +117,7 @@ Add these redirect URLs:
 ## Debugging Steps
 
 ### Step 1: Check Logs Location
+
 - **Vercel Production**: [Vercel Dashboard](https://vercel.com) → Project → Logs → Functions
 - **Vercel Preview**: Same as above, filter by deployment URL
 - **Local Dev**: Terminal running `npm run dev` or `pnpm dev`
@@ -113,6 +125,7 @@ Add these redirect URLs:
 ### Step 2: Log Patterns to Look For
 
 #### Success Flow (Non-Production Only)
+
 ```
 [invite.create] Starting invite for user@example.com to band abc-123
 [invite.create] Created invitation 1a2b3c4d... for user@example.com
@@ -124,6 +137,7 @@ Add these redirect URLs:
 ```
 
 #### Error Patterns (Always Logged)
+
 ```
 [invite.create] ERROR invalid invitation for user@example.com
 [invite.magiclink] ERROR generating magic link: { message: "..." }
@@ -133,6 +147,7 @@ Add these redirect URLs:
 ```
 
 ### Step 3: Verify Resend Dashboard
+
 1. Go to [Resend Dashboard](https://resend.com/emails)
 2. Check "Emails" tab for recent sends
 3. Look for status:
@@ -142,12 +157,13 @@ Add these redirect URLs:
    - **Failed**: Resend API error
 
 ### Step 4: Check Database
+
 ```sql
 -- Check invitation status
-SELECT id, email, status, created_at, invited_by 
-FROM band_invitations 
-WHERE band_id = 'your-band-id' 
-ORDER BY created_at DESC 
+SELECT id, email, status, created_at, invited_by
+FROM band_invitations
+WHERE band_id = 'your-band-id'
+ORDER BY created_at DESC
 LIMIT 10;
 
 -- Possible statuses: 'pending', 'sent', 'accepted', 'error'
@@ -155,14 +171,14 @@ LIMIT 10;
 
 ### Step 5: Common Issues & Fixes
 
-| Issue | Symptom | Fix |
-|-------|---------|-----|
-| **Missing API Key** | `[email.send] Config check - API key: MISSING` | Add `RESEND_API_KEY` to env vars |
-| **Unverified Domain** | Resend error: "Domain not verified" | Verify domain in Resend dashboard |
-| **Wrong From Address** | Resend error: "From address not allowed" | Use verified address in `RESEND_FROM_EMAIL` |
-| **Magic Link Fails** | Invitation creates but email not sent | Check `SUPABASE_SERVICE_ROLE_KEY` is set |
-| **Redirect Fails** | User clicks link but can't authenticate | Add callback URL to Supabase dashboard |
-| **Silent Failure** | No logs, no email | Check Vercel function logs for timeouts/errors |
+| Issue                  | Symptom                                        | Fix                                            |
+| ---------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| **Missing API Key**    | `[email.send] Config check - API key: MISSING` | Add `RESEND_API_KEY` to env vars               |
+| **Unverified Domain**  | Resend error: "Domain not verified"            | Verify domain in Resend dashboard              |
+| **Wrong From Address** | Resend error: "From address not allowed"       | Use verified address in `RESEND_FROM_EMAIL`    |
+| **Magic Link Fails**   | Invitation creates but email not sent          | Check `SUPABASE_SERVICE_ROLE_KEY` is set       |
+| **Redirect Fails**     | User clicks link but can't authenticate        | Add callback URL to Supabase dashboard         |
+| **Silent Failure**     | No logs, no email                              | Check Vercel function logs for timeouts/errors |
 
 ---
 
@@ -171,8 +187,9 @@ LIMIT 10;
 If an invite fails to send:
 
 1. **Check DB for invitation ID**:
+
    ```sql
-   SELECT id, email, status FROM band_invitations 
+   SELECT id, email, status FROM band_invitations
    WHERE email = 'user@example.com' AND band_id = 'band-id';
    ```
 
@@ -182,8 +199,8 @@ If an invite fails to send:
 
 3. **Reset invitation status** (to retry send):
    ```sql
-   UPDATE band_invitations 
-   SET status = 'pending' 
+   UPDATE band_invitations
+   SET status = 'pending'
    WHERE id = 'invitation-id';
    ```
    Then re-trigger invite from UI.
@@ -193,6 +210,7 @@ If an invite fails to send:
 ## Example Resend Response (Sanitized)
 
 ### Success
+
 ```json
 {
   "id": "4f8a9b2c-e1d3-4a5b-9c7e-2f3a1b4c5d6e",
@@ -203,6 +221,7 @@ If an invite fails to send:
 ```
 
 ### Error
+
 ```json
 {
   "statusCode": 422,
@@ -239,6 +258,7 @@ To expose invitation links in the UI for manual sharing:
 ## Support
 
 If issues persist after following this guide:
+
 - Check Vercel function logs for timeout errors (30s limit)
 - Verify Resend account is in good standing (not rate-limited)
 - Test with a simple email (e.g., your own) to isolate deliverability issues

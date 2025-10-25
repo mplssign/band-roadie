@@ -6,7 +6,7 @@ export function getInviteEmailHtml(
   ctaUrl: string
 ): string {
   const joinUrl = ctaUrl;
-  
+
   return `
     <!DOCTYPE html>
     <html>

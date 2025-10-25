@@ -54,7 +54,9 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     const { emails } = parsed.data;
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[API /api/bands/${params.bandId}/invites] POST request from user ${user.id} for ${emails.length} email(s)`);
+      console.log(
+        `[API /api/bands/${params.bandId}/invites] POST request from user ${user.id} for ${emails.length} email(s)`,
+      );
     }
 
     const { data: bandRow, error: bandError } = await admin
@@ -88,7 +90,10 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     });
 
     if (failedInvites.length > 0) {
-      console.error(`[API /api/bands/${params.bandId}/invites] ${failedInvites.length} invite(s) failed:`, failedInvites);
+      console.error(
+        `[API /api/bands/${params.bandId}/invites] ${failedInvites.length} invite(s) failed:`,
+        failedInvites,
+      );
       return NextResponse.json(
         {
           ok: false,
@@ -101,18 +106,20 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     }
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[API /api/bands/${params.bandId}/invites] Successfully sent ${sentCount} invite(s)`);
+      console.log(
+        `[API /api/bands/${params.bandId}/invites] Successfully sent ${sentCount} invite(s)`,
+      );
     }
 
     return NextResponse.json({ ok: true, invitesSent: sentCount });
   } catch (error) {
     console.error(`[API /api/bands/${params.bandId}/invites] Unhandled error:`, error);
     return NextResponse.json(
-      { 
-        error: 'Failed to process invitations', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      }, 
-      { status: 500 }
+      {
+        error: 'Failed to process invitations',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
     );
   }
 }

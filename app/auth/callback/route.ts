@@ -91,8 +91,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user to determine redirect
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       throw new Error('No user after auth');
     }
@@ -132,7 +134,7 @@ export async function GET(req: NextRequest) {
 
     // Update redirect if needed
     if (finalRedirect !== redirectUrl) {
-      return NextResponse.redirect(finalRedirect, { 
+      return NextResponse.redirect(finalRedirect, {
         status: 303,
         headers: res.headers, // Preserve Set-Cookie headers
       });
@@ -141,7 +143,6 @@ export async function GET(req: NextRequest) {
     // Prevent caching
     res.headers.set('Cache-Control', 'no-store');
     return res;
-
   } catch (error: any) {
     console.error('[auth/callback] error:', error);
     return NextResponse.redirect(

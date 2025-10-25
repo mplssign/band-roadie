@@ -1,19 +1,21 @@
 # Blockout Range Grouping Implementation Summary
 
 ## Overview
+
 Implemented automatic grouping of consecutive blockout days into single range cards on the Calendar screen. Previously, each blockout day showed as a separate card. Now, consecutive days for the same member are collapsed into one card showing a start date tile and an "Until" end date tile.
 
 ## Changes Made
 
 ### 1. **New Utility: `lib/utils/blockouts.ts`**
+
 - **Pure function**: `groupBlockoutsIntoRanges(rows: BlockoutRow[]): BlockoutRange[]`
 - **Algorithm**:
   1. Groups blockout rows by `user_id`
   2. Sorts each user's blockouts by date ascending
   3. Merges consecutive/overlapping dates into ranges
   4. Returns sorted array (most recent first)
-  
 - **Types Added**:
+
   ```typescript
   interface BlockoutRow {
     id?: string;
@@ -27,7 +29,7 @@ Implemented automatic grouping of consecutive blockout days into single range ca
   interface BlockoutRange {
     user_id: string;
     start_date: string; // YYYY-MM-DD
-    end_date: string;   // YYYY-MM-DD (>= start_date)
+    end_date: string; // YYYY-MM-DD (>= start_date)
     dayCount: number;
     sourceIds: string[]; // IDs from original rows
     notes?: string;
@@ -44,6 +46,7 @@ Implemented automatic grouping of consecutive blockout days into single range ca
   - `daysBetween(start, end)`: Calculate inclusive day count
 
 ### 2. **Updated: `app/(protected)/calendar/page.tsx`**
+
 - **Line 10**: Added imports for `groupBlockoutsIntoRanges` and `BlockoutRow`
 - **Lines 230-269**: Replaced per-day blockout processing with:
   1. Map block_dates rows to `BlockoutRow[]` format
@@ -54,18 +57,20 @@ Implemented automatic grouping of consecutive blockout days into single range ca
 - **After**: Consecutive days for same user become ONE calendar event with start/end range
 
 ### 3. **Existing UI Already Supports Ranges: `app/(protected)/calendar/CalendarContent.tsx`**
+
 - **Lines 548-550**: Checks `isMultiDayBlockout` when `evt.blockout.startDate !== evt.blockout.endDate`
 - **Lines 570-605**: Renders card with 3-column grid when multi-day:
   - Left tile: Start date (month + day)
   - Middle: Title, badge, subtitle
   - Right tile: "Until" label + end date (month + day)
-  
 - **Lines 156-190**: Existing deduplication logic prevents duplicate range entries
 
 - **No changes needed** - existing UI fully compatible with grouped ranges!
 
 ### 4. **Unit Tests: `__tests__/blockouts.test.ts`**
+
 Comprehensive test suite covering:
+
 - ✅ Empty input
 - ✅ Single-day blockout
 - ✅ Consecutive days (3-day span)
@@ -84,6 +89,7 @@ Comprehensive test suite covering:
 ## User-Facing Changes
 
 ### Before
+
 ```
 ┌─────────┬─────────────────────┐
 │  Oct    │ Tony Out            │
@@ -102,6 +108,7 @@ Comprehensive test suite covering:
 ```
 
 ### After
+
 ```
 ┌─────────┬─────────────────────┬─────────┐
 │  Oct    │ Tony Out            │  Until  │
@@ -120,11 +127,13 @@ Comprehensive test suite covering:
 6. **Overlapping dates**: Duplicate/overlapping entries merged into single range
 
 ## Click Behavior
+
 - Clicking a range card opens the existing edit drawer
 - Drawer receives the full range (start_date and end_date)
 - Existing delete logic handles removing entire range
 
 ## No Regressions
+
 - ✅ Gigs render unchanged
 - ✅ Rehearsals render unchanged
 - ✅ Single-day blockouts render unchanged (no "Until" tile)
@@ -133,24 +142,28 @@ Comprehensive test suite covering:
 - ✅ All existing tests pass
 
 ## Files Modified
+
 1. ✅ `lib/utils/blockouts.ts` (new)
 2. ✅ `__tests__/blockouts.test.ts` (new)
 3. ✅ `app/(protected)/calendar/page.tsx` (updated blockout processing)
 4. ✅ `app/(protected)/calendar/CalendarContent.tsx` (no changes - already compatible!)
 
 ## TypeScript Safety
+
 - ✅ All types explicit, no `any` used
 - ✅ Full type flow from database → grouping → UI
 - ✅ No compile errors
 - ✅ No lint warnings
 
 ## Performance
+
 - Grouping happens once on data load (not per render)
 - O(n log n) complexity for sorting
 - Reduces number of cards rendered for consecutive blockouts
 - No performance impact on other event types
 
 ## Next Steps (Optional Enhancements)
+
 - Add visual indicator on calendar grid showing multi-day blockout spans
 - Show day count badge on range cards (e.g., "3 days")
 - Add bulk delete for entire ranges from edit drawer

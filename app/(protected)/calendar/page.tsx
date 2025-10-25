@@ -99,7 +99,7 @@ export default function CalendarPage() {
       setEvents([]);
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBand?.id, user]);
 
   const loadEvents = async () => {
@@ -118,7 +118,7 @@ export default function CalendarPage() {
         .select('*')
         .eq('band_id', currentBand.id)
         .order('date', { ascending: true });
-      
+
       if (rehearsalsError) {
         console.error('Error loading rehearsals:', rehearsalsError);
       }
@@ -130,7 +130,7 @@ export default function CalendarPage() {
             console.warn('Invalid rehearsal date format:', rehearsal);
             return;
           }
-          
+
           calendarEvents.push({
             id: rehearsal.id,
             date: rehearsal.date,
@@ -150,7 +150,7 @@ export default function CalendarPage() {
         .select('*')
         .eq('band_id', currentBand.id)
         .order('date', { ascending: true });
-      
+
       if (gigsError) {
         console.error('Error loading gigs:', gigsError);
       }
@@ -162,7 +162,7 @@ export default function CalendarPage() {
             console.warn('Invalid gig date format:', gig);
             return;
           }
-          
+
           calendarEvents.push({
             id: gig.id,
             date: gig.date,
@@ -183,8 +183,8 @@ export default function CalendarPage() {
         .from('block_dates')
         .select('id, date, reason, user_id')
         .eq('band_id', currentBand.id)
-        .order('date', { ascending: true});
-      
+        .order('date', { ascending: true });
+
       if (blockError) {
         // Handle block dates error silently or show user feedback if needed
         return;
@@ -204,10 +204,10 @@ export default function CalendarPage() {
 
       // Process block dates - get actual user names
       const blockRecords = fallbackBlockDates;
-      
+
       // Get all unique user IDs to fetch user info efficiently
       const userIds = Array.from(new Set(blockRecords.map(bd => bd.user_id).filter(Boolean)));
-      
+
       // Fetch user info for all users at once
       const usersMap = new Map();
       if (userIds.length > 0) {
@@ -216,7 +216,7 @@ export default function CalendarPage() {
             .from('users')
             .select('id, first_name, last_name, email')
             .in('id', userIds);
-          
+
           if (users) {
             users.forEach(user => {
               usersMap.set(user.id, user);
@@ -244,7 +244,7 @@ export default function CalendarPage() {
       groupedBlockoutRanges.forEach((range) => {
         // Get user info from our map
         const userInfo = range.user_id ? usersMap.get(range.user_id) : null;
-        
+
         const emailIdentifier = typeof userInfo?.email === 'string' ? userInfo.email.split('@')[0] : 'Member';
         const firstName = (userInfo?.first_name || emailIdentifier || 'Band').trim();
         const lastName = userInfo?.last_name?.trim() || '';
@@ -328,17 +328,17 @@ export default function CalendarPage() {
   };
 
   const addBlockout = async (blockout: { startDate: string; endDate: string; reason: string }) => {
-  // adding blockout
-    
+    // adding blockout
+
     if (!currentBand?.id || !user?.id) {
       console.error('Missing band or user information');
       return;
     }
 
     try {
-  const start = new Date(blockout.startDate);
-  const end = new Date(blockout.endDate);
-  const blockDates: BlockDateRow[] = [];
+      const start = new Date(blockout.startDate);
+      const end = new Date(blockout.endDate);
+      const blockDates: BlockDateRow[] = [];
 
       // Create array of dates to block out
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -352,13 +352,13 @@ export default function CalendarPage() {
 
       const { error } = await supabase
         .from('block_dates')
-        .upsert(blockDates, { 
+        .upsert(blockDates, {
           onConflict: 'user_id,band_id,date',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
 
       if (error) throw error;
-      
+
       // Reload events from database
       loadEvents();
     } catch (error) {

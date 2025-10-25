@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
   const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Unified drawer state for add/edit
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<'add' | 'edit'>('add');
@@ -88,7 +88,7 @@ export default function DashboardPage() {
     const [hourStr, minuteStr] = timeStr.split(':');
     const hour24 = parseInt(hourStr, 10);
     const minute = parseInt(minuteStr, 10);
-    
+
     if (hour24 === 0) return { hour: 12, minute, ampm: 'AM' };
     if (hour24 < 12) return { hour: hour24, minute, ampm: 'AM' };
     if (hour24 === 12) return { hour: 12, minute, ampm: 'PM' };
@@ -111,7 +111,7 @@ export default function DashboardPage() {
     const dateObj = new Date(dateStr + 'T00:00:00');
     const { hour, minute, ampm } = parseTime(rehearsal.start_time || '19:00');
     const duration = calculateDuration(rehearsal.start_time || '19:00', rehearsal.end_time || '21:00');
-    
+
     return {
       id: rehearsal.id,
       type: 'rehearsal',
@@ -130,7 +130,7 @@ export default function DashboardPage() {
     const dateObj = new Date(gig.date + 'T00:00:00');
     const { hour, minute, ampm } = parseTime(gig.start_time || '19:00');
     const duration = calculateDuration(gig.start_time || '19:00', gig.end_time || '21:00');
-    
+
     return {
       id: gig.id,
       type: 'gig',
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                 .single();
               setlist_name = setlist?.name;
             }
-            
+
             return {
               id: g.id,
               name: g.name,
@@ -227,7 +227,7 @@ export default function DashboardPage() {
             };
           })
         );
-        
+
         setUpcomingGigs(gigsWithSetlists);
       } else {
         setUpcomingGigs([]);
@@ -344,7 +344,7 @@ export default function DashboardPage() {
 
         {/* Next Rehearsal */}
         {nextRehearsal ? (
-          <section 
+          <section
             role="button"
             tabIndex={0}
             aria-label={`Edit rehearsal: ${nextRehearsal.date} ${nextRehearsal.time}`}
@@ -365,19 +365,19 @@ export default function DashboardPage() {
                   <CalendarDays className="w-5 h-5 text-white/80 flex-shrink-0" />
                   <span className="text-white font-medium">{nextRehearsal.date}</span>
                 </div>
-                
+
                 {/* Time */}
                 <div className="flex items-center gap-2.5">
                   <Clock className="w-5 h-5 text-white/80 flex-shrink-0" />
                   <span className="text-white font-medium">{nextRehearsal.time}</span>
                 </div>
-                
+
                 {/* Location */}
                 {nextRehearsal.location && (
                   <div className="flex items-center gap-2.5">
                     <MapPin className="w-5 h-5 text-white/80 flex-shrink-0" />
-                    <span 
-                      className="text-white font-medium truncate" 
+                    <span
+                      className="text-white font-medium truncate"
                       title={nextRehearsal.location}
                     >
                       {nextRehearsal.location}
@@ -414,7 +414,7 @@ export default function DashboardPage() {
                 // Vary animation speeds across gig cards (11s, 9s, 7s, 6s pattern)
                 const speeds = ['animate-gradient-11s', 'animate-gradient-9s', 'animate-gradient-7s', 'animate-gradient-6s'];
                 const speedClass = speeds[index % speeds.length];
-                
+
                 return (
                   <div key={gig.id} className="flex-shrink-0 snap-start" style={{ maxWidth: '320px' }}>
                     <GradientBorderButton
@@ -433,7 +433,7 @@ export default function DashboardPage() {
                             {gig.location}
                           </div>
                         </div>
-                        
+
                         {/* Date & Time with Spotlight Icon */}
                         <div className="flex items-end">
                           <div className="space-y-1 m-0 flex-1">
@@ -446,19 +446,19 @@ export default function DashboardPage() {
                               </div>
                             )}
                           </div>
-                          
+
                           {/* Spotlight Icon - 24px to the right of time, flipped */}
-                          <img 
-                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNwb3RsaWdodC1pY29uIGx1Y2lkZS1zcG90bGlnaHQiPjxwYXRoIGQ9Ik0xNS4yOTUgMTkuNTYyIDE2IDIyIi8+PHBhdGggZD0ibTE3IDE2IDMuNzU4IDIuMDk4Ii8+PHBhdGggZD0ibTE5IDEyLjUgMy4wMjYtLjU5OCIvPjxwYXRoIGQ9Ik03LjYxIDYuM2EzIDMgMCAwIDAtMy45MiAxLjNsLTEuMzggMi43OWEzIDMgMCAwIDAgMS4zIDMuOTFsNi44OSAzLjU5N2ExIDEgMCAwIDAgMS4zNDItLjQ0N2wzLjEwNi02LjIxMWExIDEgMCAwIDAtLjQ0Ny0xLjM0MXoiLz48cGF0aCBkPSJNOCA5VjIiLz48L3N2Zz4=" 
+                          <img
+                            src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNwb3RsaWdodC1pY29uIGx1Y2lkZS1zcG90bGlnaHQiPjxwYXRoIGQ9Ik0xNS4yOTUgMTkuNTYyIDE2IDIyIi8+PHBhdGggZD0ibTE3IDE2IDMuNzU4IDIuMDk4Ii8+PHBhdGggZD0ibTE5IDEyLjUgMy4wMjYtLjU5OCIvPjxwYXRoIGQ9Ik03LjYxIDYuM2EzIDMgMCAwIDAtMy45MiAxLjNsLTEuMzggMi43OWEzIDMgMCAwIDAgMS4zIDMuOTFsNi44OSAzLjU5N2ExIDEgMCAwIDAgMS4zNDItLjQ0N2wzLjEwNi02LjIxMWExIDEgMCAwIDAtLjQ0Ny0xLjM0MXoiLz48cGF0aCBkPSJNOCA5VjIiLz48L3N2Zz4="
                             alt="Spotlight"
                             className="w-12 h-12 ml-6"
-                            style={{ 
+                            style={{
                               filter: 'brightness(0) saturate(100%) invert(26%) sepia(8%) saturate(381%) hue-rotate(185deg) brightness(94%) contrast(87%)',
                               transform: 'scale(-1, -1)'
                             }}
                           />
                         </div>
-                        
+
                         {/* Setlist */}
                         {gig.setlist_name && (
                           <div className="flex items-center gap-2 m-0">

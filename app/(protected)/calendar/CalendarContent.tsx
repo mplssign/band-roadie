@@ -78,7 +78,7 @@ export default function CalendarContent({ events, user: _user, loading = false, 
     const [hourStr, minuteStr] = timeStr.split(':');
     const hour24 = parseInt(hourStr, 10);
     const minute = parseInt(minuteStr, 10);
-    
+
     if (hour24 === 0) return { hour: 12, minute, ampm: 'AM' };
     if (hour24 < 12) return { hour: hour24, minute, ampm: 'AM' };
     if (hour24 === 12) return { hour: 12, minute, ampm: 'PM' };
@@ -98,26 +98,26 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   // Pre-compute events map for efficient day lookups
   const eventsMap = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    
+
     events.calendarEvents.forEach(event => {
       // Validate date format
       if (!event.date || typeof event.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(event.date)) {
         return;
       }
-      
+
       const dateKey = event.date; // Already in YYYY-MM-DD format
       const existing = map.get(dateKey) || [];
       map.set(dateKey, [...existing, event]);
     });
-    
+
     return map;
   }, [events.calendarEvents]);
 
-const blockoutRanges = useMemo(() => {
-  return events.calendarEvents
-    .filter((evt) => evt.type === 'blockout' && evt.blockout)
-    .map((evt) => {
-      const { blockout, blockedBy } = evt;
+  const blockoutRanges = useMemo(() => {
+    return events.calendarEvents
+      .filter((evt) => evt.type === 'blockout' && evt.blockout)
+      .map((evt) => {
+        const { blockout, blockedBy } = evt;
         if (!blockout) return null;
         const startISO = blockout.startDate;
         const endISO = blockout.endDate;
@@ -130,7 +130,7 @@ const blockoutRanges = useMemo(() => {
         };
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item));
-}, [events.calendarEvents]);
+  }, [events.calendarEvents]);
 
   const getMonthDay = (dateStr?: string) => {
     if (!dateStr) return { month: '', day: '' };
@@ -149,8 +149,8 @@ const blockoutRanges = useMemo(() => {
     const allEvents = events.calendarEvents
       .filter(
         (evt) =>
-          (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') && 
-          typeof evt.date === 'string' && 
+          (evt.type === 'rehearsal' || evt.type === 'gig' || evt.type === 'blockout') &&
+          typeof evt.date === 'string' &&
           evt.date
       )
       .map((evt) => {
@@ -177,14 +177,14 @@ const blockoutRanges = useMemo(() => {
     for (const { evt, date } of allEvents) {
       if (evt.type === 'blockout' && evt.blockout) {
         const blockoutKey = `${evt.blockout.startDate}-${evt.blockout.endDate}`;
-        
+
         // Skip if we've already processed this blockout range
         if (blockoutGroupsProcessed.has(blockoutKey)) {
           continue;
         }
-        
+
         blockoutGroupsProcessed.add(blockoutKey);
-        
+
         // Create a single entry for the entire blockout range
         // Use the start date as the display date
         const startDate = toDateSafe(`${evt.blockout.startDate}T00:00:00Z`);
@@ -223,12 +223,12 @@ const blockoutRanges = useMemo(() => {
   const handleEditEvent = (event: CalendarEvent) => {
     setEventDrawerOpen(false);
     setSelectedEvents([]);
-    
+
     if (event.type === 'rehearsal' && event.id) {
       const dateObj = new Date(event.date + 'T00:00:00');
       const { hour, minute, ampm } = parseTime(event.start_time || '19:00');
       const duration = calculateDuration(event.start_time || '19:00', event.end_time || '21:00');
-      
+
       const payload: EventPayload = {
         id: event.id,
         type: 'rehearsal',
@@ -241,7 +241,7 @@ const blockoutRanges = useMemo(() => {
         location: event.location || 'TBD',
         setlistId: event.setlist_id,
       };
-      
+
       setEditEventPayload(payload);
       setAddEventMode('edit');
       setAddEventDrawerOpen(true);
@@ -249,7 +249,7 @@ const blockoutRanges = useMemo(() => {
       const dateObj = new Date(event.date + 'T00:00:00');
       const { hour, minute, ampm } = parseTime(event.start_time || '19:00');
       const duration = calculateDuration(event.start_time || '19:00', event.end_time || '21:00');
-      
+
       const payload: EventPayload = {
         id: event.id,
         type: 'gig',
@@ -263,7 +263,7 @@ const blockoutRanges = useMemo(() => {
         setlistId: event.setlist_id,
         isPotential: event.is_potential,
       };
-      
+
       setEditEventPayload(payload);
       setAddEventMode('edit');
       setAddEventDrawerOpen(true);
@@ -378,7 +378,7 @@ const blockoutRanges = useMemo(() => {
         if (rangeStart !== -1 && rangeEnd !== -1) {
           // Delete all records in the contiguous range
           const idsToDelete = sortedDates.slice(rangeStart, rangeEnd + 1).map(r => r.id);
-          
+
           const { error: deleteError } = await supabase
             .from('block_dates')
             .delete()
@@ -409,7 +409,7 @@ const blockoutRanges = useMemo(() => {
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
     const startingDayOfWeek = firstDay.getDay();
-    
+
     return { daysInMonth, startingDayOfWeek, year, month };
   };
 
@@ -423,7 +423,7 @@ const blockoutRanges = useMemo(() => {
 
   const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  
+
   const days: Array<number | null> = [];
   for (let i = 0; i < startingDayOfWeek; i++) {
     days.push(null);
@@ -435,7 +435,7 @@ const blockoutRanges = useMemo(() => {
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
     const dayEvents = getEventsForDate(date);
-    
+
     if (dayEvents.length === 0) {
       // Format date as YYYY-MM-DD in local timezone to avoid off-by-one errors
       const year = date.getFullYear();
@@ -453,30 +453,30 @@ const blockoutRanges = useMemo(() => {
     <>
       <main className="flex flex-col bg-background min-h-screen">
         <div className="flex flex-1 flex-col p-[15px]">
-          
+
           {loading && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-900/80 backdrop-blur-sm">
               <div className="text-white">Loading calendar...</div>
             </div>
           )}
-          
+
           {/* Calendar Header */}
           <div className="mb-4 flex items-center justify-center">
-            <button 
-              onClick={previousMonth} 
+            <button
+              onClick={previousMonth}
               className="flex h-10 w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h1 className="mx-8 text-2xl font-semibold text-white">{monthName}</h1>
-            <button 
-              onClick={nextMonth} 
+            <button
+              onClick={nextMonth}
               className="flex h-10 w-10 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-800 hover:text-white"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Calendar Container */}
           <div className="p-4">
             {/* Day Headers */}
@@ -485,11 +485,10 @@ const blockoutRanges = useMemo(() => {
                 const today = new Date();
                 const todayDayOfWeek = today.getDay();
                 const isToday = index === todayDayOfWeek;
-                
+
                 return (
-                  <div key={day} className={`py-2 text-center text-sm font-medium ${
-                    isToday ? 'text-white' : 'text-gray-400'
-                  }`}>
+                  <div key={day} className={`py-2 text-center text-sm font-medium ${isToday ? 'text-white' : 'text-gray-400'
+                    }`}>
                     {day}
                   </div>
                 );
@@ -502,20 +501,19 @@ const blockoutRanges = useMemo(() => {
                 if (day === null) {
                   return <div key={`empty-${index}`} className="h-12" />;
                 }
-                
+
                 // Create date at noon to avoid timezone issues
                 const date = new Date(year, month, day, 12, 0, 0, 0);
                 const isToday = new Date().toDateString() === date.toDateString();
-                
+
                 return (
                   <button
                     key={day}
                     onClick={() => handleDayClick(date)}
-                    className={`group relative h-12 w-full p-1 rounded-xl border border-zinc-700/50 transition-all duration-200 hover:scale-105 ${
-                      isToday 
-                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25' 
+                    className={`group relative h-12 w-full p-1 rounded-xl border border-zinc-700/50 transition-all duration-200 hover:scale-105 ${isToday
+                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
                         : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <DayDots date={date} displayMonth={currentDate} eventsMap={eventsMap} />
                   </button>
@@ -576,34 +574,34 @@ const blockoutRanges = useMemo(() => {
                   })();
 
                   const { month, day } = getMonthDay(evt.date);
-                  
+
                   // Check if blockout spans multiple consecutive days
                   const isMultiDayBlockout = evt.type === 'blockout' && evt.blockout && evt.blockout.startDate !== evt.blockout.endDate;
                   const endMonthDay = isMultiDayBlockout ? getMonthDay(evt.blockout!.endDate) : null;
-                  
+
                   // For blockout events, show date range instead of time
-                  const displayText = evt.type === 'blockout' && evt.blockout 
+                  const displayText = evt.type === 'blockout' && evt.blockout
                     ? evt.blockout.startDate === evt.blockout.endDate
-                      ? new Date(`${evt.blockout.startDate}T00:00:00Z`).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC'
-                        })
-                      : `${new Date(`${evt.blockout.startDate}T00:00:00Z`).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC'
-                        })} - ${new Date(`${evt.blockout.endDate}T00:00:00Z`).toLocaleDateString('en-US', { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric',
-                          year: 'numeric',
-                          timeZone: 'UTC'
-                        })}`
+                      ? new Date(`${evt.blockout.startDate}T00:00:00Z`).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                      })
+                      : `${new Date(`${evt.blockout.startDate}T00:00:00Z`).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                      })} - ${new Date(`${evt.blockout.endDate}T00:00:00Z`).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        timeZone: 'UTC'
+                      })}`
                     : (evt.start_time && evt.end_time ? formatTimeRange(evt.start_time, evt.end_time) : 'Time TBD');
 
                   return (
@@ -621,7 +619,7 @@ const blockoutRanges = useMemo(() => {
                         <span className="text-3xl font-medium text-foreground">{day}</span>
                       </div>
                       <div className="space-y-3">
-                        <span 
+                        <span
                           className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${badge.className}`}
                           style={badge.bgColor ? { backgroundColor: badge.bgColor } : undefined}
                         >
@@ -652,7 +650,7 @@ const blockoutRanges = useMemo(() => {
         </div>
       </main>
 
-      <EventDrawer 
+      <EventDrawer
         isOpen={eventDrawerOpen}
         onClose={() => setEventDrawerOpen(false)}
         events={selectedEvents}

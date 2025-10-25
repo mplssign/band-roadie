@@ -30,7 +30,7 @@ export default function BottomNav() {
       const nav = navRef.current;
       const buttonRect = button.getBoundingClientRect();
       const navRect = nav.getBoundingClientRect();
-      
+
       setIndicatorStyle({
         left: buttonRect.left - navRect.left,
         width: buttonRect.width,
@@ -54,21 +54,20 @@ export default function BottomNav() {
             width: `${indicatorStyle.width}px`,
           }}
         />
-        
+
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
-          
+
           return (
             <button
               key={item.path}
               ref={(el) => { buttonRefs.current[index] = el; }}
               onClick={() => router.push(item.path)}
-              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-2 transition-colors ${
-                isActive
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-2 transition-colors ${isActive
                   ? 'text-primary-foreground'
                   : 'text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Icon className="w-6 h-6" />
               <span className="text-xs font-medium">{item.name}</span>

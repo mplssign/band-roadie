@@ -34,8 +34,8 @@ interface UserProfile { first_name?: string; last_name?: string; email?: string;
 
 export default function TopNav() {
   const router = useRouter();
-const rawPathname = usePathname();
-const pathname = rawPathname ?? "";
+  const rawPathname = usePathname();
+  const pathname = rawPathname ?? "";
   const supabase = createClient();
   const { currentBand, bands, setCurrentBand, refreshBands } = useBands();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -280,11 +280,10 @@ const pathname = rawPathname ?? "";
                       <button
                         key={band.id}
                         onClick={() => handleBandSelect(band.id)}
-                        className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${
-                          currentBand?.id === band.id
+                        className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${currentBand?.id === band.id
                             ? 'bg-black border border-border/60 text-white'
                             : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
-                        }`}
+                          }`}
                       >
                         <div
                           className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-bold text-white"
@@ -341,7 +340,7 @@ const pathname = rawPathname ?? "";
                       <p className="text-muted-foreground mb-2">No bands yet</p>
                       <p className="text-sm text-muted-foreground">Create your first band to get started</p>
                     </div>
-                    
+
                     {/* Create New Band - only button when no bands */}
                     <button
                       onClick={() => {

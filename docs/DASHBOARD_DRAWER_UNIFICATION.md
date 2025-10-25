@@ -1,7 +1,9 @@
 # Dashboard Drawer Unification - UPDATED
 
 ## Overview
+
 Successfully unified ALL event creation and editing flows across the entire application to use a single `EditRehearsalDrawer` component. This component now serves as the universal drawer for:
+
 - Creating new rehearsals (add mode)
 - Creating new gigs (add mode)
 - Editing existing rehearsals (edit mode)
@@ -12,11 +14,13 @@ This applies to BOTH the calendar page and the dashboard page, providing a compl
 ## Migration Summary
 
 **Previous State:**
+
 - Calendar used `AddEventDrawer` for creating events
 - Calendar used separate `EditRehearsalDrawer` and `EditGigDrawer` for editing
 - Dashboard used `AddEventDrawer` for both creating and editing
 
 **Current State:**
+
 - **ALL pages** now use `EditRehearsalDrawer` as the unified drawer
 - Single component handles both add and edit modes
 - Single component handles both rehearsals and gigs
@@ -25,24 +29,26 @@ This applies to BOTH the calendar page and the dashboard page, providing a compl
 ## Changes Made
 
 ### 1. Extended EditRehearsalDrawer Component
+
 **File**: `app/(protected)/calendar/EditRehearsalDrawer.tsx`
 
 **New Props**:
+
 ```typescript
-type DrawerMode = "add" | "edit";
+type DrawerMode = 'add' | 'edit';
 
 export type EditRehearsalDrawerProps = {
   isOpen: boolean;
   onClose: () => void;
   onRehearsalUpdated: () => void;
   onDelete?: (rehearsalId: string) => void;
-  
+
   // Mode: 'add' for creating new events, 'edit' for modifying existing ones
   mode?: DrawerMode;
-  
+
   // Event type: determines if we're working with rehearsals or gigs
   eventType?: EventType;
-  
+
   // For edit mode: pass existing event data
   rehearsal?: {
     id: string;
@@ -52,7 +58,7 @@ export type EditRehearsalDrawerProps = {
     location: string;
     setlist_id?: string | null;
   } | null;
-  
+
   // For gig edit mode: pass gig data
   gig?: {
     id: string;
@@ -64,19 +70,20 @@ export type EditRehearsalDrawerProps = {
     is_potential?: boolean;
     setlist_id?: string | null;
   } | null;
-  
+
   // For add mode: optional prefilled date
   prefilledDate?: string;
-  
+
   // For add mode: default event type selection
   defaultEventType?: EventType;
 };
 ```
 
 **Key Features**:
+
 - **Mode Switching**: Supports both 'add' and 'edit' modes
 - **Event Type Switching**: Handles both 'rehearsal' and 'gig' types
-- **Dynamic UI**: 
+- **Dynamic UI**:
   - Title changes: "Add Rehearsal/Gig" vs "Edit Rehearsal/Gig"
   - Button text: "Add Rehearsal/Gig" vs "Update Rehearsal/Gig"
   - Event type tabs enabled in add mode, disabled in edit mode
@@ -88,15 +95,19 @@ export type EditRehearsalDrawerProps = {
 - **Delete Support**: Shows delete button only in edit mode when event ID exists
 
 ### 2. Updated CalendarContent
+
 **File**: `app/(protected)/calendar/CalendarContent.tsx`
 
 **Removed**:
+
 - `import AddEventDrawer from './AddEventDrawer';`
 
 **Added**:
+
 - Using `EditRehearsalDrawer` for adding events with `mode="add"`
 
 **State Changes**:
+
 ```typescript
 // Before:
 const [addEventDrawerOpen, setAddEventDrawerOpen] = useState(false);
@@ -108,6 +119,7 @@ const [addEventDefaultType, setAddEventDefaultType] = useState<'rehearsal' | 'gi
 ```
 
 **Drawer Usage**:
+
 ```tsx
 {/* Unified drawer for adding events (both rehearsals and gigs) */}
 <EditRehearsalDrawer
@@ -131,18 +143,26 @@ const [addEventDefaultType, setAddEventDefaultType] = useState<'rehearsal' | 'gi
 ```
 
 ### 3. Refactored Dashboard Page
+
 **File**: `app/(protected)/dashboard/page.tsx`
 
 **Import Changed**:
+
 ```typescript
 // Before:
-const AddEventDrawer = dynamic(() => import('@/app/(protected)/calendar/AddEventDrawer'), { ssr: false });
+const AddEventDrawer = dynamic(() => import('@/app/(protected)/calendar/AddEventDrawer'), {
+  ssr: false,
+});
 
 // After:
-const EditRehearsalDrawer = dynamic(() => import('@/app/(protected)/calendar/EditRehearsalDrawer'), { ssr: false });
+const EditRehearsalDrawer = dynamic(
+  () => import('@/app/(protected)/calendar/EditRehearsalDrawer'),
+  { ssr: false },
+);
 ```
 
 **State Simplified**:
+
 ```typescript
 // Unified drawer state for EditRehearsalDrawer (handles add/edit for both rehearsals and gigs)
 const [drawerOpen, setDrawerOpen] = useState(false);
@@ -153,6 +173,7 @@ const [editingGig, setEditingGig] = useState<...>();
 ```
 
 **Handler Updates**:
+
 ```typescript
 const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
   setEditingRehearsal({
@@ -187,6 +208,7 @@ const openEditGig = useCallback((gig: Gig) => {
 ```
 
 **"Add Event" Button Handlers**:
+
 ```typescript
 onClick={() => {
   setDrawerMode('add');
@@ -198,13 +220,17 @@ onClick={() => {
 ```
 
 **Single Drawer JSX**:
+
 ```tsx
 <EditRehearsalDrawer
   isOpen={drawerOpen}
   onClose={() => setDrawerOpen(false)}
-  onRehearsalUpdated={drawerMode === 'edit' 
-    ? (drawerEventType === 'rehearsal' ? handleRehearsalUpdated : handleGigUpdated)
-    : handleEventAdded
+  onRehearsalUpdated={
+    drawerMode === 'edit'
+      ? drawerEventType === 'rehearsal'
+        ? handleRehearsalUpdated
+        : handleGigUpdated
+      : handleEventAdded
   }
   mode={drawerMode}
   eventType={drawerEventType}
@@ -215,11 +241,13 @@ onClick={() => {
 ```
 
 ### 4. Deleted Files
+
 - ✅ `app/(protected)/calendar/AddEventDrawer.tsx` - **REMOVED**
 
 ## User Flow
 
 ### Add Rehearsal from Calendar
+
 1. User clicks "+ Add Event" button on calendar page
 2. `EditRehearsalDrawer` opens with `mode="add"` and `defaultEventType="rehearsal"`
 3. User can toggle between Rehearsal/Gig tabs
@@ -228,6 +256,7 @@ onClick={() => {
 6. Drawer performs INSERT operation and closes
 
 ### Add Rehearsal from Dashboard
+
 1. User clicks "Schedule Rehearsal" button on dashboard
 2. `EditRehearsalDrawer` opens with `mode="add"`, `eventType="rehearsal"`
 3. Tabs are enabled, user can switch to Gig if desired
@@ -235,6 +264,7 @@ onClick={() => {
 5. Drawer performs INSERT operation, closes, dashboard refreshes
 
 ### Edit Rehearsal from Dashboard
+
 1. User clicks "Edit" on Next Rehearsal card
 2. `openEditRehearsal` handler maps rehearsal data to drawer format
 3. `EditRehearsalDrawer` opens with `mode="edit"`, `rehearsal={...}`
@@ -245,6 +275,7 @@ onClick={() => {
 8. Dashboard refreshes with updated data
 
 ### Edit Gig from Calendar
+
 1. User clicks on gig event in calendar
 2. Event drawer opens, user clicks "Edit"
 3. `EditRehearsalDrawer` opens with `mode="edit"`, `gig={...}`
@@ -315,35 +346,37 @@ The unified drawer properly handles time and date to avoid "Invalid time value" 
 
 ```typescript
 interface EditRehearsalDrawerProps {
-  isOpen: boolean;                    // Controls drawer visibility
-  onClose: () => void;                // Called when drawer closes
-  onRehearsalUpdated: () => void;     // Called after successful save (create or update)
-  onDelete?: (id: string) => void;    // Optional: called when user deletes event
-  
-  mode?: 'add' | 'edit';              // Default: 'edit'
-  eventType?: 'rehearsal' | 'gig';    // Overrides defaultEventType in add mode
-  
-  rehearsal?: {                        // For editing existing rehearsal
+  isOpen: boolean; // Controls drawer visibility
+  onClose: () => void; // Called when drawer closes
+  onRehearsalUpdated: () => void; // Called after successful save (create or update)
+  onDelete?: (id: string) => void; // Optional: called when user deletes event
+
+  mode?: 'add' | 'edit'; // Default: 'edit'
+  eventType?: 'rehearsal' | 'gig'; // Overrides defaultEventType in add mode
+
+  rehearsal?: {
+    // For editing existing rehearsal
     id: string;
-    date: string;                      // YYYY-MM-DD
-    start_time: string;                // HH:mm (24-hour)
-    end_time: string;                  // HH:mm (24-hour)
+    date: string; // YYYY-MM-DD
+    start_time: string; // HH:mm (24-hour)
+    end_time: string; // HH:mm (24-hour)
     location: string;
     setlist_id?: string | null;
   } | null;
-  
-  gig?: {                             // For editing existing gig
+
+  gig?: {
+    // For editing existing gig
     id: string;
     name: string;
-    date: string;                     // YYYY-MM-DD
-    start_time: string;               // HH:mm (24-hour)
-    end_time: string;                 // HH:mm (24-hour)
+    date: string; // YYYY-MM-DD
+    start_time: string; // HH:mm (24-hour)
+    end_time: string; // HH:mm (24-hour)
     location: string;
     is_potential?: boolean;
     setlist_id?: string | null;
   } | null;
-  
-  prefilledDate?: string;             // YYYY-MM-DD for add mode
+
+  prefilledDate?: string; // YYYY-MM-DD for add mode
   defaultEventType?: 'rehearsal' | 'gig'; // Default: 'rehearsal'
 }
 ```

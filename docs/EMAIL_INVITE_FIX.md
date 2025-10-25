@@ -1,9 +1,11 @@
 # Email Invite Error Fix Guide
 
 ## Problem
+
 Members are not receiving invitation emails in production. Error message: "Unknown error sending invite"
 
 ## Root Cause
+
 The error "Unknown error sending invite" in `lib/server/send-band-invites.ts:291` occurs when the Resend email API fails to send. This typically happens due to:
 
 1. Missing/invalid Resend API key
@@ -45,12 +47,14 @@ Go to [Resend Dashboard](https://resend.com/):
    ```
    RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```
-   *(Use the API key from Resend dashboard)*
+
+   _(Use the API key from Resend dashboard)_
 
    ```
    RESEND_FROM_EMAIL=noreply@bandroadie.com
    ```
-   *(Or whatever verified email you're using)*
+
+   _(Or whatever verified email you're using)_
 
 5. **Important:** These environment variables only take effect on new deployments!
 
@@ -59,17 +63,20 @@ Go to [Resend Dashboard](https://resend.com/):
 After updating environment variables:
 
 **Option A: Trigger new deployment from Git**
+
 ```bash
 git commit --allow-empty -m "Trigger redeploy for email config"
 git push origin main
 ```
 
 **Option B: Redeploy from Vercel Dashboard**
+
 - Go to Deployments tab
 - Click "..." on latest deployment
 - Click "Redeploy"
 
 **Option C: Use Vercel CLI**
+
 ```bash
 vercel --prod
 ```
@@ -102,14 +109,14 @@ After redeployment:
 
 ## Common Issues & Solutions
 
-| Issue | Symptom | Solution |
-|-------|---------|----------|
-| **API Key Missing** | `[email.send] Config check - API key: MISSING` | Add `RESEND_API_KEY` to Vercel env vars |
-| **Wrong API Key** | Resend error: "Invalid API key" | Double-check key in Resend dashboard, update in Vercel |
-| **Domain Not Verified** | Resend error: "Domain not verified" | Add DNS records in your domain registrar as shown in Resend |
-| **From Email Not Verified** | Resend error: "From address not allowed" | Use verified sender email in `RESEND_FROM_EMAIL` |
-| **Rate Limit** | Resend error: "Rate limit exceeded" | Wait or upgrade Resend plan |
-| **Env Vars Not Applied** | Still seeing errors after update | Redeploy! Env vars only apply to new deployments |
+| Issue                       | Symptom                                        | Solution                                                    |
+| --------------------------- | ---------------------------------------------- | ----------------------------------------------------------- |
+| **API Key Missing**         | `[email.send] Config check - API key: MISSING` | Add `RESEND_API_KEY` to Vercel env vars                     |
+| **Wrong API Key**           | Resend error: "Invalid API key"                | Double-check key in Resend dashboard, update in Vercel      |
+| **Domain Not Verified**     | Resend error: "Domain not verified"            | Add DNS records in your domain registrar as shown in Resend |
+| **From Email Not Verified** | Resend error: "From address not allowed"       | Use verified sender email in `RESEND_FROM_EMAIL`            |
+| **Rate Limit**              | Resend error: "Rate limit exceeded"            | Wait or upgrade Resend plan                                 |
+| **Env Vars Not Applied**    | Still seeing errors after update               | Redeploy! Env vars only apply to new deployments            |
 
 ---
 
@@ -142,6 +149,7 @@ To see detailed logs in production:
 ```
 
 If you see errors, they'll appear as:
+
 ```
 [email.send] ERROR (456ms): { message: "Invalid API key", ... }
 [invite.send] ERROR sending invite email to user@example.com
