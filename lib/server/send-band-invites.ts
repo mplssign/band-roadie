@@ -136,7 +136,7 @@ export async function sendBandInvites({
 
     const { data: invitationRows, error: inviteLookupError } = await supabase
       .from('band_invitations')
-      .select('id, status')
+      .select('id, status, token')
       .eq('band_id', bandId)
       .eq('email', normalizedEmail)
       .order('created_at', { ascending: false })
@@ -210,22 +210,21 @@ export async function sendBandInvites({
       continue;
     }
 
-    // Log: Invitation created with ID
-    const tokenPreview = invitation.id.substring(0, 8); // First 8 chars of UUID
+    // Log: Invitation created with token
+    const tokenPreview = invitation.token ? invitation.token.substring(0, 8) + '...' : invitation.id.substring(0, 8) + '...';
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`[invite.create] Created invitation ${tokenPreview}... for ${normalizedEmail}`);
+      console.log(`[invite.create] Created invitation ${tokenPreview} for ${normalizedEmail}`);
     }
 
-    // Build a CTA URL. For users that don't exist yet we prefer to generate
-    // a Supabase magic link (server-side) that will sign them in and redirect
-    // back to the app with the invitation id preserved. Fall back to the
-    // standard /invite/:id URL if that generation fails.
-    let ctaUrl = `${APP_URL}/invite/${invitation.id}`;
+    // Build invite URL using secure token
+    // New flow: /invite?token=<token>&email=<email>
+    // This allows PWA-first behavior and better deep linking
+    const inviteToken = invitation.token || invitation.id;
+    let ctaUrl = `${APP_URL}/invite?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(normalizedEmail)}`;
 
+    // For backward compatibility, we can still generate a magic link
+    // but now it includes the invite token in the callback URL
     try {
-      // Attempt to use the service role key to generate a magic link via the
-      // admin client. This requires SUPABASE_SERVICE_ROLE_KEY to be set in
-      // the environment where this runs.
       if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
         const admin = createAdminClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -235,14 +234,9 @@ export async function sendBandInvites({
           },
         );
 
-        // generate_link endpoint supports redirect_to which will be encoded
-        // into the generated action_link. We pass a redirect that includes
-        // the invitation id so the callback can accept the invite.
-        const redirectTo = `${APP_URL}/auth/callback?invitation=${invitation.id}`;
+        // Generate magic link that preserves invite token in callback
+        const redirectTo = `${APP_URL}/auth/callback?inviteToken=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(normalizedEmail)}`;
 
-        // The admin API exposes auth.admin.generateLink for generating magic links.
-        // Use the admin client to generate a sign-in link for the email.
-        // NOTE: types from supabase may vary; use any to avoid TS errors here.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
           type: 'magiclink',
@@ -254,13 +248,13 @@ export async function sendBandInvites({
           ctaUrl = genData.properties.action_link as string;
           if (process.env.NODE_ENV !== 'production') {
             console.log(
-              `[invite.magiclink] Generated magic link for ${normalizedEmail}, redirect to invitation=${invitation.id}`,
+              `[invite.magiclink] Generated magic link for ${normalizedEmail} with token ${tokenPreview}`,
             );
           }
         }
       }
     } catch (err) {
-      // Non-fatal — we'll use the standard invite URL
+      // Non-fatal — we'll use the token-based invite URL
       console.error('[invite.magiclink] ERROR generating magic link:', err);
     }
 

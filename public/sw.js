@@ -1,6 +1,6 @@
 /* eslint-disable no-console, no-unused-vars, no-undef */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 self.addEventListener('install', (event) => {
   console.log('Service Worker installed');
@@ -29,17 +29,67 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Handle magic link clicks to open in existing PWA window
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'NAVIGATE_URL') {
+    const url = event.data.url;
+    console.log('[SW] Navigate request:', url);
+    
+    // Find existing client or open new one
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+        // Focus existing window if available
+        for (const client of windowClients) {
+          if ('focus' in client) {
+            client.focus();
+            client.navigate(url);
+            return;
+          }
+        }
+        // Otherwise open new window
+        clients.openWindow(url);
+      })
+    );
+  }
+});
+
+// Handle notification clicks for magic links
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  
+  const urlToOpen = event.notification.data?.url || '/dashboard';
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there's already a window open
+      for (const client of windowClients) {
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // If no matching window, open new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // NEVER cache auth-related routes - always fetch fresh from network
+  // NEVER cache auth-related routes, invite routes, or API calls - always fetch fresh
   if (
     url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/api/auth/') ||
+    url.pathname.startsWith('/api/invites/') ||
     url.pathname === '/login' ||
     url.pathname === '/signup' ||
+    url.pathname === '/invite' ||
     url.searchParams.has('code') ||
-    url.searchParams.has('token_hash')
+    url.searchParams.has('token') ||
+    url.searchParams.has('token_hash') ||
+    url.searchParams.has('inviteToken')
   ) {
     event.respondWith(
       fetch(event.request, {

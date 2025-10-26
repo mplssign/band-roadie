@@ -14,7 +14,9 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
   const tokenHash = url.searchParams.get('token_hash'); // Legacy support
-  const invitationId = url.searchParams.get('invitation');
+  const invitationId = url.searchParams.get('invitation'); // Legacy invitation ID
+  const inviteToken = url.searchParams.get('inviteToken'); // New token-based invite
+  const inviteEmail = url.searchParams.get('email'); // Email for token-based invite
   const next = url.searchParams.get('next') ?? '/dashboard';
   const origin = url.origin;
 
@@ -101,13 +103,21 @@ export async function GET(req: NextRequest) {
 
     console.log('[auth/callback] user authenticated:', user.id);
 
+    // Clear br_logged_out cookie on successful login
+    res.cookies.set('br_logged_out', '', { maxAge: 0, path: '/' });
+
     // Determine final redirect based on user state
     let finalRedirect = `${origin}/dashboard`;
 
-    // Priority 1: Invitation flow
-    if (invitationId) {
+    // Priority 1: Token-based invitation flow (new)
+    if (inviteToken && inviteEmail) {
+      finalRedirect = `${origin}/api/invites/accept?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(inviteEmail)}`;
+      console.log('[auth/callback] → token-based invitation flow');
+    }
+    // Priority 2: Legacy invitation ID flow
+    else if (invitationId) {
       finalRedirect = `${origin}/api/invitations/${invitationId}/accept`;
-      console.log('[auth/callback] → invitation flow');
+      console.log('[auth/callback] → legacy invitation flow');
     } else {
       // Check if user has completed their profile
       const { data: profile } = await supabase
@@ -119,9 +129,9 @@ export async function GET(req: NextRequest) {
       const hasCompletedProfile = profile?.profile_completed || profile?.first_name;
 
       if (!hasCompletedProfile) {
-        // New user → profile page
-        finalRedirect = `${origin}/profile?welcome=true`;
-        console.log('[auth/callback] → new user profile');
+        // New user → profile page with onboarding flag
+        finalRedirect = `${origin}/profile?onboarding=1`;
+        console.log('[auth/callback] → new user profile (onboarding)');
       } else if (next && next !== '/' && !next.includes('login') && !next.includes('signup')) {
         // Existing user with custom redirect
         finalRedirect = next.startsWith('/') ? `${origin}${next}` : `${origin}/dashboard`;

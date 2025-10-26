@@ -38,7 +38,8 @@ export interface Invite {
   band_id: string;
   email: string;
   invited_by: string;
-  status: 'pending' | 'accepted' | 'expired';
+  status: 'pending' | 'sent' | 'accepted' | 'expired' | 'error';
+  token: string;
   created_at: string;
   expires_at: string;
 }

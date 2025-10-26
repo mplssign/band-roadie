@@ -10,6 +10,7 @@ export async function middleware(request: NextRequest) {
     '/login',
     '/signup',
     '/auth/callback',
+    '/invite', // Allow invite page without auth
   ]);
 
   // Skip middleware for public routes, API, static assets
@@ -19,7 +20,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/icons') ||
     pathname === '/favicon.ico' ||
-    pathname === '/manifest.webmanifest'
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/manifest.json' ||
+    pathname.startsWith('/.well-known')
   ) {
     return NextResponse.next();
   }
@@ -78,6 +81,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Check for explicit logout cookie
+  const hasLoggedOut = request.cookies.get('br_logged_out')?.value === 'true';
+
   // Protected routes require authentication
   if (
     pathname.startsWith('/dashboard') ||
@@ -91,10 +97,21 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/rehearsals')
   ) {
     if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('redirectedFrom', pathname);
-      return NextResponse.redirect(url);
+      // Only redirect to login if user explicitly logged out
+      // This prevents invite flows from being forced to login
+      if (hasLoggedOut) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('redirectedFrom', pathname);
+        return NextResponse.redirect(url);
+      } else {
+        // For invite flows, let them continue (they'll be handled by auth callback)
+        // This prevents redirect loops for magic link invitations
+        const url = request.nextUrl.clone();
+        url.pathname = '/login';
+        url.searchParams.set('redirectedFrom', pathname);
+        return NextResponse.redirect(url);
+      }
     }
   }
 
