@@ -293,6 +293,33 @@ export default function AddEventDrawer({
     return true;
   }, [date, eventType, title]);
 
+  const handleDelete = async () => {
+    if (mode !== 'edit' || !eventId) return;
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this ${eventType === 'rehearsal' ? 'rehearsal' : 'gig'}?`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const supabase = createClient();
+      const table = eventType === 'rehearsal' ? 'rehearsals' : 'gigs';
+
+      const { error } = await supabase.from(table).delete().eq('id', eventId);
+
+      if (error) throw error;
+
+      showToast(`${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'} deleted`, 'success');
+      onEventUpdated();
+      onClose();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to delete event:', err);
+      showToast('Failed to delete event. Please try again.', 'error');
+    }
+  };
+
   const handleSave = async () => {
     if (!currentBand?.id) {
       showToast('No band selected', 'error');
@@ -698,10 +725,7 @@ export default function AddEventDrawer({
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => {
-                    // TODO: Implement delete functionality
-                    console.log('Delete event');
-                  }}
+                  onClick={handleDelete}
                   className="text-sm text-destructive hover:underline"
                 >
                   Delete
