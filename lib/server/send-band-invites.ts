@@ -240,12 +240,11 @@ export async function sendBandInvites({
         // the invitation id so the callback can accept the invite.
         const redirectTo = `${APP_URL}/auth/callback?invitation=${invitation.id}`;
 
-        // The admin API exposes auth.generateLink which mirrors the client
-        // behavior. Use the admin client to generate a sign-in link for the
-        // email. We ask for an "email" type link (magic link).
+        // The admin API exposes auth.admin.generateLink for generating magic links.
+        // Use the admin client to generate a sign-in link for the email.
         // NOTE: types from supabase may vary; use any to avoid TS errors here.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: genData, error: genError } = await (admin as any).auth.generateLink({
+        const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
           type: 'magiclink',
           email: normalizedEmail,
           options: { redirectTo },
