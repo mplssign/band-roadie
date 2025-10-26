@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export default function InvitePage() {
+function InvitePageContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const [status, setStatus] = useState<'loading' | 'auth_required' | 'expired' | 'error'>('loading');
@@ -233,5 +233,27 @@ export default function InvitePage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function InvitePage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background p-4">
+                <div className="max-w-md w-full space-y-6 text-center">
+                    <div className="flex justify-center">
+                        <div className="text-4xl font-bold text-primary">
+                            🎸 Band Roadie
+                        </div>
+                    </div>
+                    <div className="bg-card border rounded-lg p-8 space-y-4">
+                        <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                        <h2 className="text-xl font-semibold">Loading invitation...</h2>
+                    </div>
+                </div>
+            </div>
+        }>
+            <InvitePageContent />
+        </Suspense>
     );
 }

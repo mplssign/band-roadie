@@ -246,10 +246,10 @@ export async function sendBandInvites({
         const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
           type: 'magiclink',
           email: normalizedEmail,
-          options: { 
+          options: {
             redirectTo,
             // Store invitation ID in user metadata so it survives the redirect
-            data: { invitation_id: invitation.id }
+            data: { invitation_id: invitation.id },
           },
         });
 

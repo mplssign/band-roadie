@@ -117,7 +117,10 @@ export async function GET(req: NextRequest) {
     let invitationIdFromMetadata: string | null = null;
     if (user.user_metadata?.invitation_id) {
       invitationIdFromMetadata = user.user_metadata.invitation_id;
-      console.log('[auth/callback] Found invitation_id in user metadata:', invitationIdFromMetadata);
+      console.log(
+        '[auth/callback] Found invitation_id in user metadata:',
+        invitationIdFromMetadata,
+      );
     }
 
     // Use invitation from query param or metadata
@@ -147,7 +150,10 @@ export async function GET(req: NextRequest) {
 
     // PRIORITY 1: Handle invitation acceptance first (if present)
     if (finalInvitationId || inviteToken) {
-      console.log('[auth/callback] Processing invitation:', { finalInvitationId, inviteToken: inviteToken?.substring(0, 8) });
+      console.log('[auth/callback] Processing invitation:', {
+        finalInvitationId,
+        inviteToken: inviteToken?.substring(0, 8),
+      });
 
       try {
         let invitation: any = null;
