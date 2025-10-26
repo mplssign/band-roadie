@@ -219,56 +219,9 @@ export async function sendBandInvites({
     }
 
     // Build invite URL using secure token
-    // New flow: /invite?token=<token>&email=<email>
-    // This allows PWA-first behavior and better deep linking
+    // Use the token-based invite page which handles authentication
     const inviteToken = invitation.token || invitation.id;
-    let ctaUrl = `${APP_URL}/invite?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(normalizedEmail)}`;
-
-    // For backward compatibility, we can still generate a magic link
-    // but now it includes the invite token in the callback URL
-    try {
-      if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        const admin = createAdminClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.SUPABASE_SERVICE_ROLE_KEY,
-          {
-            auth: { persistSession: false },
-          },
-        );
-
-        // Generate magic link that redirects to auth callback with invitation ID
-        // This ensures the callback can accept the invitation after authentication
-        // IMPORTANT: Don't use redirectTo - use the next parameter instead
-        // Supabase will append ?code=xxx to the redirectTo, but we need our params preserved
-        const redirectTo = `${APP_URL}/auth/callback?next=/dashboard&invitationId=${invitation.id}`;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
-          type: 'magiclink',
-          email: normalizedEmail,
-          options: {
-            redirectTo,
-            // Store invitation ID in user metadata so it survives the redirect
-            data: { invitation_id: invitation.id },
-          },
-        });
-
-        if (!genError && genData && genData.properties && genData.properties.action_link) {
-          ctaUrl = genData.properties.action_link as string;
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(
-              `[invite.magiclink] Generated magic link for ${normalizedEmail} with invitation ${invitation.id}`,
-              `\nFull URL: ${ctaUrl}`,
-            );
-          }
-        } else if (genError) {
-          console.error('[invite.magiclink] Error generating link:', genError);
-        }
-      }
-    } catch (err) {
-      // Non-fatal — we'll use the token-based invite URL
-      console.error('[invite.magiclink] ERROR generating magic link:', err);
-    }
+    const ctaUrl = `${APP_URL}/invite?token=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(normalizedEmail)}`;
 
     // Log: Final CTA URL
     if (process.env.NODE_ENV !== 'production') {
