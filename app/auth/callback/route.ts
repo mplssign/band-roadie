@@ -20,12 +20,14 @@ export async function GET(req: NextRequest) {
   const next = url.searchParams.get('next') ?? '/dashboard';
   const origin = url.origin;
 
-  console.log('[auth/callback] Params:', {
+  console.log('[auth/callback] Query params:', {
     hasCode: !!code,
     hasTokenHash: !!tokenHash,
     invitationId,
     inviteToken: inviteToken?.substring(0, 8),
     inviteEmail,
+    next,
+    allParams: Object.fromEntries(url.searchParams.entries()),
   });
 
   // Handle error params from Supabase
@@ -111,6 +113,16 @@ export async function GET(req: NextRequest) {
 
     console.log('[auth/callback] user authenticated:', user.id);
 
+    // Check user metadata for invitation_id (stored during magic link generation)
+    let invitationIdFromMetadata: string | null = null;
+    if (user.user_metadata?.invitation_id) {
+      invitationIdFromMetadata = user.user_metadata.invitation_id;
+      console.log('[auth/callback] Found invitation_id in user metadata:', invitationIdFromMetadata);
+    }
+
+    // Use invitation from query param or metadata
+    const finalInvitationId = invitationId || invitationIdFromMetadata;
+
     // Clear br_logged_out cookie on successful login
     res.cookies.set('br_logged_out', '', { maxAge: 0, path: '/' });
 
@@ -134,18 +146,18 @@ export async function GET(req: NextRequest) {
     let bandIdForRedirect: string | null = null;
 
     // PRIORITY 1: Handle invitation acceptance first (if present)
-    if (invitationId || inviteToken) {
-      console.log('[auth/callback] Processing invitation...');
+    if (finalInvitationId || inviteToken) {
+      console.log('[auth/callback] Processing invitation:', { finalInvitationId, inviteToken: inviteToken?.substring(0, 8) });
 
       try {
         let invitation: any = null;
 
         // Fetch invitation by ID or token
-        if (invitationId) {
+        if (finalInvitationId) {
           const { data, error } = await supabase
             .from('band_invitations')
             .select('*, bands(name)')
-            .eq('id', invitationId)
+            .eq('id', finalInvitationId)
             .eq('email', user.email)
             .single();
 

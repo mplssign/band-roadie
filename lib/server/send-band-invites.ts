@@ -238,13 +238,19 @@ export async function sendBandInvites({
 
         // Generate magic link that redirects to auth callback with invitation ID
         // This ensures the callback can accept the invitation after authentication
-        const redirectTo = `${APP_URL}/auth/callback?invitationId=${invitation.id}`;
+        // IMPORTANT: Don't use redirectTo - use the next parameter instead
+        // Supabase will append ?code=xxx to the redirectTo, but we need our params preserved
+        const redirectTo = `${APP_URL}/auth/callback?next=/dashboard&invitationId=${invitation.id}`;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
           type: 'magiclink',
           email: normalizedEmail,
-          options: { redirectTo },
+          options: { 
+            redirectTo,
+            // Store invitation ID in user metadata so it survives the redirect
+            data: { invitation_id: invitation.id }
+          },
         });
 
         if (!genError && genData && genData.properties && genData.properties.action_link) {
@@ -252,8 +258,11 @@ export async function sendBandInvites({
           if (process.env.NODE_ENV !== 'production') {
             console.log(
               `[invite.magiclink] Generated magic link for ${normalizedEmail} with invitation ${invitation.id}`,
+              `\nFull URL: ${ctaUrl}`,
             );
           }
+        } else if (genError) {
+          console.error('[invite.magiclink] Error generating link:', genError);
         }
       }
     } catch (err) {

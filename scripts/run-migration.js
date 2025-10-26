@@ -2,10 +2,10 @@
 
 /**
  * Apply database migration: 012_add_invite_tokens.sql
- * 
+ *
  * Usage:
  *   node scripts/apply-migration.js
- * 
+ *
  * Requires:
  *   - NEXT_PUBLIC_SUPABASE_URL environment variable
  *   - SUPABASE_SERVICE_ROLE_KEY environment variable
@@ -30,22 +30,28 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
 
 async function applyMigration() {
   console.log('📦 Loading migration file...');
-  
-  const migrationPath = path.join(__dirname, '..', 'supabase', 'migrations', '012_add_invite_tokens.sql');
+
+  const migrationPath = path.join(
+    __dirname,
+    '..',
+    'supabase',
+    'migrations',
+    '012_add_invite_tokens.sql',
+  );
   const sql = fs.readFileSync(migrationPath, 'utf8');
-  
+
   console.log('🔌 Connecting to Supabase...');
   console.log(`   URL: ${SUPABASE_URL}`);
-  
+
   // Use Supabase REST API to execute SQL
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/exec_sql`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': SERVICE_KEY,
-      'Authorization': `Bearer ${SERVICE_KEY}`,
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
     },
-    body: JSON.stringify({ query: sql })
+    body: JSON.stringify({ query: sql }),
   });
 
   if (!response.ok) {
@@ -63,7 +69,7 @@ async function applyMigration() {
   console.log('  4. Existing rows should have tokens generated');
 }
 
-applyMigration().catch(error => {
+applyMigration().catch((error) => {
   console.error('❌ Error:', error.message);
   process.exit(1);
 });
