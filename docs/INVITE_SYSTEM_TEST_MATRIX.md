@@ -1,9 +1,11 @@
 # Band Roadie Invite System - Test Matrix
 
 ## Overview
+
 This document outlines test scenarios for the token-based invite system with PWA-first behavior.
 
 ## Test Environment Setup
+
 - Production URL: https://bandroadie.com
 - Test accounts needed:
   - Existing user: test-existing@example.com
@@ -15,17 +17,20 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 1. New User via Invite (No PWA)
 
 **Preconditions:**
+
 - User has never signed up
 - PWA is not installed
 - Email client: Any (Gmail, Apple Mail, etc.)
 
 **Steps:**
+
 1. Admin sends invite from Band Settings
 2. User receives email with magic link
 3. User clicks magic link in email client
 4. Link opens in browser
 
 **Expected Results:**
+
 - ✓ Browser opens to `/invite?token=xxx&email=xxx`
 - ✓ Page shows "Check your email! We sent you a link to join the band"
 - ✓ User clicks email verification link
@@ -39,6 +44,7 @@ This document outlines test scenarios for the token-based invite system with PWA
 - ✓ User sees their new band in the dashboard
 
 **Edge Cases:**
+
 - Token expired: Should show "Invitation has expired" with resend option
 - Invalid token: Should show error with link to login
 - Email mismatch: Should show "This invitation is for a different email"
@@ -48,16 +54,19 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 2. Existing User via Invite (No PWA)
 
 **Preconditions:**
+
 - User already has account with profile_completed = true
 - PWA is not installed
 - User is logged in
 
 **Steps:**
+
 1. Admin sends invite
 2. User clicks magic link while logged in
 3. Link opens in browser
 
 **Expected Results:**
+
 - ✓ Opens to `/invite?token=xxx&email=xxx`
 - ✓ API call to `/api/invites/accept` succeeds immediately (already authenticated)
 - ✓ User added to band_members table
@@ -70,16 +79,19 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 3. Existing User via Invite (Logged Out)
 
 **Preconditions:**
+
 - User has account but explicitly logged out
 - `br_logged_out` cookie is set
 - PWA is not installed
 
 **Steps:**
+
 1. Admin sends invite
 2. User clicks magic link
 3. Link opens in browser
 
 **Expected Results:**
+
 - ✓ Opens to `/invite?token=xxx&email=xxx`
 - ✓ API determines auth required
 - ✓ Page shows "Join [Band Name] on Band Roadie"
@@ -95,17 +107,20 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 4. New User via Invite (PWA Installed - Android Chrome)
 
 **Preconditions:**
+
 - User has never signed up
 - PWA is installed on Android device
 - Chrome supports link capture
 - Digital Asset Links configured correctly
 
 **Steps:**
+
 1. Admin sends invite
 2. User clicks magic link in email (Gmail app or web)
 3. Android system detects PWA can handle link
 
 **Expected Results:**
+
 - ✓ Android shows "Open with Band Roadie" prompt
 - ✓ User selects Band Roadie PWA
 - ✓ Link opens directly in installed PWA (not browser)
@@ -118,6 +133,7 @@ This document outlines test scenarios for the token-based invite system with PWA
 - ✓ Final redirect to `/dashboard` in PWA
 
 **Verification:**
+
 - Check `window.matchMedia('(display-mode: standalone)').matches` returns `true`
 - Check `navigator.standalone` (iOS) or display mode
 - Verify no browser chrome visible (address bar, etc.)
@@ -127,11 +143,13 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 5. Existing User via Invite (PWA Installed - Running)
 
 **Preconditions:**
+
 - User has account, profile completed
 - PWA is installed and currently running
 - User clicks invite link
 
 **Expected Results:**
+
 - ✓ PWA window is focused (not new window)
 - ✓ Service worker `launch_handler.client_mode: "focus-existing"` works
 - ✓ URL navigates to invite page within same PWA instance
@@ -144,15 +162,18 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 6. New User via Invite (iOS - No True PWA Support)
 
 **Preconditions:**
+
 - User on iOS (Safari or Mail)
 - "Add to Home Screen" not done yet
 - PWA installed via home screen
 
 **Steps:**
+
 1. User clicks magic link in Mail app
 2. iOS opens Safari (no app link capture)
 
 **Expected Results:**
+
 - ✓ Opens in Safari browser
 - ✓ Invite page detects not in PWA mode
 - ✓ Shows "Install Band Roadie" prompt if `beforeinstallprompt` available
@@ -163,6 +184,7 @@ This document outlines test scenarios for the token-based invite system with PWA
 - ✓ Can later "Add to Home Screen" for PWA experience
 
 **Fallback Behavior:**
+
 - If user clicks "Open in App" and PWA installed, attempts to navigate to PWA scope
 - Otherwise, continues in Safari with full functionality
 
@@ -171,10 +193,12 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 7. Expired Invitation
 
 **Preconditions:**
+
 - Invitation created > 7 days ago (or however long expiry is set)
 - User clicks link
 
 **Expected Results:**
+
 - ✓ Opens to `/invite?token=xxx&email=xxx`
 - ✓ API returns 410 status (expired)
 - ✓ Page shows "⏰ Invitation Expired"
@@ -187,10 +211,12 @@ This document outlines test scenarios for the token-based invite system with PWA
 ### 8. Already Accepted Invitation
 
 **Preconditions:**
+
 - User previously accepted this invitation
 - User clicks link again
 
 **Expected Results:**
+
 - ✓ Opens to invite page
 - ✓ API recognizes already accepted
 - ✓ If authenticated: Redirects to `/dashboard` with message "You are already a member"
@@ -203,18 +229,18 @@ This document outlines test scenarios for the token-based invite system with PWA
 
 **Test Cases:**
 
-| Route | Authenticated | br_logged_out | Expected Behavior |
-|-------|--------------|---------------|-------------------|
-| `/invite?token=xxx` | No | No | ✓ Allow (public) |
-| `/invite?token=xxx` | No | Yes | ✓ Allow (public) |
-| `/invite?token=xxx` | Yes | No | ✓ Allow (public) |
-| `/dashboard` | No | No | ✓ Redirect to `/login` |
-| `/dashboard` | No | Yes | ✓ Redirect to `/login` |
-| `/dashboard` | Yes | No | ✓ Allow |
-| `/profile` | No | No | ✓ Redirect to `/login` |
-| `/profile` | Yes | No | ✓ Allow |
-| `/auth/callback` | N/A | N/A | ✓ Always allow |
-| `/api/invites/accept` | N/A | N/A | ✓ Always allow (API handles auth) |
+| Route                 | Authenticated | br_logged_out | Expected Behavior                 |
+| --------------------- | ------------- | ------------- | --------------------------------- |
+| `/invite?token=xxx`   | No            | No            | ✓ Allow (public)                  |
+| `/invite?token=xxx`   | No            | Yes           | ✓ Allow (public)                  |
+| `/invite?token=xxx`   | Yes           | No            | ✓ Allow (public)                  |
+| `/dashboard`          | No            | No            | ✓ Redirect to `/login`            |
+| `/dashboard`          | No            | Yes           | ✓ Redirect to `/login`            |
+| `/dashboard`          | Yes           | No            | ✓ Allow                           |
+| `/profile`            | No            | No            | ✓ Redirect to `/login`            |
+| `/profile`            | Yes           | No            | ✓ Allow                           |
+| `/auth/callback`      | N/A           | N/A           | ✓ Always allow                    |
+| `/api/invites/accept` | N/A           | N/A           | ✓ Always allow (API handles auth) |
 
 ---
 
@@ -222,15 +248,16 @@ This document outlines test scenarios for the token-based invite system with PWA
 
 **Test Cases:**
 
-| URL Pattern | Cache Strategy | Expected |
-|-------------|----------------|----------|
-| `/auth/callback?code=xxx` | No cache | ✓ Always fetch fresh |
-| `/api/invites/accept?token=xxx` | No cache | ✓ Always fetch fresh |
-| `/invite?token=xxx` | No cache | ✓ Always fetch fresh |
-| `/dashboard` | Network-first | ✓ Try network, fallback offline |
-| `/static/image.png` | Cache-first | ✓ Use cached if available |
+| URL Pattern                     | Cache Strategy | Expected                        |
+| ------------------------------- | -------------- | ------------------------------- |
+| `/auth/callback?code=xxx`       | No cache       | ✓ Always fetch fresh            |
+| `/api/invites/accept?token=xxx` | No cache       | ✓ Always fetch fresh            |
+| `/invite?token=xxx`             | No cache       | ✓ Always fetch fresh            |
+| `/dashboard`                    | Network-first  | ✓ Try network, fallback offline |
+| `/static/image.png`             | Cache-first    | ✓ Use cached if available       |
 
 **Offline Behavior:**
+
 - Auth routes show: "Authentication requires an internet connection"
 - Other routes show: "Offline - Please check your connection"
 
@@ -242,7 +269,7 @@ This document outlines test scenarios for the token-based invite system with PWA
 
 ```javascript
 // Test in browser console
-const manifest = await fetch('/manifest.json').then(r => r.json());
+const manifest = await fetch('/manifest.json').then((r) => r.json());
 
 console.assert(manifest.launch_handler.client_mode === 'focus-existing', 'Launch handler set');
 console.assert(manifest.capture_links === 'existing-client-navigate', 'Link capture enabled');
@@ -252,6 +279,7 @@ console.assert(manifest.scope === '/', 'Scope is root');
 ```
 
 **Android Verification:**
+
 - Check `/.well-known/assetlinks.json` accessible
 - Verify SHA256 cert fingerprint matches app
 - Test link capture with Android Debug Bridge (adb)
@@ -261,6 +289,7 @@ console.assert(manifest.scope === '/', 'Scope is root');
 ### 12. Logout Cookie Behavior
 
 **Test Case 1: Explicit Logout**
+
 1. User clicks "Log Out"
 2. `br_logged_out` cookie set (5min expiry)
 3. Redirect to `/login`
@@ -270,6 +299,7 @@ console.assert(manifest.scope === '/', 'Scope is root');
 7. Access to protected routes restored
 
 **Test Case 2: Invite Flow (No Logout)**
+
 1. New user clicks invite (no br_logged_out cookie)
 2. Middleware allows `/invite` page
 3. Auth callback doesn't require explicit login
@@ -280,6 +310,7 @@ console.assert(manifest.scope === '/', 'Scope is root');
 ## Automated Test Suggestions
 
 ### Unit Tests
+
 - `lib/server/send-band-invites.ts`:
   - Token generation
   - Email URL formatting
@@ -291,12 +322,14 @@ console.assert(manifest.scope === '/', 'Scope is root');
   - Redirect logic based on profile_completed
 
 ### Integration Tests
+
 - Full invite flow from creation to acceptance
 - Auth callback with invite token parameter
 - Middleware route protection logic
 - Service worker fetch interception
 
 ### E2E Tests (Playwright/Cypress)
+
 - New user invite → onboarding → dashboard
 - Existing user invite → dashboard (skip onboarding)
 - PWA mode detection and behavior
@@ -307,12 +340,14 @@ console.assert(manifest.scope === '/', 'Scope is root');
 ## Manual Testing Checklist
 
 ### Pre-Deployment
+
 - [ ] Run database migration: `012_add_invite_tokens.sql`
 - [ ] Verify SUPABASE_SERVICE_ROLE_KEY in environment
 - [ ] Verify RESEND_API_KEY in environment
 - [ ] Update Digital Asset Links with actual SHA256 fingerprint
 
 ### Post-Deployment
+
 - [ ] Send test invite to new email
 - [ ] Verify email received with correct link format
 - [ ] Click link, verify redirect flow
@@ -324,6 +359,7 @@ console.assert(manifest.scope === '/', 'Scope is root');
 - [ ] Test already-member error handling
 
 ### Browser Testing
+
 - [ ] Chrome (desktop)
 - [ ] Chrome (Android with PWA)
 - [ ] Safari (desktop)
@@ -336,21 +372,25 @@ console.assert(manifest.scope === '/', 'Scope is root');
 ## Troubleshooting
 
 ### Issue: "Invalid token or email"
+
 - Check database: Does invitation exist with that token?
 - Check email match: Are emails case-normalized?
 - Check expiry: Is expires_at in future?
 
 ### Issue: PWA not opening on Android
+
 - Verify Digital Asset Links at `/.well-known/assetlinks.json`
 - Check SHA256 fingerprint matches installed app
 - Test with `adb shell am start -a android.intent.action.VIEW -d "https://bandroadie.com/invite?token=xxx"`
 
 ### Issue: Redirect loop
+
 - Check middleware logic for br_logged_out cookie
 - Verify auth callback clears cookie on success
 - Check service worker isn't caching auth routes
 
 ### Issue: Profile not updating
+
 - Verify `profile_completed` field in users table
 - Check user metadata sync in auth callback
 - Verify upsert logic in invite accept endpoint

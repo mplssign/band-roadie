@@ -211,7 +211,9 @@ export async function sendBandInvites({
     }
 
     // Log: Invitation created with token
-    const tokenPreview = invitation.token ? invitation.token.substring(0, 8) + '...' : invitation.id.substring(0, 8) + '...';
+    const tokenPreview = invitation.token
+      ? invitation.token.substring(0, 8) + '...'
+      : invitation.id.substring(0, 8) + '...';
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[invite.create] Created invitation ${tokenPreview} for ${normalizedEmail}`);
     }
@@ -234,8 +236,9 @@ export async function sendBandInvites({
           },
         );
 
-        // Generate magic link that preserves invite token in callback
-        const redirectTo = `${APP_URL}/auth/callback?inviteToken=${encodeURIComponent(inviteToken)}&email=${encodeURIComponent(normalizedEmail)}`;
+        // Generate magic link that redirects to auth callback with invitation ID
+        // This ensures the callback can accept the invitation after authentication
+        const redirectTo = `${APP_URL}/auth/callback?invitationId=${invitation.id}`;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: genData, error: genError } = await (admin as any).auth.admin.generateLink({
@@ -248,7 +251,7 @@ export async function sendBandInvites({
           ctaUrl = genData.properties.action_link as string;
           if (process.env.NODE_ENV !== 'production') {
             console.log(
-              `[invite.magiclink] Generated magic link for ${normalizedEmail} with token ${tokenPreview}`,
+              `[invite.magiclink] Generated magic link for ${normalizedEmail} with invitation ${invitation.id}`,
             );
           }
         }

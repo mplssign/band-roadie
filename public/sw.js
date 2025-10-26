@@ -34,7 +34,7 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'NAVIGATE_URL') {
     const url = event.data.url;
     console.log('[SW] Navigate request:', url);
-    
+
     // Find existing client or open new one
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
@@ -48,7 +48,7 @@ self.addEventListener('message', (event) => {
         }
         // Otherwise open new window
         clients.openWindow(url);
-      })
+      }),
     );
   }
 });
@@ -56,9 +56,9 @@ self.addEventListener('message', (event) => {
 // Handle notification clicks for magic links
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+
   const urlToOpen = event.notification.data?.url || '/dashboard';
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
       // Check if there's already a window open
@@ -71,7 +71,7 @@ self.addEventListener('notificationclick', (event) => {
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
-    })
+    }),
   );
 });
 

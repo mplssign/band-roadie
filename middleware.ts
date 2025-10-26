@@ -2,7 +2,27 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Check for magic link / invitation parameters that indicate auth flow
+  const hasMagicLinkParams =
+    searchParams.has('code') ||
+    searchParams.has('access_token') ||
+    searchParams.has('invitationId') ||
+    searchParams.has('invitation') ||
+    searchParams.has('inviteToken') ||
+    searchParams.has('token_hash');
+
+  // If URL has magic link params, redirect to auth callback
+  if (hasMagicLinkParams && pathname !== '/auth/callback') {
+    const callbackUrl = new URL('/auth/callback', request.url);
+    // Preserve all query params
+    searchParams.forEach((value, key) => {
+      callbackUrl.searchParams.set(key, value);
+    });
+    console.log('[middleware] Redirecting magic link to /auth/callback:', callbackUrl.toString());
+    return NextResponse.redirect(callbackUrl);
+  }
 
   // Public paths that never require auth or redirects
   const PUBLIC = new Set<string>([
@@ -79,7 +99,9 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Check for explicit logout cookie
   const hasLoggedOut = request.cookies.get('br_logged_out')?.value === 'true';
@@ -98,20 +120,19 @@ export async function middleware(request: NextRequest) {
   ) {
     if (!user) {
       // Only redirect to login if user explicitly logged out
-      // This prevents invite flows from being forced to login
+      // Don't redirect if they're in an auth flow (will be handled by callback)
       if (hasLoggedOut) {
         const url = request.nextUrl.clone();
         url.pathname = '/login';
         url.searchParams.set('redirectedFrom', pathname);
         return NextResponse.redirect(url);
-      } else {
-        // For invite flows, let them continue (they'll be handled by auth callback)
-        // This prevents redirect loops for magic link invitations
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.searchParams.set('redirectedFrom', pathname);
-        return NextResponse.redirect(url);
       }
+      // If not explicitly logged out, still redirect to login but preserve context
+      // The auth callback will handle the proper flow
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirectedFrom', pathname);
+      return NextResponse.redirect(url);
     }
   }
 
