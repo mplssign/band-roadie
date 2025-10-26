@@ -677,21 +677,37 @@ export default function AddEventDrawer({
         </ScrollArea>
 
         <SheetFooter className="border-t border-border px-4 py-4">
-          <div className="flex gap-2 w-full">
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={!isValid}
-              className="flex-1"
-            >
-              {mode === 'edit'
-                ? `Update ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
-                : `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
-              }
-            </Button>
-            <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
-              Cancel
-            </Button>
+          <div className="w-full space-y-3">
+            <div className="flex gap-2 w-full">
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={!isValid}
+                className="flex-1"
+              >
+                {mode === 'edit'
+                  ? `Update ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+                  : `Add ${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'}`
+                }
+              </Button>
+              <Button type="button" variant="secondary" onClick={onClose} className="flex-1">
+                Cancel
+              </Button>
+            </div>
+            {mode === 'edit' && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // TODO: Implement delete functionality
+                    console.log('Delete event');
+                  }}
+                  className="text-sm text-destructive hover:underline"
+                >
+                  Delete
+                </button>
+              </div>
+            )}
           </div>
         </SheetFooter>
       </SheetContent>
