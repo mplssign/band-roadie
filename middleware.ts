@@ -4,9 +4,29 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  // Skip middleware for auth routes, API, and static assets
+  // These routes need uninterrupted access for magic links and PKCE flow
+  if (
+    pathname.startsWith('/api/auth') || // Auth API endpoints (including /api/auth/start)
+    pathname.startsWith('/auth/callback') || // OAuth callback
+    pathname.startsWith('/api') || // All other API routes
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname === '/invite' || // Invite landing page
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/icons') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/manifest.json' ||
+    pathname.startsWith('/.well-known')
+  ) {
+    return NextResponse.next();
+  }
+
   // Check for magic link / invitation parameters that indicate auth flow
   const hasMagicLinkParams =
     searchParams.has('code') ||
+    searchParams.has('state') || // PKCE state parameter
     searchParams.has('access_token') ||
     searchParams.has('invitationId') ||
     searchParams.has('invitation') ||
@@ -16,34 +36,16 @@ export async function middleware(request: NextRequest) {
   // If URL has magic link params, redirect to auth callback
   if (hasMagicLinkParams && pathname !== '/auth/callback') {
     const callbackUrl = new URL('/auth/callback', request.url);
-    // Preserve all query params
+    // Preserve all query params including state for PKCE
     searchParams.forEach((value, key) => {
       callbackUrl.searchParams.set(key, value);
     });
-    console.log('[middleware] Redirecting magic link to /auth/callback:', callbackUrl.toString());
+    console.log('[middleware] Redirecting magic link to /auth/callback');
     return NextResponse.redirect(callbackUrl);
   }
 
-  // Public paths that never require auth or redirects
-  const PUBLIC = new Set<string>([
-    '/',
-    '/login',
-    '/signup',
-    '/auth/callback',
-    '/invite', // Allow invite page without auth
-  ]);
-
-  // Skip middleware for public routes, API, static assets
-  if (
-    PUBLIC.has(pathname) ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/icons') ||
-    pathname === '/favicon.ico' ||
-    pathname === '/manifest.webmanifest' ||
-    pathname === '/manifest.json' ||
-    pathname.startsWith('/.well-known')
-  ) {
+  // Public path that never requires auth
+  if (pathname === '/') {
     return NextResponse.next();
   }
 

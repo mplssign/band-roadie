@@ -93,8 +93,9 @@ function LoginForm() {
     setError(null);
 
     try {
+      // Supabase will now use cookie storage for PKCE, enabling cross-tab auth
       const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         options: {
           emailRedirectTo: getAuthCallbackUrl(),
         },

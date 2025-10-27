@@ -5,29 +5,30 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
  * Server-side auth callback handler for PKCE flow
  *
  * This route handles the magic link callback by:
- * 1. Extracting the auth code from query params
- * 2. Creating redirect response FIRST
- * 3. Exchanging code for session (writes cookies to response)
- * 4. Returning response with Set-Cookie headers
+ * 1. Extracting auth code from query params
+ * 2. Exchanging code for session (Supabase handles PKCE verifier lookup from cookies)
+ * 3. Routing users based on profile state (new → /profile, existing → /dashboard)
+ * 4. Processing invitations if present
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const code = url.searchParams.get('code');
+  const state = url.searchParams.get('state');
   const tokenHash = url.searchParams.get('token_hash'); // Legacy support
-  const invitationId = url.searchParams.get('invitation') || url.searchParams.get('invitationId'); // Support both
-  const inviteToken = url.searchParams.get('inviteToken'); // New token-based invite
-  const inviteEmail = url.searchParams.get('email'); // Email for token-based invite
+  const invitationId = url.searchParams.get('invitation') || url.searchParams.get('invitationId');
+  const inviteToken = url.searchParams.get('inviteToken');
+  const inviteEmail = url.searchParams.get('email');
   const next = url.searchParams.get('next') ?? '/dashboard';
   const origin = url.origin;
 
-  console.log('[auth/callback] Query params:', {
+  console.log('[auth/callback] Request:', {
     hasCode: !!code,
+    hasState: !!state,
     hasTokenHash: !!tokenHash,
     invitationId,
     inviteToken: inviteToken?.substring(0, 8),
     inviteEmail,
     next,
-    allParams: Object.fromEntries(url.searchParams.entries()),
   });
 
   // Handle error params from Supabase
@@ -38,7 +39,11 @@ export async function GET(req: NextRequest) {
     const message =
       errorCode === 'otp_expired'
         ? 'Your login link has expired. Please request a new one.'
+        : errorCode === 'pkce_session_expired'
+        ? 'Your login session expired. Please open the magic link in the same browser or request a new one.'
         : errorDescription || 'Authentication failed';
+
+    console.error('[auth/callback] Auth error:', { errorCode, errorDescription });
 
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(message)}&error_code=${encodeURIComponent(errorCode || '')}`,
@@ -47,6 +52,7 @@ export async function GET(req: NextRequest) {
 
   // Require auth code or token_hash
   if (!code && !tokenHash) {
+    console.error('[auth/callback] Missing auth code');
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent('No authentication code provided')}`,
     );
@@ -89,10 +95,22 @@ export async function GET(req: NextRequest) {
   );
 
   try {
-    // Exchange code for session (writes cookies to res)
+    // Exchange code for session (Supabase retrieves PKCE verifier from cookie storage)
     if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (error) {
+        console.error('[auth/callback] exchangeCodeForSession error:', {
+          message: error.message,
+          status: error.status,
+        });
+        throw error;
+      }
+
+      console.log('[auth/callback] Session exchanged successfully:', {
+        hasUser: !!data?.user,
+        hasSession: !!data?.session,
+      });
     } else if (tokenHash) {
       // Legacy token_hash support
       const { error } = await supabase.auth.verifyOtp({
@@ -240,6 +258,13 @@ export async function GET(req: NextRequest) {
       console.log('[auth/callback] → existing user to dashboard');
     }
 
+    console.log('[auth/callback] Final redirect:', {
+      isNewUser,
+      hasBandId: !!bandIdForRedirect,
+      hasInvitation: !!(finalInvitationId || inviteToken),
+      destination: finalRedirect,
+    });
+
     // Update redirect if needed
     if (finalRedirect !== redirectUrl) {
       return NextResponse.redirect(finalRedirect, {
@@ -252,7 +277,14 @@ export async function GET(req: NextRequest) {
     res.headers.set('Cache-Control', 'no-store');
     return res;
   } catch (error: any) {
-    console.error('[auth/callback] error:', error);
+    console.error('[auth/callback] Error:', {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      hasState: !!state,
+      hasCode: !!code,
+    });
+
     return NextResponse.redirect(
       `${origin}/login?error=${encodeURIComponent(error.message || 'auth_failed')}`,
     );

@@ -310,34 +310,49 @@ export default function DashboardPage() {
         {potentialGig && (
           <section className="rounded-2xl overflow-hidden bg-gradient-gig">
             <div className="p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-2 h-2 rounded-full bg-white/60"></div>
-                <h2 className="text-base font-medium text-white/90">Potential Gig</h2>
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-1">{potentialGig.name}</h3>
-              <div className="text-white/90 mb-4">{potentialGig.location}</div>
-              <div className="flex items-center gap-6 mb-6">
+              {/* Header Row: Label on left, Date on right (bottom-aligned) */}
+              <div className="flex items-end justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-white/60"></div>
+                  <h2 className="text-base font-medium text-white/90">Potential Gig</h2>
+                </div>
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-5 h-5 text-white/80" />
                   <span className="text-white font-medium">{formatDateForDisplay(potentialGig.date)}</span>
                 </div>
-                {potentialGig.start_time && potentialGig.end_time && (
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                      <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
-                    </svg>
-                    <span className="text-white font-medium">{formatTimeRange(potentialGig.start_time, potentialGig.end_time, potentialGig.date)}</span>
-                  </div>
-                )}
               </div>
-              <div className="flex gap-3">
-                <button className="flex-1 px-4 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-white/90 transition-colors">
-                  Yes (1)
-                </button>
-                <button className="flex-1 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold border border-white/30 hover:bg-white/30 transition-colors">
-                  No (1)
-                </button>
+
+              {/* Content Row: Venue/Location on left, Time/Buttons on right */}
+              <div className="flex items-start justify-between gap-6">
+                {/* Left side: Venue and Location */}
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-white mb-1">{potentialGig.name}</h3>
+                  <div className="text-white/90">{potentialGig.location}</div>
+                </div>
+
+                {/* Right side: Time and Buttons (stacked, right-aligned) */}
+                <div className="flex flex-col items-end gap-3">
+                  {/* Time (bottom-aligned to first line of title) */}
+                  {potentialGig.start_time && potentialGig.end_time && (
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                        <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
+                      </svg>
+                      <span className="text-white font-medium">{formatTimeRange(potentialGig.start_time, potentialGig.end_time, potentialGig.date)}</span>
+                    </div>
+                  )}
+                  
+                  {/* Response buttons (bottom-aligned to location) */}
+                  <div className="flex items-center gap-3">
+                    <button className="px-4 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-white/90 transition-colors">
+                      Yes (1)
+                    </button>
+                    <button className="px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold border border-white/30 hover:bg-white/30 transition-colors">
+                      No (1)
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </section>

@@ -79,6 +79,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // NEVER cache auth-related routes, invite routes, or API calls - always fetch fresh
+  // This includes all magic link flows and PKCE authentication
   if (
     url.pathname.startsWith('/auth/') ||
     url.pathname.startsWith('/api/auth/') ||
@@ -87,10 +88,12 @@ self.addEventListener('fetch', (event) => {
     url.pathname === '/signup' ||
     url.pathname === '/invite' ||
     url.searchParams.has('code') ||
+    url.searchParams.has('state') || // PKCE state parameter
     url.searchParams.has('token') ||
     url.searchParams.has('token_hash') ||
     url.searchParams.has('inviteToken')
   ) {
+    // Bypass service worker entirely for auth flows
     event.respondWith(
       fetch(event.request, {
         cache: 'no-store',
