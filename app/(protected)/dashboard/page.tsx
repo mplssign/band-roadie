@@ -291,7 +291,7 @@ export default function DashboardPage() {
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold mb-4">Welcome to Band Roadie!</h2>
           <p className="text-zinc-300 mb-8">
-            You&apos;re not part of any bands yet. Create a new band or ask a bandmate to invite you.
+            You&apos;re officially backstage — but your band&apos;s not here yet. Fire up a new band or text your drummer (they&apos;re late as usual) to add you. Let&apos;s make some noise.
           </p>
         </div>
       </div>

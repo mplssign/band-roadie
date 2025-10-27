@@ -112,7 +112,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/setlists') ||
     pathname.startsWith('/calendar') ||
     pathname.startsWith('/members') ||
-    pathname.startsWith('/profile') ||
     pathname.startsWith('/settings') ||
     pathname.startsWith('/bands') ||
     pathname.startsWith('/gigs') ||
@@ -129,6 +128,22 @@ export async function middleware(request: NextRequest) {
       }
       // If not explicitly logged out, still redirect to login but preserve context
       // The auth callback will handle the proper flow
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('redirectedFrom', pathname);
+      return NextResponse.redirect(url);
+    }
+  }
+
+  // /profile route - allow new users from auth callback (onboarding flow)
+  // but require auth for direct access without onboarding params
+  if (pathname.startsWith('/profile')) {
+    const hasOnboardingParams =
+      searchParams.has('onboarding') ||
+      searchParams.has('invitationId') ||
+      searchParams.has('bandId');
+
+    if (!user && !hasOnboardingParams) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('redirectedFrom', pathname);
