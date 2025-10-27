@@ -67,39 +67,45 @@ export default function DashboardContent({
           {dashboardData.potentialGig && (
             <button
               onClick={() => dashboardData.potentialGig && router.push(`/gigs/${dashboardData.potentialGig.id}/edit`)}
-              className="w-full rounded-2xl p-6 shadow-xl text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity"
+              className="w-full rounded-2xl p-6 shadow-xl text-left bg-gradient-to-br from-rose-500 via-orange-500 to-amber-400 hover:opacity-90 transition-opacity"
             >
-              <div className="flex items-start justify-between mb-4">
+              {/* Header Row */}
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="text-lg font-semibold">Potential Gig</span>
+                  <AlertCircle className="w-5 h-5 text-white" />
+                  <span className="text-base font-medium text-white">Potential Gig</span>
                 </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2 justify-end">
-                    <Calendar className="w-5 h-5" />
-                    <span className="text-lg font-semibold whitespace-nowrap">
-                      {dashboardData.potentialGig.date}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-white" />
+                  <span className="text-base font-medium text-white whitespace-nowrap">
+                    {dashboardData.potentialGig.date}
+                  </span>
                 </div>
               </div>
 
-              <h2 className="text-3xl font-bold mb-2 leading-tight">
+              {/* Venue Name */}
+              <h2 className="text-4xl font-bold mb-2 leading-tight text-white">
                 {dashboardData.potentialGig.name}
               </h2>
-              <p className="text-xl mb-4">{dashboardData.potentialGig.location}</p>
 
-              <div className="mb-4">
-                <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5" />
-                  <span className="text-lg">{dashboardData.potentialGig.time}</span>
+              {/* Location */}
+              <p className="text-2xl mb-6 text-white/95">{dashboardData.potentialGig.location}</p>
+
+              {/* Time and Response Buttons Row */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-6 h-6 text-white" />
+                  <span className="text-xl font-normal text-white">{dashboardData.potentialGig.time}</span>
                 </div>
-              </div>
-
-              <div className="text-base">
-                <span className="font-medium">Yes: {dashboardData.potentialGig.yesCount}</span>{' '}
-                • <span className="font-medium">No: {dashboardData.potentialGig.noCount}</span>{' '}
-                • <span className="font-medium">No Reply: {dashboardData.potentialGig.noReplyCount}</span>
+                
+                <div className="flex items-center gap-3">
+                  <div className="px-6 py-2 rounded-full border-2 border-white/80 bg-transparent">
+                    <span className="text-lg font-medium text-white">Yes ({dashboardData.potentialGig.yesCount})</span>
+                  </div>
+                  <div className="px-6 py-2 rounded-full border-2 border-white/80 bg-transparent">
+                    <span className="text-lg font-medium text-white">No ({dashboardData.potentialGig.noCount})</span>
+                  </div>
+                </div>
               </div>
             </button>
           )}

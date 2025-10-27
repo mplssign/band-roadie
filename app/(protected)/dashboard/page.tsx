@@ -11,6 +11,7 @@ import Empty from '@/components/ui/empty';
 import { Card } from '@/components/ui/Card';
 import { GradientBorderButton } from '@/components/ui/gradient-border-button';
 import type { EventPayload } from '@/app/(protected)/calendar/AddEventDrawer';
+import { formatTimeRange } from '@/lib/utils/time';
 
 // Lazy load the drawer to avoid initial bundle cost
 const AddEventDrawer = dynamic(
@@ -177,7 +178,7 @@ export default function DashboardPage() {
         setNextRehearsal({
           id: r.id,
           date: formatDateForDisplay(r.date),
-          time: `${convertTo12Hour(r.start_time)} - ${convertTo12Hour(r.end_time)}`,
+          time: formatTimeRange(r.start_time, r.end_time, r.date),
           location: r.location,
           start_time: r.start_time,
           end_time: r.end_time,
@@ -326,7 +327,7 @@ export default function DashboardPage() {
                       <circle cx="12" cy="12" r="10" strokeWidth="2" />
                       <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
                     </svg>
-                    <span className="text-white font-medium">{`${convertTo12Hour(potentialGig.start_time)} - ${convertTo12Hour(potentialGig.end_time)}`}</span>
+                    <span className="text-white font-medium">{formatTimeRange(potentialGig.start_time, potentialGig.end_time, potentialGig.date)}</span>
                   </div>
                 )}
               </div>
@@ -442,7 +443,7 @@ export default function DashboardPage() {
                             </div>
                             {gig.start_time && gig.end_time && (
                               <div className="text-zinc-400 text-sm font-medium">
-                                {`${convertTo12Hour(gig.start_time)} - ${convertTo12Hour(gig.end_time)}`}
+                                {formatTimeRange(gig.start_time, gig.end_time, gig.date)}
                               </div>
                             )}
                           </div>
