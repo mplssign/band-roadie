@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Image from 'next/image';
 import { Upload, ArrowLeft, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { createClient } from '@/lib/supabase/client';
@@ -47,7 +46,8 @@ function getBandInitials(name: string): string {
     .split(/\s+/)
     .map(word => word[0])
     .join('')
-    .toUpperCase();
+    .toUpperCase()
+    .substring(0, 3); // Limit to 3 characters max to match TopNav
 }
 
 function getFontSize(initialsLength: number): string {
@@ -608,11 +608,15 @@ export default function EditBandPage() {
               <div className="flex-shrink-0">
                 {imagePreview ? (
                   <div className="relative w-24 h-24 rounded-full overflow-hidden">
-                    <Image
+                    <img
                       src={imagePreview}
                       alt="Band preview"
-                      fill
-                      className="object-cover"
+                      className="w-full h-full rounded-full object-cover"
+                      onError={(e) => {
+                        console.log('Edit page: Image failed to load, showing initials');
+                        // If image fails to load, clear the preview to show initials
+                        setImagePreview(null);
+                      }}
                     />
                     <button
                       onClick={() => {

@@ -1,12 +1,14 @@
 # Testing Delete Band Functionality
 
 ## Prerequisites
+
 1. The `delete_band` function must exist in your database
 2. You must be an admin of the band you're trying to delete
 
 ## Check if Migration was Applied
 
 ### Via Supabase Dashboard:
+
 1. Go to https://supabase.com/dashboard
 2. Select your project
 3. Click **Database** → **Functions** in sidebar
@@ -14,6 +16,7 @@
 5. If it doesn't exist, apply the migration (see below)
 
 ### Apply Migration:
+
 1. Go to **SQL Editor**
 2. Click **New Query**
 3. Copy the entire contents of `supabase/migrations/013_delete_band_function.sql`
@@ -23,6 +26,7 @@
 ## Test Delete Band
 
 ### Via Browser Console:
+
 ```javascript
 // Replace with your actual band ID
 const bandId = 'your-band-id-here';
@@ -31,33 +35,38 @@ const bandId = 'your-band-id-here';
 fetch(`/api/bands/${bandId}`, {
   method: 'DELETE',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 })
-.then(res => res.json())
-.then(data => console.log('Delete response:', data))
-.catch(err => console.error('Delete error:', err));
+  .then((res) => res.json())
+  .then((data) => console.log('Delete response:', data))
+  .catch((err) => console.error('Delete error:', err));
 ```
 
 ### Expected Response:
+
 - **Success**: `{ ok: true }`
 - **Failure**: `{ error: "..." }` with error message
 
 ## Common Errors
 
 ### Error: "Failed to delete band (db)"
+
 - **Cause**: The `delete_band` function doesn't exist in database
 - **Solution**: Apply the migration via SQL Editor
 
 ### Error: "Admin role required"
+
 - **Cause**: You're not an admin of the band
 - **Solution**: You must be a band admin to delete it
 
 ### Error: "Unauthorized"
+
 - **Cause**: Not logged in
 - **Solution**: Log in first
 
 ### Error: "Forbidden"
+
 - **Cause**: Not a member of the band
 - **Solution**: You must be a band member
 
@@ -67,9 +76,9 @@ After applying the migration, verify the function exists:
 
 ```sql
 -- Run this in SQL Editor to check
-SELECT routine_name, routine_type 
-FROM information_schema.routines 
-WHERE routine_schema = 'public' 
+SELECT routine_name, routine_type
+FROM information_schema.routines
+WHERE routine_schema = 'public'
 AND routine_name = 'delete_band';
 ```
 
@@ -95,8 +104,9 @@ SELECT delete_band('paste-band-id-here');
 ## What Gets Deleted
 
 When you delete a band, these related records are removed:
+
 1. All band members
-2. All band invitations  
+2. All band invitations
 3. All gigs
 4. All rehearsals
 5. All setlists

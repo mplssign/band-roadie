@@ -37,10 +37,11 @@ After applying the migration, test the delete functionality:
 ## What This Migration Does
 
 Creates a PostgreSQL function `delete_band(band_uuid UUID)` that:
+
 - Deletes all band members
 - Deletes all band invitations
 - Deletes all gigs
-- Deletes all rehearsals  
+- Deletes all rehearsals
 - Deletes all setlists
 - Deletes the band itself
 
