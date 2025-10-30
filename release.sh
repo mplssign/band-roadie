@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Band Roadie Production Release Script
 # Usage: ./release.sh
-RELEASE_BRANCH="${RELEASE_BRANCH:-fix/auth-callback-ready}"
+RELEASE_BRANCH="${RELEASE_BRANCH:-main}"
 
 echo "🚀 Band Roadie Production Release"
 echo "=================================="
@@ -32,7 +32,7 @@ git pull --rebase origin "$RELEASE_BRANCH"
 # 4) Tests / Lint / Build
 echo "🧪 Running tests..."; pnpm test
 echo "🔍 Running linter..."; pnpm lint
-echo "🏗️  Running production build..."; pnpm run build
+echo "🏗️  Running production build..."; pnpm build
 
 # 5) Changelog inputs
 echo "📋 Generating changelog..."
