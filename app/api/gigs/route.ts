@@ -1,0 +1,204 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
+
+export async function POST(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Decode JWT to get user ID
+    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = payload.sub;
+
+    const supabase = await createClient();
+    const body = await req.json();
+
+    const {
+      band_id,
+      name,
+      date,
+      start_time,
+      end_time,
+      location,
+      is_potential,
+      setlist_id,
+      setlist_name,
+      notes,
+    } = body;
+
+    // Verify user is a member of the band
+    const { data: membership } = await supabase
+      .from('band_members')
+      .select('id')
+      .eq('band_id', band_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Forbidden: Not a band member' }, { status: 403 });
+    }
+
+    // Insert gig
+    const { data, error } = await supabase
+      .from('gigs')
+      .insert([
+        {
+          band_id,
+          name,
+          date,
+          start_time,
+          end_time,
+          location: location || 'TBD',
+          is_potential: is_potential || false,
+          setlist_id: setlist_id || null,
+          setlist_name: setlist_name || null,
+          notes,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[api/gigs] Insert error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data }, { status: 201 });
+  } catch (error) {
+    console.error('[api/gigs] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = payload.sub;
+
+    const supabase = await createClient();
+    const body = await req.json();
+
+    const {
+      id,
+      name,
+      date,
+      start_time,
+      end_time,
+      location,
+      is_potential,
+      setlist_id,
+      setlist_name,
+    } = body;
+
+    // Verify ownership through band membership
+    const { data: gig } = await supabase.from('gigs').select('band_id').eq('id', id).single();
+
+    if (!gig) {
+      return NextResponse.json({ error: 'Gig not found' }, { status: 404 });
+    }
+
+    const { data: membership } = await supabase
+      .from('band_members')
+      .select('id')
+      .eq('band_id', gig.band_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Forbidden: Not a band member' }, { status: 403 });
+    }
+
+    // Update gig
+    const { data, error } = await supabase
+      .from('gigs')
+      .update({
+        name,
+        date,
+        start_time,
+        end_time,
+        location: location || 'TBD',
+        is_potential: is_potential || false,
+        setlist_id: setlist_id || null,
+        setlist_name: setlist_name || null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[api/gigs] Update error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ data }, { status: 200 });
+  } catch (error) {
+    console.error('[api/gigs] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('sb-access-token')?.value;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = payload.sub;
+
+    const supabase = await createClient();
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'Missing gig ID' }, { status: 400 });
+    }
+
+    // Verify ownership through band membership
+    const { data: gig } = await supabase.from('gigs').select('band_id').eq('id', id).single();
+
+    if (!gig) {
+      return NextResponse.json({ error: 'Gig not found' }, { status: 404 });
+    }
+
+    const { data: membership } = await supabase
+      .from('band_members')
+      .select('id')
+      .eq('band_id', gig.band_id)
+      .eq('user_id', userId)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Forbidden: Not a band member' }, { status: 403 });
+    }
+
+    // Delete gig
+    const { error } = await supabase.from('gigs').delete().eq('id', id);
+
+    if (error) {
+      console.error('[api/gigs] Delete error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error('[api/gigs] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

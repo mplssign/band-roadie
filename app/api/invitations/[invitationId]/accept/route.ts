@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 
 // Shared logic for accepting invitations
 async function acceptInvitation(invitationId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
     error: userError,

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
+import { useBandChange } from '@/hooks/useBandChange';
 import { Setlist } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/Card';
@@ -14,7 +15,7 @@ function formatDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
-  
+
   if (hours > 0) {
     return `${hours}h ${remainingMinutes}m`;
   }
@@ -23,7 +24,7 @@ function formatDuration(seconds: number): string {
 
 function SetlistCard({ setlist, onClick }: { setlist: Setlist; onClick: () => void }) {
   return (
-    <Card 
+    <Card
       className="p-4 cursor-pointer hover:shadow-md transition-shadow"
       onClick={onClick}
     >
@@ -54,34 +55,45 @@ export default function SetlistsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function loadSetlists() {
-      if (!currentBand?.id) return;
-      
-      setLoading(true);
+  const loadSetlists = useCallback(async () => {
+    if (!currentBand?.id) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/setlists?band_id=${currentBand.id}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load setlists');
+      }
+
+      setSetlists(data.setlists || []);
+    } catch (err) {
+      console.error('Error loading setlists:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load setlists');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentBand?.id]);
+
+  // React to band changes
+  useBandChange({
+    onBandChange: () => {
+      setSetlists([]);
       setError(null);
-
-      try {
-        const response = await fetch(`/api/setlists?band_id=${currentBand.id}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to load setlists');
-        }
-
-        setSetlists(data.setlists || []);
-      } catch (err) {
-        console.error('Error loading setlists:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load setlists');
-      } finally {
-        setLoading(false);
+      if (currentBand?.id) {
+        loadSetlists();
       }
     }
+  });
 
-    if (!bandsLoading) {
+  useEffect(() => {
+    if (!bandsLoading && currentBand?.id) {
       loadSetlists();
     }
-  }, [currentBand?.id, bandsLoading]);
+  }, [currentBand?.id, bandsLoading, loadSetlists]);
 
   const handleCreateSetlist = async () => {
     if (!currentBand?.id) return;
@@ -136,8 +148,8 @@ export default function SetlistsPage() {
           <div>
             <h1 className="text-2xl font-bold">Setlists</h1>
           </div>
-          <Button 
-            onClick={handleCreateSetlist} 
+          <Button
+            onClick={handleCreateSetlist}
             className="gap-2"
             disabled={!currentBand?.id}
           >
@@ -159,8 +171,8 @@ export default function SetlistsPage() {
             <p className="text-muted-foreground mb-4">
               Create your first setlist to start organizing your songs
             </p>
-            <Button 
-              onClick={handleCreateSetlist} 
+            <Button
+              onClick={handleCreateSetlist}
               className="gap-2"
               disabled={!currentBand?.id}
             >

@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Music, Calendar, Users } from 'lucide-react';
-import { useBands } from '@/hooks/useBands';
+import { useBands } from '@/contexts/BandsContext';
 import { useEffect, useRef, useState } from 'react';
 
 export default function BottomNav() {
@@ -65,8 +65,8 @@ export default function BottomNav() {
               ref={(el) => { buttonRefs.current[index] = el; }}
               onClick={() => router.push(item.path)}
               className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-2 transition-colors ${isActive
-                  ? 'text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
               <Icon className="w-6 h-6" />

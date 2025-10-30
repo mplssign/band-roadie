@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useBands } from '@/hooks/useBands';
+import { useBands } from '@/contexts/BandsContext';
 import { Users, Phone, Mail, MapPin, CalendarDays } from 'lucide-react';
 
 type MemberRow = {
@@ -73,8 +73,8 @@ export default function MembersPage() {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-red-400 mb-2">Error Loading Members</h2>
           <p className="text-zinc-400 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors"
           >
             Try Again
@@ -146,7 +146,7 @@ export default function MembersPage() {
                   {bandRoles.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-2">
                       {bandRoles.map((role, index) => (
-                        <span 
+                        <span
                           key={index}
                           className="inline-block px-3 py-1 border border-primary text-primary bg-transparent text-sm rounded-full font-semibold"
                         >

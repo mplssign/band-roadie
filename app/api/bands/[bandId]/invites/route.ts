@@ -21,22 +21,24 @@ const payloadSchema = z.object({
 
 export async function POST(req: Request, { params }: { params: { bandId: string } }) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const admin = adminClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Get user ID from custom cookie
+    const accessToken = req.headers.get('cookie')?.match(/sb-access-token=([^;]+)/)?.[1];
 
-    if (!user) {
+    if (!accessToken) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+    const userId = payload.sub;
 
     const { data: membership } = await admin
       .from('band_members')
       .select('role')
       .eq('band_id', params.bandId)
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (!membership || membership.role !== 'admin') {
@@ -55,7 +57,7 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
 
     if (process.env.NODE_ENV !== 'production') {
       console.log(
-        `[API /api/bands/${params.bandId}/invites] POST request from user ${user.id} for ${emails.length} email(s)`,
+        `[API /api/bands/${params.bandId}/invites] POST request from user ${userId} for ${emails.length} email(s)`,
       );
     }
 
@@ -72,19 +74,19 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     const { data: userProfile } = await supabase
       .from('users')
       .select('first_name, last_name, email')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single();
 
     const inviterName =
       userProfile?.first_name && userProfile?.last_name
         ? `${userProfile.first_name} ${userProfile.last_name}`
-        : userProfile?.email || user.email || 'A band member';
+        : userProfile?.email || payload.email || 'A band member';
 
     const { failedInvites, sentCount } = await sendBandInvites({
       supabase,
       bandId: params.bandId,
       bandName: bandRow.name,
-      inviterId: user.id,
+      inviterId: userId,
       inviterName,
       emails,
     });
@@ -132,19 +134,21 @@ export async function DELETE(req: Request, { params }: { params: { bandId: strin
   const supabase = createClient();
   const admin = adminClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Get user ID from custom cookie
+  const accessToken = req.headers.get('cookie')?.match(/sb-access-token=([^;]+)/)?.[1];
 
-  if (!user) {
+  if (!accessToken) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
+  const userId = payload.sub;
 
   const { data: membership } = await admin
     .from('band_members')
     .select('role')
     .eq('band_id', params.bandId)
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (!membership || membership.role !== 'admin') {

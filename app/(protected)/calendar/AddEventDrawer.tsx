@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useBands } from '@/hooks/useBands';
-import { createClient } from '@/lib/supabase/client';
+import { useBands } from '@/contexts/BandsContext';
 import { useToast } from '@/hooks/useToast';
 
 import {
@@ -128,7 +127,6 @@ export default function AddEventDrawer({
   mode = 'add',
   event,
 }: AddEventDrawerProps) {
-  const supabase = createClient();
   const { currentBand } = useBands();
   const { showToast } = useToast();
 
@@ -218,19 +216,23 @@ export default function AddEventDrawer({
 
   const loadSetlists = useCallback(async () => {
     if (!currentBand?.id) return;
-    const { data, error } = await supabase
-      .from('setlists')
-      .select('id, name')
-      .eq('band_id', currentBand.id)
-      .order('name');
 
-    if (error) {
+    try {
+      const response = await fetch(`/api/setlists?band_id=${currentBand.id}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to load setlists');
+      }
+
+      const { setlists } = await response.json();
+      setSetlists(setlists ?? []);
+    } catch (error) {
       // Non-blocking: just surface the error to the user
       showToast('Failed to load setlists', 'error');
-      return;
     }
-    setSetlists(data ?? []);
-  }, [currentBand?.id, supabase, showToast]);
+  }, [currentBand?.id, showToast]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -303,12 +305,16 @@ export default function AddEventDrawer({
     if (!confirmDelete) return;
 
     try {
-      const supabase = createClient();
-      const table = eventType === 'rehearsal' ? 'rehearsals' : 'gigs';
+      const endpoint = eventType === 'rehearsal' ? '/api/rehearsals' : '/api/gigs';
+      const response = await fetch(`${endpoint}?id=${eventId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-      const { error } = await supabase.from(table).delete().eq('id', eventId);
-
-      if (error) throw error;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete');
+      }
 
       showToast(`${eventType === 'rehearsal' ? 'Rehearsal' : 'Gig'} deleted`, 'success');
       onEventUpdated();
@@ -344,21 +350,28 @@ export default function AddEventDrawer({
 
         if (eventType === 'rehearsal') {
           const rehearsal = {
+            id: eventId,
             date: dateString,
             start_time: startTimeString,
             end_time: endTimeString,
             location: location || 'TBD',
             setlist_id: selectedSetlist || null,
           };
-          const { error } = await supabase
-            .from('rehearsals')
-            .update(rehearsal)
-            .eq('id', eventId);
-          if (error) throw error;
+          const response = await fetch('/api/rehearsals', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rehearsal),
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update rehearsal');
+          }
           showToast('Rehearsal updated', 'success');
         } else {
           const chosen = setlists.find((s) => s.id === selectedSetlist);
           const gig = {
+            id: eventId,
             name: title,
             date: dateString,
             start_time: startTimeString,
@@ -368,11 +381,16 @@ export default function AddEventDrawer({
             setlist_id: selectedSetlist || null,
             setlist_name: chosen?.name ?? null,
           };
-          const { error } = await supabase
-            .from('gigs')
-            .update(gig)
-            .eq('id', eventId);
-          if (error) throw error;
+          const response = await fetch('/api/gigs', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gig),
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update gig');
+          }
           showToast('Gig updated', 'success');
         }
       } else {
@@ -387,8 +405,16 @@ export default function AddEventDrawer({
             notes: null as string | null,
             setlist_id: selectedSetlist || null,
           };
-          const { error } = await supabase.from('rehearsals').insert([rehearsal]);
-          if (error) throw error;
+          const response = await fetch('/api/rehearsals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rehearsal),
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create rehearsal');
+          }
           showToast('Rehearsal scheduled', 'success');
         } else {
           const chosen = setlists.find((s) => s.id === selectedSetlist);
@@ -404,8 +430,16 @@ export default function AddEventDrawer({
             setlist_name: chosen?.name ?? null,
             notes: null as string | null,
           };
-          const { error } = await supabase.from('gigs').insert([gig]);
-          if (error) throw error;
+          const response = await fetch('/api/gigs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gig),
+            credentials: 'include',
+          });
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create gig');
+          }
           showToast(isPotentialGig ? 'Potential gig added' : 'Gig added', 'success');
         }
       }

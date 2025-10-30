@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const normalizedEmail = email.trim().toLowerCase();
 
   // Check if user is authenticated

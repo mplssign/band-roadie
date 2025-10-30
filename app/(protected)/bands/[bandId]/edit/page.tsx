@@ -65,7 +65,7 @@ export default function EditBandPage() {
   const supabase = createClient();
   const { showToast } = useToast();
   const bandId = params?.bandId;
-  
+
   const [bandName, setBandName] = useState('');
   const [bandImage, setBandImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -135,7 +135,7 @@ export default function EditBandPage() {
         setSelectedColor(sanitizedColor);
         setImagePreview(band.image_url ?? null);
         setBandImage(null);
-        
+
         // fetch invites first, then set initial state once
         try {
           const res = await fetch(`/api/bands/${bandId}`);
@@ -143,15 +143,15 @@ export default function EditBandPage() {
             const data = await res.json();
             const invited = Array.isArray(data?.invites)
               ? data.invites
-                  .map((inv: { email?: string | null }) => inv?.email)
-                  .filter((email): email is string => Boolean(email))
+                .map((inv: { email?: string | null }) => inv?.email)
+                .filter((email): email is string => Boolean(email))
               : [];
             const normalizedInvites = invited.map((email) => email.toLowerCase());
             const sortedInvites = [...normalizedInvites].sort();
             setInviteEmails(sortedInvites);
             setInitialInviteEmails([...sortedInvites]);
             setBandMembers(Array.isArray(data?.members) ? data.members : []);
-            
+
             // Set initial state only once with all data loaded
             setInitialBandState({
               bandName: band.name.trim(),
@@ -229,7 +229,7 @@ export default function EditBandPage() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isDirty, router, showUnsavedDialog]);
 
-  
+
 
   const handleBandNameChange = (value: string) => {
     const capitalized = value
@@ -246,7 +246,7 @@ export default function EditBandPage() {
         setErrors({ ...errors, image: 'Image must be less than 5MB' });
         return;
       }
-      
+
       if (!file.type.startsWith('image/')) {
         setErrors({ ...errors, image: 'File must be an image' });
         return;
@@ -258,7 +258,7 @@ export default function EditBandPage() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
-      
+
       const newErrors = { ...errors };
       delete newErrors.image;
       setErrors(newErrors);
@@ -267,11 +267,11 @@ export default function EditBandPage() {
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!bandName.trim()) {
       newErrors.bandName = 'Band name is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -289,18 +289,18 @@ export default function EditBandPage() {
         ? selectedColor
         : 'bg-rose-600';
       formData.append('avatarColor', avatarColor);
-      
+
       if (bandImage) {
         formData.append('image', bandImage);
       }
-      
+
       const response = await fetch(`/api/bands/${bandId}`, {
         method: 'PATCH',
         body: formData,
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update band');
       }
@@ -349,13 +349,13 @@ export default function EditBandPage() {
       }
 
       showToast('Band updated successfully!', 'success');
-      
+
       // Reset form state after successful update to mark as clean
       setIsLoading(false);
-      
+
       // Use router.push instead of setTimeout for more reliable navigation
       router.push('/dashboard');
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update band. Please try again.';
       setErrors({ general: errorMessage });
@@ -529,18 +529,18 @@ export default function EditBandPage() {
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    
+
     try {
       const response = await fetch(`/api/bands/${bandId}`, {
         method: 'DELETE',
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Failed to delete band');
       }
-      
+
       showToast('Band deleted successfully', 'success');
       router.push('/dashboard');
     } catch (error) {
@@ -589,9 +589,8 @@ export default function EditBandPage() {
               placeholder="Enter band name"
               value={bandName}
               onChange={(e) => handleBandNameChange(e.target.value)}
-              className={`w-full rounded-lg border border-border/60 bg-zinc-900 px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
-                errors.bandName ? 'ring-2 ring-destructive' : ''
-              }`}
+              className={`w-full rounded-lg border border-border/60 bg-zinc-900 px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${errors.bandName ? 'ring-2 ring-destructive' : ''
+                }`}
             />
             {errors.bandName && (
               <p className="text-destructive-foreground text-sm mt-1">{errors.bandName}</p>
@@ -603,7 +602,7 @@ export default function EditBandPage() {
             <label className="block text-sm font-medium text-foreground mb-4">
               Band Avatar
             </label>
-            
+
             <div className="flex items-start gap-6">
               <div className="flex-shrink-0">
                 {imagePreview ? (
@@ -669,11 +668,10 @@ export default function EditBandPage() {
                             setBandImage(null);
                             setImagePreview(null);
                           }}
-                          className={`flex-shrink-0 h-12 w-12 rounded-full ${color.class} transition-all ${
-                            selectedColor === color.class && !imagePreview
+                          className={`flex-shrink-0 h-12 w-12 rounded-full ${color.class} transition-all ${selectedColor === color.class && !imagePreview
                               ? 'ring-2 ring-white ring-offset-2 ring-offset-background scale-110'
                               : 'hover:scale-105'
-                          }`}
+                            }`}
                           title={color.name}
                         />
                       ))}
@@ -681,11 +679,11 @@ export default function EditBandPage() {
                   </div>
                 </div>
 
-              <p className="text-sm text-muted-foreground">
-                Upload an image or choose a color for your band avatar
-              </p>
+                <p className="text-sm text-muted-foreground">
+                  Upload an image or choose a color for your band avatar
+                </p>
+              </div>
             </div>
-          </div>
 
             {errors.image && (
               <p className="text-destructive-foreground text-sm mt-2">{errors.image}</p>
@@ -754,13 +752,11 @@ export default function EditBandPage() {
                     type="button"
                     onClick={() => appendDomain(domain)}
                     disabled={!isEnabled}
-                    className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                      isSelected
+                    className={`rounded-full px-3 py-1 text-sm transition-colors ${isSelected
                         ? 'border-2 border-primary bg-primary/20 text-primary hover:bg-primary/30'
                         : 'border border-border/60 bg-muted/40 text-muted-foreground'
-                    } ${
-                      isEnabled ? 'hover:bg-muted/60 hover:text-foreground' : 'opacity-50 cursor-not-allowed'
-                    }`}
+                      } ${isEnabled ? 'hover:bg-muted/60 hover:text-foreground' : 'opacity-50 cursor-not-allowed'
+                      }`}
                   >
                     @{domain}
                   </button>
@@ -811,15 +807,14 @@ export default function EditBandPage() {
             <button
               onClick={handleSubmit}
               disabled={isLoading || !bandName.trim() || !isDirty}
-              className={`w-full py-4 rounded-lg text-lg font-medium transition-colors ${
-                !isLoading && bandName.trim() && isDirty
+              className={`w-full py-4 rounded-lg text-lg font-medium transition-colors ${!isLoading && bandName.trim() && isDirty
                   ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
                   : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
-              }`}
+                }`}
             >
               {isLoading ? 'Updating Band...' : 'Update Band'}
             </button>
-            
+
             <button
               onClick={() => attemptNavigation(() => router.back(), { isBack: true })}
               disabled={isLoading}

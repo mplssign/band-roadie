@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
+import { useBandChange } from '@/hooks/useBandChange';
 import CalendarContent from './CalendarContent';
 import type { AddEventPayload } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
@@ -87,6 +88,17 @@ export default function CalendarPage() {
 
     checkUser();
   }, [router, supabase]);
+
+  // React to band changes
+  useBandChange({
+    onBandChange: () => {
+      setEvents([]);
+      if (currentBand?.id && user) {
+        setLoading(true);
+        loadEvents();
+      }
+    }
+  });
 
   useEffect(() => {
     if (currentBand?.id && user) {

@@ -18,25 +18,51 @@ export const useBandStore = create<BandStore>((set) => ({
 }));
 
 export function useBands() {
+  console.log('[useBands] Hook called/rendering');
+
   const [loading, setLoading] = useState(true);
   const { currentBand, bands, setCurrentBand, setBands } = useBandStore();
   const supabase = createClient();
-  
+
   const loadBands = useCallback(async () => {
+    console.log('[useBands] loadBands: Starting...');
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      // Get user from our cookie-based auth
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
+
+      console.log('[useBands] /api/auth/me response:', response.status);
+
+      if (!response.ok) {
+        console.log('[useBands] Auth failed, clearing bands');
         setBands([]);
         setCurrentBand(null);
         setLoading(false);
         return;
       }
 
+      const { user } = await response.json();
+      console.log('[useBands] User:', user?.id);
+
+      if (!user) {
+        console.log('[useBands] No user, clearing bands');
+        setBands([]);
+        setCurrentBand(null);
+        setLoading(false);
+        return;
+      }
+
+      console.log('[useBands] Fetching band memberships for user:', user.id);
+
       // First get band memberships
       const { data: memberships, error: membershipError } = await supabase
         .from('band_members')
         .select('band_id, role')
         .eq('user_id', user.id);
+
+      console.log('[useBands] Memberships result:', { memberships, error: membershipError });
 
       if (membershipError) {
         console.error('Error loading band memberships:', membershipError);
@@ -47,18 +73,23 @@ export function useBands() {
       }
 
       if (!memberships || memberships.length === 0) {
+        console.log('[useBands] No memberships found');
         setBands([]);
         setCurrentBand(null);
         setLoading(false);
         return;
       }
 
+      console.log('[useBands] Fetching band details...');
+
       // Then get the actual band data
-      const bandIds = memberships.map(m => m.band_id);
+      const bandIds = memberships.map((m) => m.band_id);
       const { data: bands, error: bandsError } = await supabase
         .from('bands')
         .select('*')
         .in('id', bandIds);
+
+      console.log('[useBands] Bands result:', { bands, error: bandsError });
 
       if (bandsError) {
         console.error('Error loading bands:', bandsError);
@@ -69,32 +100,46 @@ export function useBands() {
       }
 
       const userBands = bands || [];
+      console.log('[useBands] Setting bands:', userBands.length, 'bands');
       setBands(userBands);
-      
+
       if (userBands.length > 0 && !currentBand) {
+        console.log('[useBands] Setting current band to first band:', userBands[0].name);
         setCurrentBand(userBands[0]);
       } else if (userBands.length === 0) {
+        console.log('[useBands] No bands, clearing current band');
         setCurrentBand(null);
       }
+
+      console.log('[useBands] loadBands: Complete!');
     } catch (error) {
-      console.error('Error loading bands:', error);
+      console.error('[useBands] Error loading bands:', error);
       setBands([]);
       setCurrentBand(null);
     } finally {
+      console.log('[useBands] loadBands: finally block, setting loading to false');
       setLoading(false);
     }
-  }, [supabase, setBands, setCurrentBand, currentBand]);
+  }, [supabase, setBands, setCurrentBand]); // Removed currentBand from dependencies
 
   useEffect(() => {
+    console.log('[useBands] useEffect: Calling loadBands');
     loadBands();
-  }, [loadBands]);
+  }, []); // Only run once on mount
 
   const switchBand = (band: Band) => {
     setCurrentBand(band);
   };
 
   const createBand = async (name: string, inviteEmails?: string[]) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get user from our cookie-based auth
+    const response = await fetch('/api/auth/me', {
+      credentials: 'include',
+    });
+
+    if (!response.ok) return null;
+
+    const { user } = await response.json();
     if (!user) return null;
 
     const { data: band, error } = await supabase
@@ -111,12 +156,12 @@ export function useBands() {
     });
 
     if (inviteEmails && inviteEmails.length > 0) {
-      const invites = inviteEmails.map(email => ({
+      const invites = inviteEmails.map((email) => ({
         band_id: band.id,
         email,
         invited_by: user.id,
       }));
-      
+
       await supabase.from('invites').insert(invites);
     }
 

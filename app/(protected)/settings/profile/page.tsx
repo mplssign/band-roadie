@@ -1,14 +1,23 @@
+import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import ProfileForm from '@/app/(protected)/profile/ProfileForm';
 
 export default async function ProfileSettingsPage() {
+  const cookieStore = cookies();
+  const accessToken = cookieStore.get('sb-access-token')?.value;
+
+  if (!accessToken) {
+    redirect('/login');
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+    error,
+  } = await supabase.auth.getUser(accessToken);
 
-  if (!user) {
+  if (error || !user) {
     redirect('/login');
   }
 

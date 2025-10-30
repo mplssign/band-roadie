@@ -6,8 +6,26 @@ import { getBandMemberAddedEmailHtml } from '@/lib/email/templates/member-added'
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    const authorization = request.headers.get('authorization');
+    const bearerToken = authorization?.toLowerCase().startsWith('bearer ')
+      ? authorization.slice(7).trim()
+      : null;
+
+    const cookieHeader = request.headers.get('cookie') ?? '';
+    const cookieTokenMatch = cookieHeader.match(/sb-access-token=([^;]+)/);
+    const cookieToken = cookieTokenMatch?.[1] ?? null;
+
+    const accessToken = bearerToken || cookieToken || null;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(accessToken);
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -20,11 +38,13 @@ export async function PATCH(request: NextRequest) {
     // Normalize roles: roles may be an array of role names. Ensure they exist in `roles` table
     let roleNames: string[] = [];
     if (Array.isArray(roles)) {
-      roleNames = roles.filter((r: unknown): r is string => typeof r === 'string' && r.trim().length > 0).map((r) => r.trim());
+      roleNames = roles
+        .filter((r: unknown): r is string => typeof r === 'string' && r.trim().length > 0)
+        .map((r) => r.trim());
     } else if (typeof roles === 'string' && roles.trim()) {
       roleNames = [roles.trim()];
     }
-    
+
     console.log('[PROFILE PATCH] Normalized roleNames:', roleNames);
 
     const roleIds: string[] = [];
@@ -74,7 +94,10 @@ export async function PATCH(request: NextRequest) {
       })
       .eq('id', user.id);
 
-    console.log('[PROFILE PATCH] Update completed with roles:', roleNames.length > 0 ? roleNames : null);
+    console.log(
+      '[PROFILE PATCH] Update completed with roles:',
+      roleNames.length > 0 ? roleNames : null,
+    );
 
     if (updateError) {
       console.error('Database update error:', updateError);
@@ -84,8 +107,8 @@ export async function PATCH(request: NextRequest) {
     // Also update user metadata in Supabase Auth so middleware can see completion status
     const { error: metadataError } = await supabase.auth.updateUser({
       data: {
-        profile_completed: true
-      }
+        profile_completed: true,
+      },
     });
 
     if (metadataError) {
@@ -142,7 +165,10 @@ export async function PATCH(request: NextRequest) {
               if (!memErr && Array.isArray(membershipRows) && membershipRows.length > 0) {
                 // already a member
                 // mark invite accepted
-                await supabase.from('band_invitations').update({ status: 'accepted' }).eq('id', inv.id);
+                await supabase
+                  .from('band_invitations')
+                  .update({ status: 'accepted' })
+                  .eq('id', inv.id);
                 continue;
               }
 
@@ -154,12 +180,18 @@ export async function PATCH(request: NextRequest) {
               });
 
               if (addErr) {
-                console.warn('Failed to add band member on invite accept:', addErr.message || addErr);
+                console.warn(
+                  'Failed to add band member on invite accept:',
+                  addErr.message || addErr,
+                );
                 continue;
               }
 
               // mark invitation accepted
-              await supabase.from('band_invitations').update({ status: 'accepted' }).eq('id', inv.id);
+              await supabase
+                .from('band_invitations')
+                .update({ status: 'accepted' })
+                .eq('id', inv.id);
 
               // Fetch inviter name for email
               let inviterName = 'A band member';
@@ -171,7 +203,9 @@ export async function PATCH(request: NextRequest) {
                   .limit(1)
                   .single();
                 if (inviterRow?.first_name || inviterRow?.last_name) {
-                  inviterName = `${inviterRow.first_name ?? ''} ${inviterRow.last_name ?? ''}`.trim() || inviterName;
+                  inviterName =
+                    `${inviterRow.first_name ?? ''} ${inviterRow.last_name ?? ''}`.trim() ||
+                    inviterName;
                 }
               }
 
@@ -190,7 +224,11 @@ export async function PATCH(request: NextRequest) {
               }
 
               // Send member-added email
-              const emailHtml = getBandMemberAddedEmailHtml(bandName, inviterName, String(inv.band_id));
+              const emailHtml = getBandMemberAddedEmailHtml(
+                bandName,
+                inviterName,
+                String(inv.band_id),
+              );
               await sendEmail({
                 to: normalizedEmail,
                 subject: `${inviterName} added you to ${bandName} on Band Roadie`,
@@ -216,8 +254,26 @@ export async function PATCH(request: NextRequest) {
 export async function GET(_request: NextRequest) {
   try {
     const supabase = await createClient();
-    
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    const authorization = _request.headers.get('authorization');
+    const bearerToken = authorization?.toLowerCase().startsWith('bearer ')
+      ? authorization.slice(7).trim()
+      : null;
+
+    const cookieHeader = _request.headers.get('cookie') ?? '';
+    const cookieTokenMatch = cookieHeader.match(/sb-access-token=([^;]+)/);
+    const cookieToken = cookieTokenMatch?.[1] ?? null;
+
+    const accessToken = bearerToken || cookieToken || null;
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(accessToken);
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

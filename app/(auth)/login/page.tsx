@@ -2,8 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { getAuthCallbackUrl } from '@/lib/config/site';
 import { Wordmark } from '@/components/branding/Wordmark';
 
 const EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'icloud.com', 'outlook.com'];
@@ -16,7 +14,6 @@ function LoginForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
-  const supabase = createClient();
 
   // Check for error parameters from auth callback
   useEffect(() => {
@@ -93,15 +90,18 @@ function LoginForm() {
     setError(null);
 
     try {
-      // Supabase will now use cookie storage for PKCE, enabling cross-tab auth
-      const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: getAuthCallbackUrl(),
-        },
+      // Send magic link from server (no PKCE in browser)
+      const response = await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
       });
 
-      if (otpError) throw otpError;
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send magic link');
+      }
+
       setSuccess(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';

@@ -4,11 +4,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  console.log('[middleware] Request:', pathname, 'Params:', Object.fromEntries(searchParams));
+
   // Skip middleware for auth routes, API, and static assets
   // These routes need uninterrupted access for magic links and PKCE flow
   if (
     pathname.startsWith('/api/auth') || // Auth API endpoints (including /api/auth/start)
     pathname.startsWith('/auth/callback') || // OAuth callback
+    pathname.startsWith('/auth/set-session') || // Session establishment route
+    pathname.startsWith('/auth/verify') || // Auth verify page
     pathname.startsWith('/api') || // All other API routes
     pathname === '/login' ||
     pathname === '/signup' ||
@@ -20,6 +24,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/manifest.json' ||
     pathname.startsWith('/.well-known')
   ) {
+    console.log('[middleware] Allowing through (auth/api/static):', pathname);
     return NextResponse.next();
   }
 
@@ -33,7 +38,7 @@ export async function middleware(request: NextRequest) {
     searchParams.has('inviteToken') ||
     searchParams.has('token_hash');
 
-  // If URL has magic link params, redirect to auth callback
+  // If URL has magic link params, redirect to auth callback WITHOUT checking auth
   if (hasMagicLinkParams && pathname !== '/auth/callback') {
     const callbackUrl = new URL('/auth/callback', request.url);
     // Preserve all query params including state for PKCE
@@ -49,61 +54,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  //Don't check auth for pages in auth flow - let callback handle it
+  if (hasMagicLinkParams) {
+    return NextResponse.next();
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          });
-        },
-      },
-    },
-  );
+  // Check for our custom session cookies
+  const accessToken = request.cookies.get('sb-access-token')?.value;
+  const hasSession = !!accessToken;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  console.log('[middleware] Auth check:', {
+    pathname,
+    hasSession,
+    hasAccessToken: !!accessToken,
+  });
 
   // Check for explicit logout cookie
   const hasLoggedOut = request.cookies.get('br_logged_out')?.value === 'true';
@@ -119,7 +89,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/gigs') ||
     pathname.startsWith('/rehearsals')
   ) {
-    if (!user) {
+    if (!hasSession) {
       // Only redirect to login if user explicitly logged out
       // Don't redirect if they're in an auth flow (will be handled by callback)
       if (hasLoggedOut) {
@@ -145,7 +115,7 @@ export async function middleware(request: NextRequest) {
       searchParams.has('invitationId') ||
       searchParams.has('bandId');
 
-    if (!user && !hasOnboardingParams) {
+    if (!hasSession && !hasOnboardingParams) {
       const url = request.nextUrl.clone();
       url.pathname = '/login';
       url.searchParams.set('redirectedFrom', pathname);

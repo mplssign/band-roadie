@@ -12,6 +12,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Dialog } from '@/components/ui/Dialog';
 import { SongRow } from '@/components/setlists/SongRow';
 import { ArrowLeft, Search, Save, Plus, Edit, X } from 'lucide-react';
+import { capitalizeWords } from '@/lib/utils/formatters';
 
 // Dynamic imports for performance optimization
 const SongSearchOverlay = lazy(() => import('@/components/setlists/OptimizedSongSearchOverlay'));
@@ -87,13 +88,15 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   );
 
   const loadSetlist = useCallback(async () => {
-    if (!params.id || params.id === 'new') return;
+    if (!params.id || params.id === 'new' || !currentBand?.id) {
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/setlists/${params.id}`);
+      const response = await fetch(`/api/setlists/${params.id}?band_id=${currentBand.id}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -103,9 +106,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       setSetlist(data.setlist);
       setSetlistName(data.setlist.name);
       setOriginalSetlistName(data.setlist.name);
-      
 
-      
+
+
       setSongs(data.setlist.setlist_songs || []);
       setOriginalSongs(data.setlist.setlist_songs || []);
     } catch (err) {
@@ -114,7 +117,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [params.id, currentBand?.id]);
 
   useEffect(() => {
     if (params.id === 'new') {
@@ -159,7 +162,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
         setlistId = createData.setlist.id;
         setSetlist(createData.setlist);
-        
+
         // Update URL to reflect the new setlist ID
         router.replace(`/setlists/${setlistId}`);
       } else {
@@ -167,7 +170,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         const updateResponse = await fetch(`/api/setlists/${setlistId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: setlistName }),
+          body: JSON.stringify({ name: setlistName, band_id: currentBand.id }),
         });
 
         const updateData = await updateResponse.json();
@@ -208,17 +211,17 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const hasChanges = () => {
     if (setlistName !== originalSetlistName) return true;
     if (songs.length !== originalSongs.length) return true;
-    
+
     // Check if song order or properties changed
     return JSON.stringify(songs) !== JSON.stringify(originalSongs);
   };
 
   const handleDeleteSetlist = async () => {
-    if (!setlist?.id) return;
+    if (!setlist?.id || !currentBand?.id) return;
     setShowDeleteDialog(false);
 
     try {
-      const response = await fetch(`/api/setlists/${setlist.id}`, {
+      const response = await fetch(`/api/setlists/${setlist.id}?band_id=${currentBand.id}`, {
         method: 'DELETE',
       });
 
@@ -283,7 +286,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const handleRemoveSong = async (songId: string) => {
     try {
       const setlistId = setlist?.id || params.id;
-      
+
       if (setlistId !== 'new') {
         const response = await fetch(`/api/setlists/${setlistId}/songs/${songId}`, {
           method: 'DELETE',
@@ -305,7 +308,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const handleUpdateSong = async (songId: string, updates: { bpm?: number; tuning?: TuningType; duration_seconds?: number }) => {
     try {
       const setlistId = setlist?.id || params.id;
-      
+
       if (setlistId !== 'new') {
         const response = await fetch(`/api/setlists/${setlistId}/songs/${songId}`, {
           method: 'PUT',
@@ -319,7 +322,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         }
       }
 
-      setSongs(prev => prev.map(song => 
+      setSongs(prev => prev.map(song =>
         song.id === songId ? { ...song, ...updates } : song
       ));
     } catch (err) {
@@ -335,13 +338,13 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       setSongs(prev => {
         const oldIndex = prev.findIndex(song => song.id === active.id);
         const newIndex = prev.findIndex(song => song.id === over.id);
-        
+
         if (oldIndex === -1 || newIndex === -1) {
           return prev;
         }
-        
+
         const newSongs = arrayMove(prev, oldIndex, newIndex);
-        
+
         // Update positions
         return newSongs.map((song, index) => ({
           ...song,
@@ -384,14 +387,14 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           {isEditMode ? (
             <Input
               value={setlistName}
-              onChange={(e) => setSetlistName(e.target.value)}
+              onChange={(e) => setSetlistName(capitalizeWords(e.target.value))}
               className="text-2xl font-bold border-none p-0 h-auto bg-transparent focus-visible:ring-0"
               placeholder="Setlist name"
             />
           ) : (
             <h1 className="text-2xl font-bold">{setlistName}</h1>
           )}
-          
+
           {setlist && !isEditMode && (
             <Button
               variant="outline"
@@ -524,7 +527,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               <Save className="h-4 w-4 mr-2" />
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
-            
+
             {setlist && (
               <Button
                 variant="ghost"
@@ -547,22 +550,22 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog 
-        open={showDeleteDialog} 
+      <Dialog
+        open={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         title="Delete Setlist"
       >
         <div className="space-y-4">
           <p>Are you sure you want to delete this setlist? This action cannot be undone.</p>
           <div className="flex justify-end gap-3">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => setShowDeleteDialog(false)}
             >
               Cancel
             </Button>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               onClick={handleDeleteSetlist}
             >
               Delete

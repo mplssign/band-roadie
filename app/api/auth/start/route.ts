@@ -4,7 +4,7 @@ import { getAuthCallbackUrl } from '@/lib/config/site';
 
 /**
  * Start magic link authentication
- * 
+ *
  * This endpoint initiates the magic link flow.
  * Supabase handles PKCE internally, but we ensure the callback URL is correct
  * and context parameters are preserved.
@@ -14,10 +14,7 @@ export async function POST(req: NextRequest) {
     const { email, invitationId, bandId } = await req.json();
 
     if (!email || typeof email !== 'string') {
-      return NextResponse.json(
-        { error: 'Email is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     // Create admin client for server-side auth
@@ -29,7 +26,7 @@ export async function POST(req: NextRequest) {
           autoRefreshToken: false,
           persistSession: false,
         },
-      }
+      },
     );
 
     // Build redirect URL with context parameters
@@ -63,10 +60,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('[auth/start] Supabase error:', error);
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     console.log('[auth/start] Magic link sent successfully');
@@ -75,12 +69,8 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Check your email for the magic link',
     });
-
   } catch (error) {
     console.error('[auth/start] Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

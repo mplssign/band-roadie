@@ -3,6 +3,8 @@
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, MapPin, Plus, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import AddEventDrawer from '@/app/(protected)/calendar/AddEventDrawer';
 // import { useState } from 'react'; // Temporarily disabled
 // import EditRehearsalDrawer from './EditRehearsalDrawer'; // Temporarily disabled
 
@@ -49,20 +51,27 @@ interface DashboardContentProps {
   dashboardData: DashboardData;
 }
 
-export default function DashboardContent({ 
-  user: _user, 
-  bands: _bands, 
-  currentBand: _currentBand, 
-  dashboardData 
+export default function DashboardContent({
+  user: _user,
+  bands: _bands,
+  currentBand: _currentBand,
+  dashboardData
 }: DashboardContentProps) {
   const router = useRouter();
+  const [isAddEventOpen, setIsAddEventOpen] = useState(false);
+  const [addEventType, setAddEventType] = useState<'rehearsal' | 'gig'>('gig');
   // const [isRehearsalDrawerOpen, setIsRehearsalDrawerOpen] = useState(false); // Temporarily disabled
+
+  const openAddEventDrawer = (type: 'rehearsal' | 'gig') => {
+    setAddEventType(type);
+    setIsAddEventOpen(true);
+  };
 
   return (
     <>
       <main className="min-h-screen bg-black text-white pb-28">
         <div className="px-4 pt-4 space-y-6">
-          
+
           {/* Potential Gig Card */}
           {dashboardData.potentialGig && (
             <button
@@ -97,7 +106,7 @@ export default function DashboardContent({
                   <Clock className="w-6 h-6 text-white" />
                   <span className="text-xl font-normal text-white">{dashboardData.potentialGig.time}</span>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <div className="px-6 py-2 rounded-full border-2 border-white/80 bg-transparent">
                     <span className="text-lg font-medium text-white">Yes ({dashboardData.potentialGig.yesCount})</span>
@@ -113,7 +122,7 @@ export default function DashboardContent({
           {/* Next Rehearsal Card */}
           {dashboardData.nextRehearsal && (
             <button
-              onClick={() => {/* setIsRehearsalDrawerOpen(true) - temporarily disabled */}}
+              onClick={() => {/* setIsRehearsalDrawerOpen(true) - temporarily disabled */ }}
               className="w-full rounded-2xl p-4 shadow-xl text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity"
             >
               <div className="flex items-center justify-between mb-3">
@@ -144,7 +153,7 @@ export default function DashboardContent({
             <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
             <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide">
               <button
-                onClick={() => router.push('/setlists/create')}
+                onClick={() => router.push('/setlists/new')}
                 className="flex-shrink-0 rounded-xl p-4 hover:opacity-80 transition-opacity snap-start bg-zinc-900 border border-zinc-800"
               >
                 <div className="flex items-center justify-center gap-2">
@@ -154,7 +163,7 @@ export default function DashboardContent({
               </button>
 
               <button
-                onClick={() => router.push('/gigs/create')}
+                onClick={() => openAddEventDrawer('gig')}
                 className="flex-shrink-0 rounded-xl p-4 hover:opacity-80 transition-opacity snap-start bg-zinc-900 border border-zinc-800"
               >
                 <div className="flex items-center justify-center gap-2">
@@ -186,6 +195,16 @@ export default function DashboardContent({
           location: dashboardData.nextRehearsal.location
         } : null}
       /> */}
+
+      <AddEventDrawer
+        isOpen={isAddEventOpen}
+        onClose={() => setIsAddEventOpen(false)}
+        defaultEventType={addEventType}
+        onEventUpdated={() => {
+          setIsAddEventOpen(false);
+          router.refresh();
+        }}
+      />
     </>
   );
 }

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireBandMembership } from '@/lib/server/band-scope';
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { searchParams } = new URL(request.url);
   const bandId = searchParams.get('band_id');
 
@@ -11,9 +12,13 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Verify user is a member of this band
+    await requireBandMembership(bandId);
+
     const { data: setlists, error } = await supabase
       .from('setlists')
-      .select(`
+      .select(
+        `
         id,
         name,
         total_duration,
@@ -22,7 +27,8 @@ export async function GET(request: NextRequest) {
         setlist_songs (
           id
         )
-      `)
+      `,
+      )
       .eq('band_id', bandId)
       .order('created_at', { ascending: false });
 
@@ -32,21 +38,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Add song count to each setlist
-    const setlistsWithCounts = setlists?.map(setlist => ({
-      ...setlist,
-      song_count: setlist.setlist_songs?.length || 0,
-      setlist_songs: undefined // Remove the setlist_songs array from response
-    })) || [];
+    const setlistsWithCounts =
+      setlists?.map((setlist) => ({
+        ...setlist,
+        song_count: setlist.setlist_songs?.length || 0,
+        setlist_songs: undefined, // Remove the setlist_songs array from response
+      })) || [];
 
     return NextResponse.json({ setlists: setlistsWithCounts });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
     console.error('Error in setlists API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const body = await request.json();
@@ -56,12 +65,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Band ID and name are required' }, { status: 400 });
     }
 
+    // Verify user is a member of this band
+    await requireBandMembership(band_id);
+
     const { data: setlist, error } = await supabase
       .from('setlists')
       .insert({
         band_id,
         name,
-        total_duration: 0
+        total_duration: 0,
       })
       .select()
       .single();
@@ -72,8 +84,10 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ setlist });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
     console.error('Error in setlist creation:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
 }

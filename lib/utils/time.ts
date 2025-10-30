@@ -1,16 +1,12 @@
 /**
  * Formats a time range using Intl.DateTimeFormat for locale-aware output.
- * 
+ *
  * @param startTime - Start time in HH:MM format (24-hour)
  * @param endTime - End time in HH:MM format (24-hour)
  * @param dateStr - Optional date string (YYYY-MM-DD) for proper date construction
  * @returns Formatted time range like "7:00 PM – 9:00 PM" with em dash
  */
-export function formatTimeRange(
-  startTime: string,
-  endTime?: string,
-  dateStr?: string
-): string {
+export function formatTimeRange(startTime: string, endTime?: string, dateStr?: string): string {
   try {
     if (!startTime) {
       return 'Invalid time';
@@ -23,17 +19,15 @@ export function formatTimeRange(
     }
 
     // Use provided date or default to today for proper date construction
-    const baseDate = dateStr 
-      ? new Date(`${dateStr}T00:00:00`)
-      : new Date();
-    
+    const baseDate = dateStr ? new Date(`${dateStr}T00:00:00`) : new Date();
+
     const startDate = new Date(baseDate);
     startDate.setHours(startHour, startMinute, 0, 0);
 
     const formatter = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
 
     const startFormatted = formatter.format(startDate);

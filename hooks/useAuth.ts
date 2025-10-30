@@ -5,48 +5,31 @@ import { User } from '@/lib/types';
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
+        // Use our cookie-based auth
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const { user, profile } = await response.json();
           setUser(profile);
+        } else {
+          setUser(null);
         }
       } catch (error) {
         console.error('Error fetching user:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
     getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          setUser(profile);
-        } else {
-          setUser(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, []); // Only run once on mount
 
   return { user, loading };
 }

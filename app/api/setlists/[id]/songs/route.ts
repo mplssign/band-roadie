@@ -2,11 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
   const setlistId = params.id;
 
   try {
@@ -47,9 +44,10 @@ export async function POST(
         position: nextPosition,
         bpm,
         tuning: tuning || 'standard',
-        duration_seconds
+        duration_seconds,
       })
-      .select(`
+      .select(
+        `
         id,
         position,
         bpm,
@@ -64,7 +62,8 @@ export async function POST(
           tuning,
           duration_seconds
         )
-      `)
+      `,
+      )
       .single();
 
     if (error) {
@@ -77,10 +76,8 @@ export async function POST(
     const enhancedSetlistSong = {
       ...setlistSong,
       tuning_name: tuningInfo.name,
-      tuning_notes: tuningInfo.notes
+      tuning_notes: tuningInfo.notes,
     };
-
-
 
     return NextResponse.json({ setlist_song: enhancedSetlistSong });
   } catch (error) {
@@ -89,11 +86,8 @@ export async function POST(
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params: _params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function PUT(request: NextRequest, { params: _params }: { params: { id: string } }) {
+  const supabase = await createClient();
 
   try {
     const body = await request.json();
@@ -111,7 +105,7 @@ export async function PUT(
           position: index + 1,
           bpm: song.bpm,
           tuning: song.tuning || 'standard',
-          duration_seconds: song.duration_seconds
+          duration_seconds: song.duration_seconds,
         })
         .eq('id', song.id);
 

@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { Plus, CalendarDays, Clock, MapPin } from 'lucide-react';
-import { useBands } from '@/hooks/useBands';
+import { useBands } from '@/contexts/BandsContext';
+import { useBandChange } from '@/hooks/useBandChange';
 import { createClient } from '@/lib/supabase/client';
 import Empty from '@/components/ui/empty';
 import { Card } from '@/components/ui/Card';
@@ -72,7 +72,6 @@ export default function DashboardPage() {
   const supabase = createClient();
   const { currentBand, bands, loading: bandsLoading } = useBands();
 
-  const [user, setUser] = useState<User | null>(null);
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
   const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -148,14 +147,8 @@ export default function DashboardPage() {
     };
   };
 
-  // auth check
-  useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/login');
-      else setUser(user);
-    })();
-  }, [router, supabase]);
+  // Middleware handles auth, no need for client-side check
+  // Just load dashboard data directly
 
   const loadDashboardData = useCallback(async () => {
     if (!currentBand?.id) return;
@@ -273,12 +266,31 @@ export default function DashboardPage() {
     setDrawerOpen(true);
   }, []);
 
-  useEffect(() => {
-    if (currentBand?.id && user) loadDashboardData();
-    else if (!bandsLoading && user) setLoading(false);
-  }, [user, bandsLoading, currentBand?.id, loadDashboardData]);
+  // React to band changes: close drawers and refetch data
+  useBandChange({
+    onBandChange: () => {
+      // Close any open drawers
+      setDrawerOpen(false);
+      setEditEvent(undefined);
+      setDrawerMode('add');
 
-  if (!user || bandsLoading || loading) {
+      // Clear stale state
+      setNextRehearsal(null);
+      setUpcomingGigs([]);
+
+      // Refetch data for new band
+      if (currentBand?.id) {
+        loadDashboardData();
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (currentBand?.id) loadDashboardData();
+    else if (!bandsLoading) setLoading(false);
+  }, [bandsLoading, currentBand?.id, loadDashboardData]);
+
+  if (bandsLoading || loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div>Loading...</div>
@@ -342,7 +354,7 @@ export default function DashboardPage() {
                       <span className="text-white font-medium">{formatTimeRange(potentialGig.start_time, potentialGig.end_time, potentialGig.date)}</span>
                     </div>
                   )}
-                  
+
                   {/* Response buttons (bottom-aligned to location) */}
                   <div className="flex items-center gap-3">
                     <button className="px-4 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-white/90 transition-colors">
@@ -519,7 +531,7 @@ export default function DashboardPage() {
 
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
-                onClick={() => router.push('/setlists/create')}
+                onClick={() => router.push('/setlists/new')}
                 gradientClass="bg-rose-500"
                 className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >

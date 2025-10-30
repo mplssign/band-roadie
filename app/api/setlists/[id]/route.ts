@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireBandMembership, requireResourceInBand } from '@/lib/server/band-scope';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
   const { id } = params;
+  const { searchParams } = new URL(request.url);
+  const bandId = searchParams.get('band_id');
+
+  if (!bandId) {
+    return NextResponse.json({ error: 'Band ID is required' }, { status: 400 });
+  }
 
   try {
+    // Verify user is a member of this band
+    await requireBandMembership(bandId);
+
+    // Verify this setlist belongs to the band
+    await requireResourceInBand('setlists', id, bandId);
+
     const { data: setlist, error } = await supabase
       .from('setlists')
-      .select(`
+      .select(
+        `
         id,
         name,
         total_duration,
@@ -34,8 +45,10 @@ export async function GET(
             duration_seconds
           )
         )
-      `)
+      `,
+      )
       .eq('id', id)
+      .eq('band_id', bandId)
       .single();
 
     if (error) {
@@ -50,48 +63,54 @@ export async function GET(
     // Sort songs by position and add tuning information
     if (setlist.setlist_songs) {
       setlist.setlist_songs.sort((a, b) => a.position - b.position);
-      
+
       // Add tuning names and notes to each song
-      setlist.setlist_songs = setlist.setlist_songs.map(song => {
+      setlist.setlist_songs = setlist.setlist_songs.map((song) => {
         const tuningInfo = getTuningInfo(song.tuning);
         const enhancedSong = {
           ...song,
           tuning_name: tuningInfo.name,
-          tuning_notes: tuningInfo.notes
+          tuning_notes: tuningInfo.notes,
         };
-        
 
-        
         return enhancedSong;
       });
     }
 
     return NextResponse.json({ setlist });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
     console.error('Error in setlist detail API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
 }
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
   const { id } = params;
 
   try {
     const body = await request.json();
-    const { name } = body;
+    const { name, band_id } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
+    if (!band_id) {
+      return NextResponse.json({ error: 'Band ID is required' }, { status: 400 });
+    }
+
+    // Verify user is a member and resource belongs to band
+    await requireBandMembership(band_id);
+    await requireResourceInBand('setlists', id, band_id);
+
     const { data: setlist, error } = await supabase
       .from('setlists')
       .update({ name, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('band_id', band_id)
       .select()
       .single();
 
@@ -101,24 +120,30 @@ export async function PUT(
     }
 
     return NextResponse.json({ setlist });
-  } catch (error) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
     console.error('Error in setlist update:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const supabase = createClient();
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = await createClient();
   const { id } = params;
+  const { searchParams } = new URL(request.url);
+  const bandId = searchParams.get('band_id');
+
+  if (!bandId) {
+    return NextResponse.json({ error: 'Band ID is required' }, { status: 400 });
+  }
 
   try {
-    const { error } = await supabase
-      .from('setlists')
-      .delete()
-      .eq('id', id);
+    // Verify user is a member and resource belongs to band
+    await requireBandMembership(bandId);
+    await requireResourceInBand('setlists', id, bandId);
+
+    const { error } = await supabase.from('setlists').delete().eq('id', id).eq('band_id', bandId);
 
     if (error) {
       console.error('Error deleting setlist:', error);
@@ -126,8 +151,10 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error in setlist deletion:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
+    console.error('Error deleting setlist:', error);
+    return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
 }
