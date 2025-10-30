@@ -235,15 +235,22 @@ export default function AddEventDrawer({
   }, [currentBand?.id, showToast]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || mode !== 'add') return;
+
     if (prefilledDate) {
       setDate(prefilledDate);
-      // Preselect day-of-week for recurrence helper
       const dow = new Date(`${prefilledDate}T00:00:00`).getDay();
       setSelectedDays([dow]);
+    } else {
+      setDate('');
+      setSelectedDays([]);
     }
+  }, [isOpen, mode, prefilledDate]);
+
+  useEffect(() => {
+    if (!isOpen) return;
     void loadSetlists();
-  }, [isOpen, prefilledDate, loadSetlists]);
+  }, [isOpen, loadSetlists]);
 
   const hour24 = useMemo(() => {
     const h = parseInt(startHour, 10);

@@ -542,7 +542,7 @@ export default function DashboardPage() {
 
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
-                onClick={() => router.push('/gigs/create')}
+                onClick={() => openAddEvent('gig')}
                 gradientClass="bg-rose-500"
                 className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
