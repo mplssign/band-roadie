@@ -18,12 +18,20 @@ async function getUser() {
   const jar = cookies();
   const supa = createServerClient(env.url, env.anon, {
     cookies: {
-      get(name) { return jar.get(name)?.value; },
-      set(name, value, options) { jar.set({ name, value, ...options }); },
-      remove(name, options) { jar.delete({ name, ...options }); },
+      get(name) {
+        return jar.get(name)?.value;
+      },
+      set(name, value, options) {
+        jar.set({ name, value, ...options });
+      },
+      remove(name, options) {
+        jar.delete({ name, ...options });
+      },
     },
   });
-  const { data: { user } } = await supa.auth.getUser();
+  const {
+    data: { user },
+  } = await supa.auth.getUser();
   return user ?? null;
 }
 
@@ -52,15 +60,19 @@ export async function GET(_: Request, { params }: { params: { bandId: string } }
   if (!mem) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const a = admin();
-  
+
   // Get band members
   const { data: bandMembers, error: membersError } = await a
     .from('band_members')
-    .select(`
+    .select(
+      `
+      id,
       user_id,
       role,
-      joined_at
-    `)
+      joined_at,
+      is_active
+    `,
+    )
     .eq('band_id', params.bandId);
 
   if (membersError) {
@@ -69,10 +81,12 @@ export async function GET(_: Request, { params }: { params: { bandId: string } }
   }
 
   // Get profiles for these users
-  const userIds = bandMembers?.map(m => m.user_id) || [];
+  const userIds = bandMembers?.map((m) => m.user_id) || [];
   const { data: users, error: usersError } = await a
     .from('users')
-    .select('id, email, first_name, last_name, phone, address, city, zip, birthday, roles, profile_completed')
+    .select(
+      'id, email, first_name, last_name, phone, address, city, zip, birthday, roles, profile_completed',
+    )
     .in('id', userIds);
 
   if (usersError) {
@@ -81,10 +95,11 @@ export async function GET(_: Request, { params }: { params: { bandId: string } }
   }
 
   // Combine the data
-  const members = bandMembers?.map(member => ({
-    ...member,
-    user: users?.find(u => u.id === member.user_id) || null
-  })) || [];
+  const members =
+    bandMembers?.map((member) => ({
+      ...member,
+      user: users?.find((u) => u.id === member.user_id) || null,
+    })) || [];
 
   // Get pending invites
   const { data: invites, error: invitesError } = await a
@@ -98,9 +113,9 @@ export async function GET(_: Request, { params }: { params: { bandId: string } }
     return NextResponse.json({ error: 'Failed to fetch invites' }, { status: 500 });
   }
 
-  return NextResponse.json({ 
-    members: members || [], 
-    invites: invites || [] 
+  return NextResponse.json({
+    members: members || [],
+    invites: invites || [],
   });
 }
 

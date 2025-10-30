@@ -67,9 +67,28 @@ export interface Gig {
   end_time?: string;
   setlist_id?: string;
   is_potential: boolean;
+  optional_member_ids?: string[] | null;
+  member_responses?: GigMemberResponse[] | null;
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface GigMemberResponse {
+  id?: string;
+  gig_id?: string;
+  band_member_id: string;
+  response: 'yes' | 'no';
+  responded_at?: string;
+  band_members?: {
+    id: string;
+    user_id: string;
+    users?: {
+      id: string;
+      first_name?: string | null;
+      last_name?: string | null;
+    } | null;
+  } | null;
 }
 
 export interface Setlist {

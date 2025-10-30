@@ -110,26 +110,27 @@ export async function POST(req: NextRequest) {
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin: 20px 0;">
-                <h1 style="color: #000; margin: 0 0 20px 0; font-size: 24px;">Sign in to Band Roadie</h1>
-                <p style="margin: 0 0 20px 0; font-size: 16px;">Click the button below to sign in to your account:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${emailLink}" 
-                     style="display: inline-block; background-color: #000; color: #fff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 16px;">
-                    Sign In
-                  </a>
-                </div>
-                <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
-                  This link will expire in 1 hour. If you didn't request this email, you can safely ignore it.
-                </p>
-              </div>
-              <p style="font-size: 12px; color: #999; text-align: center; margin-top: 20px;">
-                Band Roadie - Your band management tool
-              </p>
-            </body>
-          </html>
+  </head>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin: 20px 0;">
+      <h1 style="color: #000; margin: 0 0 20px 0; font-size: 24px;">Sign in to Band Roadie</h1>
+      <p style="margin: 0 0 20px 0; font-size: 16px;">Click the button below to sign in to your account:</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a
+          href="https://nekwjxvgbveheooyorjo.supabase.co/auth/v1/verify?token=2eccd0313c7f6aa31b8dac9edcbc52116e68bcce251e801b23621983&type=magiclink&redirect_to=https%3A%2F%2Fbandroadie.com%2Fauth%2Fcallback%3Fnext%3D%2Fprofile"
+          style="display: inline-block; background-color: #ffffff; color: #000000; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid #000000;">
+          Sign In
+        </a>
+      </div>
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
+        This link will expire in 1 hour. If you didn't request this email, you can safely ignore it.
+      </p>
+    </div>
+    <p style="font-size: 12px; color: #999; text-align: center; margin-top: 20px;">
+      Band Roadie - Your band management tool
+    </p>
+  </body>
+</html>
         `,
       });
 

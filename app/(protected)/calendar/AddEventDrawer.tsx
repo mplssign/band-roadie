@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useBands } from '@/contexts/BandsContext';
 import { useToast } from '@/hooks/useToast';
+import { useBandMembers } from '@/hooks/useBandMembers';
+import type { GigMemberResponse } from '@/lib/types';
+import { PotentialGigMembersSection } from '@/components/calendar/PotentialGigMembersSection';
 
 import {
   Sheet,
@@ -26,18 +29,12 @@ import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { capitalizeWords } from '@/lib/utils/formatters';
-import { cn } from '@/lib/utils';
 
 type DrawerMode = 'add' | 'edit';
 
 type EventType = 'rehearsal' | 'gig';
 
-export type PotentialGigMemberResponse = {
-  band_member_id?: string;
-  response?: string;
-  responded_at?: string | null;
-  [key: string]: unknown;
-};
+export type PotentialGigMemberResponse = GigMemberResponse;
 
 export interface EventPayload {
   id: string;
@@ -53,7 +50,7 @@ export interface EventPayload {
   setlistName?: string | null;
   isPotential?: boolean;       // for gigs
   optionalMemberIds?: string[];
-  memberResponses?: PotentialGigMemberResponse[];
+  memberResponses?: GigMemberResponse[];
   recurring?: {
     enabled: boolean;
     rule?: string;
@@ -151,6 +148,14 @@ export default function AddEventDrawer({
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [selectedSetlist, setSelectedSetlist] = useState<string>('');
   const [isPotentialGig, setIsPotentialGig] = useState(false);
+  const [optionalMemberIds, setOptionalMemberIds] = useState<string[]>([]);
+  const [memberResponses, setMemberResponses] = useState<GigMemberResponse[]>([]);
+
+  const {
+    members: bandMembers,
+    loading: membersLoading,
+    error: membersError,
+  } = useBandMembers(currentBand?.id, { enabled: isOpen && eventType === 'gig' });
 
   // Recurrence (rehearsals)
   const [isRecurring, setIsRecurring] = useState(false);
@@ -183,6 +188,8 @@ export default function AddEventDrawer({
       setLocation(event.location || '');
       setSelectedSetlist(event.setlistId || '');
       setIsPotentialGig(event.isPotential || false);
+      setOptionalMemberIds(event.optionalMemberIds ? [...event.optionalMemberIds] : []);
+      setMemberResponses(event.memberResponses ? [...event.memberResponses] : []);
 
       if (event.recurring?.enabled) {
         setIsRecurring(true);
@@ -201,11 +208,27 @@ export default function AddEventDrawer({
       setLocation('');
       setSelectedSetlist('');
       setIsPotentialGig(false);
+      setOptionalMemberIds([]);
+      setMemberResponses([]);
       setIsRecurring(false);
       setSelectedDays(prefilledDate ? [new Date(`${prefilledDate}T00:00:00`).getDay()] : []);
       setEndDate('');
     }
   }, [mode, event, defaultEventType, isOpen, prefilledDate]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isPotentialGig) {
+      setOptionalMemberIds([]);
+    }
+  }, [isPotentialGig, isOpen]);
+
+  useEffect(() => {
+    if (eventType !== 'gig') {
+      setIsPotentialGig(false);
+      setOptionalMemberIds([]);
+    }
+  }, [eventType]);
 
   const hours = useMemo(() => Array.from({ length: 12 }, (_, i) => `${i + 1}`), []);
   const minutes = useMemo(() => ['00', '15', '30', '45'], []);
@@ -311,6 +334,14 @@ export default function AddEventDrawer({
     return true;
   }, [date, eventType, title]);
 
+  const handleToggleOptionalMember = useCallback((memberId: string) => {
+    setOptionalMemberIds((prev) =>
+      prev.includes(memberId)
+        ? prev.filter((id) => id !== memberId)
+        : [...prev, memberId],
+    );
+  }, []);
+
   const handleDelete = async () => {
     if (mode !== 'edit' || !eventId) return;
 
@@ -396,6 +427,8 @@ export default function AddEventDrawer({
             is_potential: isPotentialGig,
             setlist_id: selectedSetlist || null,
             setlist_name: chosen?.name ?? null,
+            optional_member_ids: isPotentialGig ? optionalMemberIds : [],
+            member_responses: memberResponses,
           };
           const response = await fetch('/api/gigs', {
             method: 'PUT',
@@ -445,6 +478,8 @@ export default function AddEventDrawer({
             setlist_id: selectedSetlist || null,
             setlist_name: chosen?.name ?? null,
             notes: null as string | null,
+            optional_member_ids: isPotentialGig ? optionalMemberIds : [],
+            member_responses: memberResponses,
           };
           const response = await fetch('/api/gigs', {
             method: 'POST',
@@ -657,6 +692,18 @@ export default function AddEventDrawer({
                   ))}
                 </div>
               </div>
+            )}
+
+            {eventType === 'gig' && isPotentialGig && (
+              <PotentialGigMembersSection
+                members={bandMembers}
+                optionalMemberIds={optionalMemberIds}
+                memberResponses={memberResponses}
+                onToggle={handleToggleOptionalMember}
+                loading={membersLoading}
+                error={membersError}
+                mode={mode}
+              />
             )}
 
             {eventType === 'rehearsal' && (
