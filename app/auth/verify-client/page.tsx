@@ -1,9 +1,8 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeAppPath, syncSessionToCookies } from '@/lib/auth/session';
@@ -52,7 +51,7 @@ async function resolveDestination(requestedDestination: string | null): Promise<
     }
 }
 
-export default function VerifyClientPage() {
+function VerifyClientContent() {
     const router = useRouter();
     const params = useSearchParams();
     const [state, setState] = useState<RestoreState>('checking');
@@ -163,5 +162,22 @@ export default function VerifyClientPage() {
                 )}
             </div>
         </main>
+    );
+}
+
+export default function VerifyClientPage() {
+    return (
+        <Suspense
+            fallback={(
+                <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+                    <div className="max-w-md space-y-3">
+                        <h1 className="text-2xl font-semibold">Just a moment…</h1>
+                        <p className="text-muted-foreground">We&apos;re restoring your session so you can jump right back in.</p>
+                    </div>
+                </main>
+            )}
+        >
+            <VerifyClientContent />
+        </Suspense>
     );
 }

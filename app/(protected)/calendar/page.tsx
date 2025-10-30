@@ -345,27 +345,116 @@ export default function CalendarPage() {
     }
   };
 
-  const addBlockout = async (blockout: { startDate: string; endDate: string; reason: string }) => {
-    // adding blockout
-
+  const addBlockout = async (blockout: { startDate: string; endDate: string; reason: string; id?: string }) => {
     if (!currentBand?.id || !user?.id) {
       console.error('Missing band or user information');
       return;
     }
 
-    try {
-      const start = new Date(blockout.startDate);
-      const end = new Date(blockout.endDate);
-      const blockDates: BlockDateRow[] = [];
+    const normalizedReason = blockout.reason?.trim() || 'Blocked Out';
 
-      // Create array of dates to block out
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    try {
+      if (blockout.id) {
+        const { data: targetRecord, error: fetchError } = await supabase
+          .from('block_dates')
+          .select('user_id, band_id, reason, date')
+          .eq('id', blockout.id)
+          .single();
+
+        if (fetchError || !targetRecord) {
+          throw fetchError || new Error('Blockout not found');
+        }
+
+        const { data: relatedRecords, error: relatedError } = await supabase
+          .from('block_dates')
+          .select('id, date')
+          .eq('user_id', targetRecord.user_id)
+          .eq('band_id', targetRecord.band_id)
+          .eq('reason', targetRecord.reason)
+          .order('date', { ascending: true });
+
+        if (relatedError) throw relatedError;
+
+        if (relatedRecords && relatedRecords.length > 0) {
+          const targetDate = new Date(targetRecord.date);
+          const sortedDates = relatedRecords
+            .map(record => ({ id: record.id, date: new Date(record.date) }))
+            .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+          let rangeStart = -1;
+          let rangeEnd = -1;
+
+          for (let i = 0; i < sortedDates.length; i++) {
+            if (sortedDates[i].date.getTime() === targetDate.getTime()) {
+              rangeStart = i;
+              rangeEnd = i;
+
+              while (rangeStart > 0) {
+                const prevDate = sortedDates[rangeStart - 1].date;
+                const currDate = sortedDates[rangeStart].date;
+                const daysDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+                if (daysDiff === 1) {
+                  rangeStart -= 1;
+                } else {
+                  break;
+                }
+              }
+
+              while (rangeEnd < sortedDates.length - 1) {
+                const currDate = sortedDates[rangeEnd].date;
+                const nextDate = sortedDates[rangeEnd + 1].date;
+                const daysDiff = (nextDate.getTime() - currDate.getTime()) / (1000 * 60 * 60 * 24);
+                if (daysDiff === 1) {
+                  rangeEnd += 1;
+                } else {
+                  break;
+                }
+              }
+              break;
+            }
+          }
+
+          if (rangeStart !== -1 && rangeEnd !== -1) {
+            const idsToDelete = sortedDates.slice(rangeStart, rangeEnd + 1).map(record => record.id);
+            if (idsToDelete.length > 0) {
+              const { error: deleteError } = await supabase
+                .from('block_dates')
+                .delete()
+                .in('id', idsToDelete);
+
+              if (deleteError) throw deleteError;
+            }
+          }
+        }
+      }
+
+      const start = new Date(blockout.startDate);
+      let end = new Date(blockout.endDate || blockout.startDate);
+
+      if (Number.isNaN(start.getTime())) {
+        throw new Error('Invalid start date for blockout');
+      }
+
+      if (Number.isNaN(end.getTime())) {
+        end = new Date(blockout.startDate);
+      }
+
+      if (end.getTime() < start.getTime()) {
+        end = new Date(start);
+      }
+
+      const blockDates: BlockDateRow[] = [];
+      for (let cursor = new Date(start); cursor.getTime() <= end.getTime(); cursor.setDate(cursor.getDate() + 1)) {
         blockDates.push({
           user_id: user.id,
           band_id: currentBand.id,
-          date: d.toISOString().split('T')[0],
-          reason: blockout.reason
+          date: cursor.toISOString().split('T')[0],
+          reason: normalizedReason,
         });
+      }
+
+      if (blockDates.length === 0) {
+        throw new Error('No blockout dates to save');
       }
 
       const { error } = await supabase
@@ -377,10 +466,10 @@ export default function CalendarPage() {
 
       if (error) throw error;
 
-      // Reload events from database
-      loadEvents();
+      await loadEvents();
     } catch (error) {
       console.error('Failed to add block dates to database:', error);
+      throw error;
     }
   };
 

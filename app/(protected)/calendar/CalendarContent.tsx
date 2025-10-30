@@ -53,7 +53,7 @@ interface CalendarContentProps {
   };
   user: User | null;
   loading?: boolean;
-  onAddBlockout: (blockout: { startDate: string; endDate: string; reason: string }) => void;
+  onAddBlockout: (blockout: { startDate: string; endDate: string; reason: string; id?: string }) => Promise<void> | void;
   onEventUpdated: () => void;
 }
 
@@ -67,6 +67,8 @@ export default function CalendarContent({ events, user: _user, loading = false, 
   const [addEventDefaultType, setAddEventDefaultType] = useState<'rehearsal' | 'gig'>('rehearsal');
   const [editEventPayload, setEditEventPayload] = useState<EventPayload | undefined>(undefined);
   const [addBlockoutDrawerOpen, setAddBlockoutDrawerOpen] = useState(false);
+  const [blockoutMode, setBlockoutMode] = useState<'add' | 'edit'>('add');
+  const [blockoutDraft, setBlockoutDraft] = useState<{ id?: string; startDate?: string; endDate?: string; reason?: string | null } | null>(null);
   const [selectedEvents, setSelectedEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [prefilledDate, setPrefilledDate] = useState<string>('');
@@ -277,6 +279,15 @@ export default function CalendarContent({ events, user: _user, loading = false, 
       setEditEventPayload(payload);
       setAddEventMode('edit');
       setAddEventDrawerOpen(true);
+    } else if (event.type === 'blockout' && event.blockout) {
+      setBlockoutMode('edit');
+      setBlockoutDraft({
+        id: event.id,
+        startDate: event.blockout.startDate,
+        endDate: event.blockout.endDate,
+        reason: event.location ?? '',
+      });
+      setAddBlockoutDrawerOpen(true);
     }
   };
 
@@ -459,6 +470,22 @@ export default function CalendarContent({ events, user: _user, loading = false, 
     }
   };
 
+  const handleCloseBlockoutDrawer = () => {
+    setAddBlockoutDrawerOpen(false);
+    setBlockoutMode('add');
+    setBlockoutDraft(null);
+  };
+
+  const handleBlockoutSave = async (blockout: { id?: string; startDate: string; endDate: string; reason: string }) => {
+    await onAddBlockout(blockout);
+    handleCloseBlockoutDrawer();
+  };
+
+  const handleBlockoutDeleteFromDrawer = async (blockoutId: string) => {
+    await handleDeleteBlockout(blockoutId);
+    handleCloseBlockoutDrawer();
+  };
+
   return (
     <>
       <main className="flex flex-col bg-background min-h-screen">
@@ -521,8 +548,8 @@ export default function CalendarContent({ events, user: _user, loading = false, 
                     key={day}
                     onClick={() => handleDayClick(date)}
                     className={`group relative h-12 w-full p-1 rounded-xl border border-zinc-700/50 transition-all duration-200 hover:scale-105 ${isToday
-                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
-                        : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
+                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25'
+                      : 'bg-transparent text-gray-300 hover:bg-gray-700/50 hover:text-white'
                       }`}
                   >
                     <DayDots date={date} displayMonth={currentDate} eventsMap={eventsMap} />
@@ -549,7 +576,16 @@ export default function CalendarContent({ events, user: _user, loading = false, 
             </button>
 
             <button
-              onClick={() => setAddBlockoutDrawerOpen(true)}
+              onClick={() => {
+                setBlockoutMode('add');
+                if (selectedDate) {
+                  const isoDate = selectedDate.toISOString().split('T')[0];
+                  setBlockoutDraft({ startDate: isoDate, endDate: isoDate });
+                } else {
+                  setBlockoutDraft(null);
+                }
+                setAddBlockoutDrawerOpen(true);
+              }}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-rose-500/60 bg-card py-3 text-sm font-medium text-foreground transition-opacity hover:opacity-90"
             >
               <Plus className="w-4 h-4" />
@@ -681,8 +717,11 @@ export default function CalendarContent({ events, user: _user, loading = false, 
 
       <AddBlockoutDrawer
         isOpen={addBlockoutDrawerOpen}
-        onClose={() => setAddBlockoutDrawerOpen(false)}
-        onSave={onAddBlockout}
+        mode={blockoutMode}
+        initialBlockout={blockoutDraft}
+        onClose={handleCloseBlockoutDrawer}
+        onSave={handleBlockoutSave}
+        onDelete={blockoutMode === 'edit' ? handleBlockoutDeleteFromDrawer : undefined}
       />
 
       {/* Unified Add/Edit Event Drawer */}

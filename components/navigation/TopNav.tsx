@@ -281,8 +281,8 @@ export default function TopNav() {
                         key={band.id}
                         onClick={() => handleBandSelect(band.id)}
                         className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left transition-colors ${currentBand?.id === band.id
-                            ? 'bg-black border border-border/60 text-white'
-                            : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
+                          ? 'bg-black border-2 border-rose-500 text-white'
+                          : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
                           }`}
                       >
                         <div

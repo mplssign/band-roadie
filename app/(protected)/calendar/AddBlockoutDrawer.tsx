@@ -1,185 +1,241 @@
 'use client';
 
-import { useState } from 'react';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { cn } from '@/lib/utils';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Helper: normalize incoming values and guard invalid dates
-const toDate = (v?: Date | string | null): Date | undefined => {
-  if (!v) return undefined;
-  const d = v instanceof Date ? v : new Date(v);
-  return isNaN(d.getTime()) ? undefined : d;
-};
+interface BlockoutDraft {
+  id?: string;
+  startDate?: string;
+  endDate?: string;
+  reason?: string | null;
+}
 
 interface AddBlockoutDrawerProps {
   isOpen: boolean;
+  mode?: 'add' | 'edit';
+  initialBlockout?: BlockoutDraft | null;
   onClose: () => void;
-  onSave: (blockout: { startDate: string; endDate: string; reason: string }) => void;
+  onSave: (blockout: { id?: string; startDate: string; endDate: string; reason: string }) => Promise<void> | void;
+  onDelete?: (blockoutId: string) => Promise<void> | void;
 }
 
-export default function AddBlockoutDrawer({ isOpen, onClose, onSave }: AddBlockoutDrawerProps) {
+function formatDateDisplay(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  const dayName = days[date.getDay()];
+  const monthName = months[date.getMonth()];
+  const day = date.getDate();
+  const year = date.getFullYear();
+  return `${dayName}, ${monthName} ${day}, ${year}`;
+}
+
+export default function AddBlockoutDrawer({
+  isOpen,
+  mode = 'add',
+  initialBlockout = null,
+  onClose,
+  onSave,
+  onDelete,
+}: AddBlockoutDrawerProps) {
   const { showToast } = useToast();
-  const [isExiting, setIsExiting] = useState(false);
+  const isEditing = mode === 'edit' && Boolean(initialBlockout?.id);
+
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setStartDate(initialBlockout?.startDate ?? '');
+      setEndDate(initialBlockout?.endDate ?? initialBlockout?.startDate ?? '');
+      setReason(initialBlockout?.reason ?? '');
+      setPending(false);
+    } else {
+      setStartDate('');
+      setEndDate('');
+      setReason('');
+      setPending(false);
+    }
+  }, [isOpen, initialBlockout]);
+
+  const normalizedEndDate = useMemo(() => {
+    if (!startDate) return '';
+    if (!endDate) return startDate;
+    return endDate < startDate ? startDate : endDate;
+  }, [endDate, startDate]);
 
   const handleClose = () => {
-    setIsExiting(true);
-    setTimeout(() => {
+    if (pending) return;
+    onClose();
+  };
+
+  const handleSave = async () => {
+    if (!startDate || pending) return;
+    setPending(true);
+    const payload = {
+      id: initialBlockout?.id,
+      startDate,
+      endDate: normalizedEndDate || startDate,
+      reason: reason.trim() || 'Blocked Out',
+    };
+
+    try {
+      await onSave(payload);
+      showToast(isEditing ? 'Block out updated successfully!' : 'Block out added successfully!', 'success');
       onClose();
-      setIsExiting(false);
-      setReason('');
-      setStartDate(undefined);
-      setEndDate(undefined);
-    }, 300);
+    } catch (error) {
+      showToast('Failed to save block out. Please try again.', 'error');
+      setPending(false);
+    }
   };
 
-  const handleSave = () => {
-    if (!startDate) return;
-
-    // Convert Date to YYYY-MM-DD format
-    const startDateString = format(startDate, 'yyyy-MM-dd');
-    const endDateString = endDate ? format(endDate, 'yyyy-MM-dd') : startDateString;
-
-    onSave({
-      startDate: startDateString,
-      endDate: endDateString, // If no end date, use start date (single day)
-      reason: reason || 'Blocked Out'
-    });
-    showToast('Block out dates added successfully!', 'success');
-    handleClose();
+  const handleDelete = async () => {
+    if (!isEditing || !initialBlockout?.id || !onDelete || pending) return;
+    setPending(true);
+    try {
+      await onDelete(initialBlockout.id);
+      onClose();
+    } catch (error) {
+      showToast('Failed to delete block out. Please try again.', 'error');
+      setPending(false);
+    }
   };
-
-  if (!isOpen && !isExiting) return null;
 
   return (
-    <>
-      <div
-        className={`fixed inset-0 bg-background/70 backdrop-blur-sm transition-opacity duration-300 ${isExiting ? 'opacity-0 z-[100]' : 'opacity-50 z-[100]'
-          }`}
-        onClick={handleClose}
-      />
+    <Sheet open={isOpen} onOpenChange={(open) => (!open ? handleClose() : undefined)}>
+      <SheetContent side="bottom" className="h-[90vh] w-full bg-background text-foreground border-border p-0">
+        <SheetHeader className="border-b border-border px-4 py-3">
+          <SheetTitle>{isEditing ? 'Edit Block Out' : 'Add Block Out'}</SheetTitle>
+          <SheetDescription />
+        </SheetHeader>
 
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-[101] flex max-h-[90vh] flex-col rounded-t-3xl border-t border-border bg-card transition-transform duration-300 ease-out ${isExiting ? 'translate-y-full' : 'translate-y-0'
-          }`}
-      >
-        <div className="flex items-center justify-between border-b border-border/70 p-4">
-          <h2 className="text-xl font-semibold text-foreground">Add Block Out Dates</h2>
-          <button onClick={handleClose} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="space-y-2 w-full min-w-0">
-            <Label htmlFor="blockout-reason">
-              Reason <span className="text-xs text-muted-foreground/60">(Optional)</span>
-            </Label>
-            <Input
-              id="blockout-reason"
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Out of town, vacation, etc."
-              className="w-full"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <ScrollArea className="h-[calc(90vh-60px-72px)] overflow-x-hidden">
+          <div className="px-4 py-4 space-y-6 w-full max-w-full">
             <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="blockout-start">Start Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                    aria-label="Open start date picker"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {startDate ? format(startDate, 'PPP') : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div
+                className="relative cursor-pointer"
+                onClick={() => {
+                  const input = document.getElementById('blockout-start-input') as HTMLInputElement | null;
+                  input?.showPicker?.();
+                }}
+              >
+                <input
+                  id="blockout-start-input"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-transparent focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer [color-scheme:dark]"
+                />
+                <div className="absolute inset-0 px-4 py-3 pointer-events-none text-foreground">
+                  {formatDateDisplay(startDate) || 'Select date'}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2 w-full min-w-0">
               <Label htmlFor="blockout-end">Until (optional)</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                    aria-label="Open end date picker"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, 'PPP') : <span>No end date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div
+                className="relative cursor-pointer"
+                onClick={() => {
+                  const input = document.getElementById('blockout-end-input') as HTMLInputElement | null;
+                  input?.showPicker?.();
+                }}
+              >
+                <input
+                  id="blockout-end-input"
+                  type="date"
+                  value={endDate}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-transparent focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer [color-scheme:dark]"
+                />
+                <div className="absolute inset-0 px-4 py-3 pointer-events-none text-foreground">
+                  {normalizedEndDate ? formatDateDisplay(normalizedEndDate) : 'No end date'}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 w-full min-w-0">
+              <Label htmlFor="blockout-reason">
+                Reason <span className="text-xs text-muted-foreground/60">(Optional)</span>
+              </Label>
+              <Input
+                id="blockout-reason"
+                type="text"
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Out of town, vacation, etc."
+                className="w-full"
+              />
             </div>
           </div>
+        </ScrollArea>
 
-          <div className="rounded-lg border border-border/60 bg-muted/20 p-4">
-            <p className="text-sm text-muted-foreground">
-              Block out dates will be visible to all band members on the shared calendar, helping them avoid scheduling gigs during your unavailable periods.
-            </p>
+        <SheetFooter className="border-t border-border px-4 py-4">
+          <div className="w-full space-y-3">
+            <div className="flex gap-2 w-full">
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={!startDate || pending}
+                className="flex-1"
+              >
+                {isEditing ? 'Save Block Out' : 'Add Block Out'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleClose}
+                disabled={pending}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
+            {isEditing && initialBlockout?.id && onDelete && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="text-sm text-rose-500 hover:underline disabled:opacity-60"
+                  disabled={pending}
+                >
+                  Delete Block Out
+                </button>
+              </div>
+            )}
           </div>
-
-          <div className="space-y-3 pt-4">
-            <Button
-              onClick={handleSave}
-              disabled={!startDate}
-              className="w-full h-12 text-base"
-              variant="secondary"
-            >
-              Add Block Out Dates
-            </Button>
-
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              className="w-full h-12 text-base"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-    </>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
