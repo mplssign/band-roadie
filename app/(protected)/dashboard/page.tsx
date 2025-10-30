@@ -204,6 +204,7 @@ export default function DashboardPage() {
                 .from('setlists')
                 .select('name')
                 .eq('id', g.setlist_id)
+                .eq('band_id', currentBand.id)
                 .single();
               setlist_name = setlist?.name;
             }

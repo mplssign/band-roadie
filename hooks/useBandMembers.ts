@@ -38,6 +38,7 @@ export function useBandMembers(
 
     setLoading(true);
     setError(null);
+    setMembers([]);
 
     try {
       const response = await fetch(`/api/bands/${bandId}/members`, {
