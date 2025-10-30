@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
 import CalendarContent from './CalendarContent';
-import type { AddEventPayload } from './AddEventDrawer';
+import type { AddEventPayload, PotentialGigMemberResponse } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
 import { groupBlockoutsIntoRanges } from '@/lib/utils/blockouts';
 import type { BlockoutRow } from '@/lib/utils/blockouts';
@@ -23,6 +23,9 @@ interface CalendarEvent {
   end_time?: string;
   is_potential?: boolean;
   setlist_id?: string | null;
+  setlist_name?: string | null;
+  optional_member_ids?: string[] | null;
+  member_responses?: PotentialGigMemberResponse[] | null;
   blockedBy?: {
     name: string;
     initials: string;
@@ -186,6 +189,9 @@ export default function CalendarPage() {
             end_time: gig.end_time,
             is_potential: gig.is_potential,
             setlist_id: gig.setlist_id ?? null,
+            setlist_name: gig.setlist_name ?? null,
+            optional_member_ids: Array.isArray(gig.optional_member_ids) ? gig.optional_member_ids : null,
+            member_responses: Array.isArray(gig.member_responses) ? gig.member_responses : null,
           });
         });
       }

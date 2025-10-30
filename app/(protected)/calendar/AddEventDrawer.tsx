@@ -32,6 +32,13 @@ type DrawerMode = 'add' | 'edit';
 
 type EventType = 'rehearsal' | 'gig';
 
+export type PotentialGigMemberResponse = {
+  band_member_id?: string;
+  response?: string;
+  responded_at?: string | null;
+  [key: string]: unknown;
+};
+
 export interface EventPayload {
   id: string;
   type: EventType;
@@ -45,6 +52,8 @@ export interface EventPayload {
   setlistId?: string | null;
   setlistName?: string | null;
   isPotential?: boolean;       // for gigs
+  optionalMemberIds?: string[];
+  memberResponses?: PotentialGigMemberResponse[];
   recurring?: {
     enabled: boolean;
     rule?: string;

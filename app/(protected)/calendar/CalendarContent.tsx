@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/useToast';
 import { DayDots } from '@/components/calendar/DayDots';
 import EventDrawer from './EventDrawer';
 import AddBlockoutDrawer from './AddBlockoutDrawer';
-import AddEventDrawer, { type EventPayload } from './AddEventDrawer';
+import AddEventDrawer, { type EventPayload, type PotentialGigMemberResponse } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
 import { toDateSafe } from '@/lib/utils/date';
 
@@ -21,6 +21,9 @@ interface CalendarEvent {
   end_time?: string;
   is_potential?: boolean;
   setlist_id?: string | null;
+  setlist_name?: string | null;
+  optional_member_ids?: string[] | null;
+  member_responses?: PotentialGigMemberResponse[] | null;
   blockedBy?: {
     name: string;
     initials: string;
@@ -261,7 +264,14 @@ export default function CalendarContent({ events, user: _user, loading = false, 
         durationMinutes: duration,
         location: event.location || 'TBD',
         setlistId: event.setlist_id,
+        setlistName: event.setlist_name ?? null,
         isPotential: event.is_potential,
+        optionalMemberIds: Array.isArray(event.optional_member_ids)
+          ? [...event.optional_member_ids]
+          : undefined,
+        memberResponses: Array.isArray(event.member_responses)
+          ? event.member_responses.map(response => ({ ...response }))
+          : undefined,
       };
 
       setEditEventPayload(payload);
