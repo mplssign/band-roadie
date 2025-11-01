@@ -22,11 +22,22 @@ function formatDuration(seconds: number): string {
   return `${minutes}m`;
 }
 
-function SetlistCard({ setlist, onClick }: { setlist: Setlist; onClick: () => void }) {
+function SetlistCard({ setlist, onClick }: { setlist: Setlist & { song_count?: number }; onClick: () => void }) {
+  const songCount = setlist.song_count ?? setlist.songs?.length ?? 0;
+  
   return (
     <Card
-      className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+      className="p-4 cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
@@ -34,7 +45,7 @@ function SetlistCard({ setlist, onClick }: { setlist: Setlist; onClick: () => vo
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Music className="h-4 w-4" />
-              <span>{setlist.songs?.length || 0} songs</span>
+              <span>{songCount} songs</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
