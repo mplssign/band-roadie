@@ -17,6 +17,9 @@
 .DS_Store
 *.pem
 
+# generated files
+/src/version.ts
+
 # debug
 npm-debug.log*
 yarn-debug.log*

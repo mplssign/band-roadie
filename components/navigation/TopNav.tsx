@@ -8,7 +8,7 @@ import { useBands } from '@/contexts/BandsContext';
 import { createClient } from '@/lib/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Wordmark } from '@/components/branding/Wordmark';
-import { getAppName, getVersionDisplay } from '@/lib/utils/version';
+import { APP_NAME, APP_VERSION } from '@/src/version';
 
 // Map Tailwind classes to hex colors
 const colorMap: Record<string, string> = {
@@ -241,8 +241,8 @@ export default function TopNav() {
                 {/* App version info at bottom */}
                 <div className="border-t border-border/60 px-4 py-4">
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-foreground">{getAppName()}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{getVersionDisplay()}</p>
+                    <p className="text-sm font-semibold text-foreground">{APP_NAME}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{APP_VERSION}</p>
                   </div>
                 </div>
               </div>

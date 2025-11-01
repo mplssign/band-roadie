@@ -7,8 +7,9 @@
     "node": ">=20 <21"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "prebuild": "node scripts/generate-version.js",
+    "dev": "npm run prebuild && next dev",
+    "build": "npm run prebuild && next build",
     "start": "next start",
     "clean": "rimraf .next",
     "lint": "next lint",
