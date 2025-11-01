@@ -146,12 +146,6 @@
   @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .animate-spin {
   animation: spin 1s linear infinite;
 }
