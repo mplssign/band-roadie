@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 // Note: Using custom dropdown instead of select component
 import { BpmInput } from '@/components/setlists/BpmInput';
 import { TuningBadge } from '@/components/setlists/TuningBadge';
+import { useDurationBackfill } from '@/hooks/useDurationBackfill';
 import { GripVertical, X } from 'lucide-react';
 
 interface SongRowProps {
@@ -53,14 +54,26 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
   const displayTuning = setlistSong.tuning ?? setlistSong.songs?.tuning ?? 'standard';
   const displayDuration = setlistSong.duration_seconds ?? setlistSong.songs?.duration_seconds;
 
+  // Auto-backfill duration if missing
+  useDurationBackfill({
+    songId: setlistSong.id,
+    title: setlistSong.songs?.title || 'Unknown Song',
+    artist: setlistSong.songs?.artist || 'Unknown Artist',
+    currentDuration: displayDuration,
+    enabled: !!setlistSong.songs?.title && !!setlistSong.songs?.artist,
+    onUpdate: (duration) => {
+      onUpdate(setlistSong.id, { duration_seconds: duration });
+    },
+  });
+
 
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-card border border-border rounded-lg p-4 transition-shadow ${
-        isDragging ? 'shadow-lg' : 'hover:shadow-md'
+      className={`bg-card border border-border/40 rounded-lg p-4 transition-all ${
+        isDragging ? 'shadow-lg border-border/60' : 'hover:shadow-md hover:border-border/60'
       }`}
     >
       <div className="flex items-start gap-3">

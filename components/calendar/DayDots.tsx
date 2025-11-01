@@ -1,6 +1,6 @@
 'use client';
 
-import type { DateRange } from 'react-day-picker';
+// DateRange import removed as it's not used
 
 // Event type matching CalendarEvent interface from calendar page
 interface CalendarEventForDots {
@@ -33,7 +33,7 @@ function isSameDay(date1: string, date2: string): boolean {
   return date1 === date2;
 }
 
-export function DayDots({ date, displayMonth, eventsMap }: DayDotsProps) {
+export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDotsProps) {
   const dayNumber = date.getDate();
   const dateKey = formatDateKey(date);
 
@@ -118,46 +118,33 @@ export function DayDots({ date, displayMonth, eventsMap }: DayDotsProps) {
         ))}
       </div>
 
-      {/* Blockout range row */}
+      {/* Blockout range spans - improved pill-style rendering */}
       {hasBlockoutRange && (
-        <div className="absolute bottom-4 left-0 right-0 h-3 w-full">
+        <div className="absolute inset-x-0 bottom-3.5 h-2">
           {blockoutRanges.map((range, idx) => {
             if (range.isSingleDay) return null;
 
-            let barClass = 'absolute top-1/2 -translate-y-1/2 h-1 rounded-full';
-            let barStyle: React.CSSProperties = {};
-
-            if (range.isStartDay) {
-              // Start day: bar goes from center to right edge
-              barClass += ' left-1/2 w-1/2';
-              barStyle = { backgroundColor: '#dc262680' }; // 50% opacity
-            } else if (range.isEndDay) {
-              // End day: bar goes from left edge to center
-              barClass += ' left-0 w-1/2';
-              barStyle = { backgroundColor: '#dc262680' }; // 50% opacity
-            } else if (range.isMiddleDay) {
-              // Middle day: bar spans full width
-              barClass += ' left-0 w-full';
-              barStyle = { backgroundColor: '#dc262680' }; // 50% opacity
-            }
-
             return (
-              <div key={`blockout-range-${idx}`}>
-                {/* Connecting bar */}
-                <div className={barClass} style={barStyle} />
-
-                {/* Dots on start and end days */}
+              <div key={`blockout-range-${idx}`} className="relative w-full h-full">
+                {/* Enhanced connecting pill */}
                 {range.isStartDay && (
-                  <span
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: '#dc2626' }}
-                  />
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-1.5 bg-red-600/70 rounded-l-full" />
+                )}
+                
+                {range.isMiddleDay && (
+                  <div className="absolute inset-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-red-600/70" />
+                )}
+                
+                {range.isEndDay && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-1.5 bg-red-600/70 rounded-r-full" />
+                )}
+
+                {/* Stronger visual markers for start/end days */}
+                {range.isStartDay && (
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-600 rounded-full ring-1 ring-background/50" />
                 )}
                 {range.isEndDay && (
-                  <span
-                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-1.5 rounded-full"
-                    style={{ backgroundColor: '#dc2626' }}
-                  />
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-600 rounded-full ring-1 ring-background/50" />
                 )}
               </div>
             );

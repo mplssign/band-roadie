@@ -100,7 +100,7 @@ export function TuningBadge({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         className={`
-          px-2 py-1 rounded-md text-xs font-medium text-white border transition-colors
+          px-2 py-1 rounded-md text-xs font-medium text-white transition-colors
           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500
           flex items-center gap-1 min-w-0
           ${tuningInfo.color}
