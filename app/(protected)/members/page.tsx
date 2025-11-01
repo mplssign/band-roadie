@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useBands } from '@/contexts/BandsContext';
 import { Users, Phone, Mail, MapPin, CalendarDays } from 'lucide-react';
+import { formatBirthdayDisplay } from '@/lib/utils/dateOnly';
 
 type MemberRow = {
   user_id: string;
@@ -123,16 +124,8 @@ export default function MembersPage() {
               if (member.user?.roles && Array.isArray(member.user.roles)) {
                 bandRoles.push(...member.user.roles.filter(r => typeof r === 'string' && r.trim().length > 0));
               }
-              // Format birthday as 'Month Day'
-              let birthdayLabel = "";
-              if (birthday) {
-                const dateObj = new Date(birthday);
-                if (!isNaN(dateObj.getTime())) {
-                  const month = dateObj.toLocaleString('en-US', { month: 'long' });
-                  const day = dateObj.getDate();
-                  birthdayLabel = `${month} ${day}`;
-                }
-              }
+              // Format birthday as 'Month Day' without timezone conversion
+              const birthdayLabel = formatBirthdayDisplay(birthday);
               return (
                 <div
                   key={member.user_id}

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -251,7 +252,14 @@ export async function GET(request: NextRequest) {
   let redirectPath: string;
 
   if (invitationParam) {
-    redirectPath = `/invite/${encodeURIComponent(invitationParam)}`;
+    // If we have an inviteToken and email, redirect to the public invite page for processing
+    const email = params.get('email');
+    if (email) {
+      redirectPath = `/invite?token=${encodeURIComponent(invitationParam)}&email=${encodeURIComponent(email)}`;
+    } else {
+      // Fallback to protected route if no email (assumes invitationParam is an ID)
+      redirectPath = `/invite/${encodeURIComponent(invitationParam)}`;
+    }
   } else if (!isProfileComplete) {
     const profileUrl = new URL('/profile', url.origin);
     profileUrl.searchParams.set('welcome', 'true');

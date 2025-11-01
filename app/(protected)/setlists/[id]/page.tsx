@@ -11,11 +11,14 @@ import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Dialog } from '@/components/ui/Dialog';
 import { SongRow } from '@/components/setlists/SongRow';
-import { ArrowLeft, Search, Save, Plus, Edit, X } from 'lucide-react';
+import { ArrowLeft, Search, Save, Plus, Edit, X, ClipboardList } from 'lucide-react';
 import { capitalizeWords } from '@/lib/utils/formatters';
+import { AppleMusicIcon, SpotifyIcon, AmazonMusicIcon } from '@/components/icons/ProviderIcons';
 
 // Dynamic imports for performance optimization
 const SongSearchOverlay = lazy(() => import('@/components/setlists/OptimizedSongSearchOverlay'));
+import { ProviderImportDrawer } from '@/components/setlists/ProviderImportDrawer';
+import { BulkPasteDrawer } from '@/components/setlists/BulkPasteDrawer';
 
 // Define types based on actual API usage
 type TuningType = 'standard' | 'drop_d' | 'half_step' | 'full_step';
@@ -75,6 +78,8 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [providerImportOpen, setProviderImportOpen] = useState<'apple' | 'spotify' | 'amazon' | null>(null);
+  const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -270,6 +275,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
         const data = await response.json();
         if (!response.ok) {
+          if (data.code === 'DUPLICATE_SONG') {
+            setError(`"${song.title}" is already in this setlist`);
+            return; // Don't throw, just return early
+          }
           throw new Error(data.error || 'Failed to add song');
         }
 
@@ -280,6 +289,86 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     } catch (err) {
       console.error('Error adding song:', err);
       setError(err instanceof Error ? err.message : 'Failed to add song');
+    }
+  };
+
+  const handleBulkAddSongs = async (songsToAdd: MusicSong[]) => {
+    if (!currentBand?.id || songsToAdd.length === 0) return;
+
+    try {
+      const setlistId = setlist?.id || params.id;
+      const newSetlistSongs: SetlistSong[] = [];
+
+      for (let i = 0; i < songsToAdd.length; i++) {
+        const song = songsToAdd[i];
+        
+        // If the song doesn't have an ID, create it first
+        let songToAdd = song;
+        if (!song.id) {
+          const response = await fetch('/api/songs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(song),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            console.error(`Failed to create song: ${song.title}`, data.error);
+            continue; // Skip this song and continue with others
+          }
+
+          songToAdd = data.song;
+        }
+
+        if (setlistId === 'new') {
+          // For new setlists, just add to local state
+          const newSetlistSong: SetlistSong = {
+            id: `temp-${Date.now()}-${i}`, // Temporary ID for new setlists
+            setlist_id: 'new',
+            song_id: songToAdd.id,
+            position: songs.length + newSetlistSongs.length + 1,
+            bpm: songToAdd.bpm,
+            tuning: songToAdd.tuning || 'standard',
+            duration_seconds: songToAdd.duration_seconds,
+            songs: songToAdd
+          };
+          newSetlistSongs.push(newSetlistSong);
+        } else {
+          // Add to existing setlist
+          const response = await fetch(`/api/setlists/${setlistId}/songs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              song_id: songToAdd.id,
+              bpm: songToAdd.bpm,
+              tuning: songToAdd.tuning || 'standard',
+              duration_seconds: songToAdd.duration_seconds,
+            }),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            if (data.code !== 'DUPLICATE_SONG') {
+              console.error(`Failed to add song to setlist: ${songToAdd.title}`, data.error);
+            }
+            // Skip duplicate songs silently in bulk operations
+            continue; // Skip this song and continue with others
+          }
+
+          newSetlistSongs.push(data.setlist_song);
+        }
+      }
+
+      if (newSetlistSongs.length > 0) {
+        setSongs(prev => [...prev, ...newSetlistSongs]);
+      }
+
+      if (newSetlistSongs.length !== songsToAdd.length) {
+        setError(`Added ${newSetlistSongs.length} of ${songsToAdd.length} songs. Some songs failed to import.`);
+      }
+    } catch (err) {
+      console.error('Error bulk adding songs:', err);
+      setError(err instanceof Error ? err.message : 'Failed to add songs');
     }
   };
 
@@ -368,7 +457,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
   return (
     <main className="bg-background text-foreground">
-      <div className="px-4 pb-8">
+      <div className={`px-4 ${isEditMode ? 'pb-40' : 'pb-8'}`}>
         {/* Back Button - 20px from bottom of topnav */}
         <div className="pt-21 mb-6">
           <Button
@@ -445,17 +534,66 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           </div>
         )}
 
-        {/* Add song button - only in edit mode */}
+        {/* Song Action Buttons - only in edit mode */}
         {isEditMode && (
-          <div className="mb-6">
-            <Button
-              onClick={() => setSearchOpen(true)}
-              variant="outline"
-              className="gap-2 w-full sm:w-auto"
-            >
-              <Search className="h-4 w-4" />
-              Add Songs
-            </Button>
+          <div className="mb-6 space-y-4">
+            {/* 1. Song Actions Row - Song Lookup and Bulk Paste */}
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => setSearchOpen(true)}
+                variant="outline"
+                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                size="lg"
+                aria-label="Search and add songs to setlist"
+              >
+                <Search className="h-4 w-4" />
+                Song Lookup
+              </Button>
+              
+              <Button
+                onClick={() => setBulkPasteOpen(true)}
+                variant="outline"
+                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                size="lg"
+                aria-label="Bulk paste songs from spreadsheet"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Bulk Paste
+              </Button>
+            </div>
+            
+            {/* 2. Provider Import Row - Three Equal-Width Buttons */}
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                onClick={() => setProviderImportOpen('spotify')}
+                variant="outline"
+                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                aria-label="Import from Spotify"
+              >
+                <SpotifyIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Spotify</span>
+              </Button>
+              
+              <Button
+                onClick={() => setProviderImportOpen('apple')}
+                variant="outline"
+                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                aria-label="Import from Apple Music"
+              >
+                <AppleMusicIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Apple Music</span>
+              </Button>
+              
+              <Button
+                onClick={() => setProviderImportOpen('amazon')}
+                variant="outline"
+                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                aria-label="Import from Amazon Music"
+              >
+                <AmazonMusicIcon className="h-5 w-5" />
+                <span className="text-sm font-medium">Amazon</span>
+              </Button>
+            </div>
           </div>
         )}
 
@@ -547,6 +685,22 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelectSong={handleAddSong}
+      />
+
+      {/* Provider Import Drawer */}
+      <ProviderImportDrawer
+        open={!!providerImportOpen}
+        provider={providerImportOpen}
+        onClose={() => setProviderImportOpen(null)}
+        onImportSongs={handleBulkAddSongs}
+      />
+
+      {/* Bulk Paste Drawer */}
+      <BulkPasteDrawer
+        open={bulkPasteOpen}
+        onClose={() => setBulkPasteOpen(false)}
+        onImportSongs={handleBulkAddSongs}
+        existingSongs={songs.map(s => s.songs).filter(Boolean) as MusicSong[]}
       />
 
       {/* Delete Confirmation Dialog */}

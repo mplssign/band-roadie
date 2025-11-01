@@ -117,11 +117,15 @@ export async function POST(req: NextRequest) {
       <p style="margin: 0 0 20px 0; font-size: 16px;">Click the button below to sign in to your account:</p>
       <div style="text-align: center; margin: 30px 0;">
         <a
-          href="https://nekwjxvgbveheooyorjo.supabase.co/auth/v1/verify?token=2eccd0313c7f6aa31b8dac9edcbc52116e68bcce251e801b23621983&type=magiclink&redirect_to=https%3A%2F%2Fbandroadie.com%2Fauth%2Fcallback%3Fnext%3D%2Fprofile"
+          href="${emailLink}"
           style="display: inline-block; background-color: #ffffff; color: #000000; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid #000000;">
           Sign In
         </a>
       </div>
+      <p style="margin: 0 0 20px 0; font-size: 14px; color: #666; word-break: break-all;">
+        If the button above does not work, copy and paste this link into your browser:<br />
+        <a href="${emailLink}" style="color: #000000;">${emailLink}</a>
+      </p>
       <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
         This link will expire in 1 hour. If you didn't request this email, you can safely ignore it.
       </p>

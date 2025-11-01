@@ -28,8 +28,10 @@ export function OrientationGuard() {
 
     // Check orientation
     const checkOrientation = () => {
-      const isLandscapeMode = window.innerWidth > window.innerHeight;
-      setIsLandscape(isLandscapeMode && isMobile);
+      // TEMPORARILY DISABLED for desktop testing - always false for now
+      setIsLandscape(false);
+      // const isLandscapeMode = window.innerWidth > window.innerHeight;
+      // setIsLandscape(isLandscapeMode && isMobile);
     };
 
     // Initial checks

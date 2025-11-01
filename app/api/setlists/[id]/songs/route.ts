@@ -25,16 +25,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const nextPosition = (lastSong?.position || 0) + 1;
 
-    /*
-    console.log('Adding song to setlist with data:', {
-      setlist_id: setlistId,
-      song_id,
-      position: nextPosition,
-      bpm,
-      tuning: tuning || 'standard',
-      duration_seconds
-    });
-    */
+    // Adding song to setlist
 
     const { data: setlistSong, error } = await supabase
       .from('setlist_songs')
@@ -68,7 +59,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (error) {
       console.error('Error adding song to setlist:', error);
-      return NextResponse.json({ error: 'Failed to add song to setlist' }, { status: 500 });
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Handle duplicate song constraint
+      if (error.code === '23505' && error.message.includes('setlist_songs_setlist_id_song_id_key')) {
+        return NextResponse.json({ 
+          error: 'Song is already in this setlist',
+          code: 'DUPLICATE_SONG'
+        }, { status: 409 });
+      }
+      
+      return NextResponse.json({ 
+        error: 'Failed to add song to setlist',
+        details: error.message || error
+      }, { status: 500 });
     }
 
     // Add tuning information to the response

@@ -14,16 +14,26 @@ type RestoreState = 'checking' | 'syncing' | 'redirecting' | 'failed';
 
 async function resolveDestination(requestedDestination: string | null): Promise<string> {
     try {
+        // eslint-disable-next-line no-console
+        console.log('[verify-client] Checking /api/auth/me for profile completion');
+        
         const response = await fetch('/api/auth/me', {
             credentials: 'include',
             cache: 'no-store',
         });
 
+        // eslint-disable-next-line no-console
+        console.log('[verify-client] /api/auth/me response:', response.status);
+
         if (!response.ok) {
+            // eslint-disable-next-line no-console
+            console.log('[verify-client] /api/auth/me failed, using fallback destination');
             return FALLBACK_DESTINATION;
         }
 
         const { profile } = await response.json();
+        // eslint-disable-next-line no-console
+        console.log('[verify-client] Profile data:', profile);
 
         const isProfileComplete = Boolean(
             profile?.first_name &&
@@ -69,9 +79,15 @@ function VerifyClientContent() {
         const bootstrap = async () => {
             try {
                 setState('checking');
+                // eslint-disable-next-line no-console
+                console.log('[verify-client] Starting bootstrap process');
+                
                 const {
                     data: { session },
                 } = await supabase.auth.getSession();
+
+                // eslint-disable-next-line no-console
+                console.log('[verify-client] Session check result:', !!session);
 
                 if (!session) {
                     throw new Error('no-session');
@@ -80,11 +96,17 @@ function VerifyClientContent() {
                 if (cancelled) return;
 
                 setState('syncing');
+                // eslint-disable-next-line no-console
+                console.log('[verify-client] Syncing session to cookies');
                 await syncSessionToCookies(session);
 
                 if (cancelled) return;
 
+                // eslint-disable-next-line no-console
+                console.log('[verify-client] Resolving destination');
                 const destination = await resolveDestination(requestedDestination);
+                // eslint-disable-next-line no-console
+                console.log('[verify-client] Destination resolved:', destination);
 
                 if (cancelled) return;
 
@@ -92,10 +114,22 @@ function VerifyClientContent() {
                 router.replace(destination);
             } catch (error) {
                 if (cancelled) return;
+                // eslint-disable-next-line no-console
+                console.error('[verify-client] Bootstrap failed:', error);
                 setState('failed');
                 setErrorMessage(error instanceof Error ? error.message : 'unknown-error');
             }
         };
+
+        // Add a timeout to prevent infinite loading
+        const timeoutId = setTimeout(() => {
+            if (!cancelled) {
+                // eslint-disable-next-line no-console
+                console.error('[verify-client] Bootstrap timeout - redirecting to login');
+                setState('failed');
+                setErrorMessage('timeout');
+            }
+        }, 10000); // 10 second timeout
 
         bootstrap();
 
@@ -122,6 +156,7 @@ function VerifyClientContent() {
 
         return () => {
             cancelled = true;
+            clearTimeout(timeoutId);
             subscription.subscription.unsubscribe();
         };
     }, [requestedDestination, router]);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
 import { sendBandInvites } from '@/lib/server/send-band-invites';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 
@@ -15,24 +16,33 @@ const adminClient = () =>
     auth: { persistSession: false },
   });
 
+async function getUser() {
+  const cookieStore = cookies();
+  const supabase = createServerClient(env.url, env.anon, {
+    cookies: {
+      get(name) { return cookieStore.get(name)?.value; },
+      set(name, value, options) { cookieStore.set({ name, value, ...options }); },
+      remove(name, options) { cookieStore.delete({ name, ...options }); },
+    },
+  });
+  const { data: { user } } = await supabase.auth.getUser();
+  return user ?? null;
+}
+
 const payloadSchema = z.object({
   emails: z.array(z.string().email()).min(1, 'At least one email is required'),
 });
 
 export async function POST(req: Request, { params }: { params: { bandId: string } }) {
   try {
-    const supabase = await createClient();
+    const user = await getUser();
     const admin = adminClient();
 
-    // Get user ID from custom cookie
-    const accessToken = req.headers.get('cookie')?.match(/sb-access-token=([^;]+)/)?.[1];
-
-    if (!accessToken) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
-    const userId = payload.sub;
+    const userId = user.id;
 
     const { data: membership } = await admin
       .from('band_members')
@@ -56,6 +66,7 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     const { emails } = parsed.data;
 
     if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
       console.log(
         `[API /api/bands/${params.bandId}/invites] POST request from user ${userId} for ${emails.length} email(s)`,
       );
@@ -71,7 +82,7 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
       return NextResponse.json({ error: 'Band not found' }, { status: 404 });
     }
 
-    const { data: userProfile } = await supabase
+    const { data: userProfile } = await admin
       .from('users')
       .select('first_name, last_name, email')
       .eq('id', userId)
@@ -80,10 +91,10 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     const inviterName =
       userProfile?.first_name && userProfile?.last_name
         ? `${userProfile.first_name} ${userProfile.last_name}`
-        : userProfile?.email || payload.email || 'A band member';
+        : userProfile?.email || user.email || 'A band member';
 
     const { failedInvites, sentCount } = await sendBandInvites({
-      supabase,
+      supabase: admin,
       bandId: params.bandId,
       bandName: bandRow.name,
       inviterId: userId,
@@ -108,6 +119,7 @@ export async function POST(req: Request, { params }: { params: { bandId: string 
     }
 
     if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
       console.log(
         `[API /api/bands/${params.bandId}/invites] Successfully sent ${sentCount} invite(s)`,
       );
@@ -131,18 +143,14 @@ const deleteSchema = z.object({
 });
 
 export async function DELETE(req: Request, { params }: { params: { bandId: string } }) {
-  const supabase = createClient();
+  const user = await getUser();
   const admin = adminClient();
 
-  // Get user ID from custom cookie
-  const accessToken = req.headers.get('cookie')?.match(/sb-access-token=([^;]+)/)?.[1];
-
-  if (!accessToken) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
-  const userId = payload.sub;
+  const userId = user.id;
 
   const { data: membership } = await admin
     .from('band_members')

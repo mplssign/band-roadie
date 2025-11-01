@@ -292,12 +292,12 @@ const ProfileForm = ({ user, invitationId: _invitationId, invitation }: ProfileF
       } catch (err) {
         console.warn('Failed to create global role', err);
       }
-      // compute birthday in same format as handleSubmit
+      // compute birthday in same format as handleSubmit (using 1970 as stable dummy year)
       let birthdayDate: string | null = null;
       if (birthMonth && birthDay) {
         const monthIndex = MONTH_OPTIONS.findIndex((m) => m === birthMonth);
         if (monthIndex >= 0) {
-          birthdayDate = `2000-${String(monthIndex + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
+          birthdayDate = `1970-${String(monthIndex + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
         }
       }
 
@@ -382,12 +382,12 @@ const ProfileForm = ({ user, invitationId: _invitationId, invitation }: ProfileF
     setIsLoading(true);
 
     try {
-      // Convert month/day to date format (using 2000 as dummy year)
+      // Convert month/day to date format (using 1970 as stable dummy year to avoid timezone issues)
       let birthdayDate: string | null = null;
       if (birthMonth && birthDay) {
         const monthIndex = MONTH_OPTIONS.findIndex((m) => m === birthMonth);
         if (monthIndex >= 0) {
-          birthdayDate = `2000-${String(monthIndex + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
+          birthdayDate = `1970-${String(monthIndex + 1).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
         }
       }
 

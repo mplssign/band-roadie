@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Image from 'next/image';
 import { Upload, ArrowLeft, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
 
 const TAILWIND_COLORS = [
   { name: 'Red', class: 'bg-red-600' },
@@ -606,26 +608,30 @@ export default function EditBandPage() {
             <div className="flex items-start gap-6">
               <div className="flex-shrink-0">
                 {imagePreview ? (
-                  <div className="relative w-24 h-24 rounded-full overflow-hidden">
-                    <img
+                  <div className="relative w-24 h-24 rounded-full overflow-hidden group">
+                    <Image
                       src={imagePreview}
-                      alt="Band preview"
-                      className="w-full h-full rounded-full object-cover"
-                      onError={(e) => {
-                        console.log('Edit page: Image failed to load, showing initials');
+                      alt="Band avatar"
+                      fill
+                      className="rounded-full object-cover"
+                      onError={(_e) => {
                         // If image fails to load, clear the preview to show initials
                         setImagePreview(null);
                       }}
                     />
-                    <button
-                      onClick={() => {
-                        setBandImage(null);
-                        setImagePreview(null);
-                      }}
-                      className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full w-6 h-6 flex items-center justify-center hover:bg-destructive/80"
-                    >
-                      ×
-                    </button>
+                    {/* Delete icon overlay */}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button
+                        onClick={() => {
+                          setBandImage(null);
+                          setImagePreview(null);
+                        }}
+                        className="bg-destructive text-destructive-foreground rounded-full w-8 h-8 flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                        title="Remove image"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div
@@ -804,33 +810,37 @@ export default function EditBandPage() {
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-4">
-            <button
-              onClick={handleSubmit}
-              disabled={isLoading || !bandName.trim() || !isDirty}
-              className={`w-full py-4 rounded-lg text-lg font-medium transition-colors ${!isLoading && bandName.trim() && isDirty
-                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer'
-                  : 'bg-muted/40 text-muted-foreground cursor-not-allowed'
-                }`}
-            >
-              {isLoading ? 'Updating Band...' : 'Update Band'}
-            </button>
+            {/* Save and Cancel side by side */}
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSubmit}
+                disabled={isLoading || !bandName.trim() || !isDirty}
+                className="flex-1"
+              >
+                {isLoading ? 'Saving...' : 'Save'}
+              </Button>
 
-            <button
-              onClick={() => attemptNavigation(() => router.back(), { isBack: true })}
-              disabled={isLoading}
-              className="w-full py-4 bg-muted/40 text-muted-foreground rounded-lg hover:bg-muted/40 transition-colors font-medium disabled:opacity-50"
-            >
-              Cancel
-            </button>
+              <Button
+                variant="secondary"
+                onClick={() => attemptNavigation(() => router.back(), { isBack: true })}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
 
-            <button
-              type="button"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isLoading}
-              className="w-full text-rose-500 hover:text-rose-400 transition-colors text-center py-2 disabled:opacity-50"
-            >
-              Delete
-            </button>
+            {/* Delete button centered underneath */}
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isLoading}
+                className="text-rose-500 hover:text-rose-400 transition-colors text-center py-2 disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>

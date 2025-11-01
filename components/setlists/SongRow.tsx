@@ -146,6 +146,24 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
                       songId={setlistSong.song_id}
                       songTitle={setlistSong.songs?.title}
                       artist={setlistSong.songs?.artist}
+                      onTuningConfirm={(newTuning) => {
+                        // Convert the tuning value to TuningType format
+                        let tuningValue: TuningType = 'standard';
+                        switch (newTuning) {
+                          case 'Drop D':
+                            tuningValue = 'drop_d';
+                            break;
+                          case 'Half Step Down':
+                            tuningValue = 'half_step';
+                            break;
+                          case 'Full Step Down':
+                            tuningValue = 'full_step';
+                            break;
+                          default:
+                            tuningValue = 'standard';
+                        }
+                        onUpdate(setlistSong.id, { tuning: tuningValue });
+                      }}
                     />
                   </button>
                   
@@ -178,6 +196,24 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
                   songId={setlistSong.song_id}
                   songTitle={setlistSong.songs?.title}
                   artist={setlistSong.songs?.artist}
+                  onTuningConfirm={(newTuning) => {
+                    // Convert the tuning value to TuningType format
+                    let tuningValue: TuningType = 'standard';
+                    switch (newTuning) {
+                      case 'Drop D':
+                        tuningValue = 'drop_d';
+                        break;
+                      case 'Half Step Down':
+                        tuningValue = 'half_step';
+                        break;
+                      case 'Full Step Down':
+                        tuningValue = 'full_step';
+                        break;
+                      default:
+                        tuningValue = 'standard';
+                    }
+                    onUpdate(setlistSong.id, { tuning: tuningValue });
+                  }}
                 />
               )}
             </div>

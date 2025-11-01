@@ -15,7 +15,7 @@ function admin() {
 }
 
 async function getUser() {
-  const jar = cookies();
+  const jar = await cookies();
   const supa = createServerClient(env.url, env.anon, {
     cookies: {
       get(name) {
@@ -37,12 +37,23 @@ async function getUser() {
 
 async function requireMember(bandId: string, userId: string) {
   const a = admin();
-  const { data } = await a
+  // eslint-disable-next-line no-console
+  console.log('[requireMember] Checking membership for user:', userId, 'in band:', bandId);
+  
+  const { data, error } = await a
     .from('band_members')
     .select('role')
     .eq('band_id', bandId)
     .eq('user_id', userId)
     .maybeSingle();
+    
+  // eslint-disable-next-line no-console
+  console.log('[requireMember] Query result:', { data, error: error?.message || 'none' });
+  
+  if (error) {
+    console.error('[requireMember] Database error:', error);
+  }
+  
   return data ?? null;
 }
 
@@ -53,70 +64,115 @@ const PatchSchema = z.object({
 });
 
 export async function GET(_: Request, { params }: { params: { bandId: string } }) {
-  const user = await getUser();
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    // eslint-disable-next-line no-console
+    console.log('[members API] GET request for band:', params.bandId);
+    
+    const user = await getUser();
+    // eslint-disable-next-line no-console
+    console.log('[members API] User from auth:', user?.id || 'null');
+    
+    if (!user) {
+      // eslint-disable-next-line no-console
+      console.log('[members API] No user found - unauthorized');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  const mem = await requireMember(params.bandId, user.id);
-  if (!mem) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const mem = await requireMember(params.bandId, user.id);
+    // eslint-disable-next-line no-console
+    console.log('[members API] Membership check result:', mem ? 'member found' : 'not a member');
+    
+    if (!mem) {
+      // eslint-disable-next-line no-console
+      console.log('[members API] User is not a member of this band - forbidden');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-  const a = admin();
+    const a = admin();
 
-  // Get band members
-  const { data: bandMembers, error: membersError } = await a
-    .from('band_members')
-    .select(
-      `
-      id,
-      user_id,
-      role,
-      joined_at,
-      is_active
-    `,
-    )
-    .eq('band_id', params.bandId);
+    // Get band members
+    // eslint-disable-next-line no-console
+    console.log('[members API] Fetching band members for band:', params.bandId);
+    
+    const { data: bandMembers, error: membersError } = await a
+      .from('band_members')
+      .select(
+        `
+        id,
+        user_id,
+        role,
+        joined_at
+      `,
+      )
+      .eq('band_id', params.bandId);
 
-  if (membersError) {
-    console.error('Error fetching members:', membersError);
-    return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 });
+    // eslint-disable-next-line no-console
+    console.log('[members API] Band members query result:', { 
+      count: bandMembers?.length || 0, 
+      error: membersError?.message || 'none' 
+    });
+
+    if (membersError) {
+      console.error('Error fetching members:', membersError);
+      return NextResponse.json({ error: 'Failed to fetch members' }, { status: 500 });
+    }
+
+    // Get profiles for these users
+    const userIds = bandMembers?.map((m) => m.user_id) || [];
+    // eslint-disable-next-line no-console
+    console.log('[members API] Fetching user profiles for IDs:', userIds);
+    
+    const { data: users, error: usersError } = await a
+      .from('users')
+      .select(
+        'id, email, first_name, last_name, phone, address, city, zip, birthday, roles, profile_completed',
+      )
+      .in('id', userIds);
+
+    // eslint-disable-next-line no-console
+    console.log('[members API] User profiles query result:', { 
+      count: users?.length || 0, 
+      error: usersError?.message || 'none' 
+    });
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+    }
+
+    // Combine the data
+    const members =
+      bandMembers?.map((member) => ({
+        ...member,
+        user: users?.find((u) => u.id === member.user_id) || null,
+      })) || [];
+
+    // Get pending invites
+    const { data: invites, error: invitesError } = await a
+      .from('band_invitations')
+      .select('id, email, status, created_at, expires_at')
+      .eq('band_id', params.bandId)
+      .eq('status', 'pending');
+
+    if (invitesError) {
+      console.error('Error fetching invites:', invitesError);
+      return NextResponse.json({ error: 'Failed to fetch invites' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      members: members || [],
+      invites: invites || [],
+    });
+  } catch (error) {
+    console.error('[members API] Unexpected error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      }, 
+      { status: 500 }
+    );
   }
-
-  // Get profiles for these users
-  const userIds = bandMembers?.map((m) => m.user_id) || [];
-  const { data: users, error: usersError } = await a
-    .from('users')
-    .select(
-      'id, email, first_name, last_name, phone, address, city, zip, birthday, roles, profile_completed',
-    )
-    .in('id', userIds);
-
-  if (usersError) {
-    console.error('Error fetching users:', usersError);
-    return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
-  }
-
-  // Combine the data
-  const members =
-    bandMembers?.map((member) => ({
-      ...member,
-      user: users?.find((u) => u.id === member.user_id) || null,
-    })) || [];
-
-  // Get pending invites
-  const { data: invites, error: invitesError } = await a
-    .from('band_invitations')
-    .select('id, email, status, created_at, expires_at')
-    .eq('band_id', params.bandId)
-    .eq('status', 'pending');
-
-  if (invitesError) {
-    console.error('Error fetching invites:', invitesError);
-    return NextResponse.json({ error: 'Failed to fetch invites' }, { status: 500 });
-  }
-
-  return NextResponse.json({
-    members: members || [],
-    invites: invites || [],
-  });
 }
 
 export async function PATCH(req: Request, { params }: { params: { bandId: string } }) {

@@ -329,9 +329,13 @@ export default function AddEventDrawer({
   }, [isRecurring, selectedDays, endDate, recurringFrequency]);
 
   const isValid = useMemo(() => {
-    if (!date) return false;
-    if (eventType === 'gig' && title.trim().length === 0) return false;
-    return true;
+    const valid = !(
+      !date || 
+      (eventType === 'gig' && title.trim().length === 0)
+    );
+    // eslint-disable-next-line no-console
+    console.log('[AddEventDrawer] Validation check:', { date, eventType, title: title.trim(), valid });
+    return valid;
   }, [date, eventType, title]);
 
   const handleToggleOptionalMember = useCallback((memberId: string) => {
@@ -374,6 +378,9 @@ export default function AddEventDrawer({
   };
 
   const handleSave = async () => {
+    // eslint-disable-next-line no-console
+    console.log('[AddEventDrawer] handleSave called', { eventType, mode, title, date, currentBand: currentBand?.id });
+    
     if (!currentBand?.id) {
       showToast('No band selected', 'error');
       return;
@@ -381,6 +388,11 @@ export default function AddEventDrawer({
 
     if (!date) {
       showToast('Please select a date', 'error');
+      return;
+    }
+
+    if (eventType === 'gig' && !title.trim()) {
+      showToast('Please enter a gig name', 'error');
       return;
     }
 
@@ -427,7 +439,7 @@ export default function AddEventDrawer({
             is_potential: isPotentialGig,
             setlist_id: selectedSetlist || null,
             setlist_name: chosen?.name ?? null,
-            optional_member_ids: isPotentialGig ? optionalMemberIds : [],
+            // optional_member_ids: isPotentialGig ? optionalMemberIds : [], // Temporarily removed - column doesn't exist in current schema
             member_responses: memberResponses,
           };
           const response = await fetch('/api/gigs', {
@@ -478,19 +490,33 @@ export default function AddEventDrawer({
             setlist_id: selectedSetlist || null,
             setlist_name: chosen?.name ?? null,
             notes: null as string | null,
-            optional_member_ids: isPotentialGig ? optionalMemberIds : [],
+            // optional_member_ids: isPotentialGig ? optionalMemberIds : [], // Temporarily removed - column doesn't exist in current schema
             member_responses: memberResponses,
           };
+          // eslint-disable-next-line no-console
+          console.log('[AddEventDrawer] Creating gig with payload:', gig);
+          
           const response = await fetch('/api/gigs', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(gig),
             credentials: 'include',
           });
+          
+          // eslint-disable-next-line no-console
+          console.log('[AddEventDrawer] Gig API response:', response.status, response.statusText);
+          
           if (!response.ok) {
             const error = await response.json();
+            // eslint-disable-next-line no-console
+            console.error('[AddEventDrawer] Gig creation failed:', error);
             throw new Error(error.error || 'Failed to create gig');
           }
+          
+          const result = await response.json();
+          // eslint-disable-next-line no-console
+          console.log('[AddEventDrawer] Gig created successfully:', result);
+          
           showToast(isPotentialGig ? 'Potential gig added' : 'Gig added', 'success');
         }
       }
@@ -500,8 +526,11 @@ export default function AddEventDrawer({
       onClose();
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('Failed to save event:', err);
-      showToast('Failed to save event. Please try again.', 'error');
+      console.error('[AddEventDrawer] Failed to save event:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      // eslint-disable-next-line no-console
+      console.error('[AddEventDrawer] Error details:', errorMessage);
+      showToast(`Failed to save event: ${errorMessage}`, 'error');
     }
   };
 
@@ -673,7 +702,7 @@ export default function AddEventDrawer({
                     size="sm"
                     variant={!selectedSetlist ? 'secondary' : 'outline'}
                     onClick={() => setSelectedSetlist('')}
-                    className="shrink-0"
+                    className={`shrink-0 ${!selectedSetlist ? 'bg-rose-600 text-white hover:bg-rose-700' : ''}`}
                   >
                     None
                   </Button>
@@ -684,7 +713,7 @@ export default function AddEventDrawer({
                       size="sm"
                       variant={selectedSetlist === s.id ? 'secondary' : 'outline'}
                       onClick={() => setSelectedSetlist(s.id)}
-                      className="shrink-0 max-w-[200px]"
+                      className={`shrink-0 max-w-[200px] ${selectedSetlist === s.id ? 'bg-rose-600 text-white hover:bg-rose-700' : ''}`}
                       title={s.name}
                     >
                       <span className="truncate">{s.name}</span>

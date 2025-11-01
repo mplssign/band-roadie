@@ -20,7 +20,6 @@ export default function ProtectedLayout({
     let mounted = true;
 
     const checkProfile = async () => {
-      // Middleware already authenticated, just check profile completion
       // Skip profile check if we're already on the profile page
       if (pathname === '/profile') {
         setIsLoading(false);
@@ -40,7 +39,7 @@ export default function ProtectedLayout({
           return;
         }
 
-        const { user, profile } = await response.json();
+        const { profile } = await response.json();
 
         if (!mounted) return;
 
@@ -70,7 +69,8 @@ export default function ProtectedLayout({
     return () => {
       mounted = false;
     };
-  }, []); // Only run once on mount, don't depend on pathname or router
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount, pathname and router are captured in closure
 
   if (isLoading) {
     return (

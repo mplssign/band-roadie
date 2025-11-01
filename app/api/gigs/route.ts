@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       setlist_id,
       setlist_name,
       notes,
-      optional_member_ids,
+      // optional_member_ids, // Temporarily removed - column doesn't exist in current schema
     } = body;
 
     // Verify user is a member of the band
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
           setlist_id: setlist_id || null,
           setlist_name: setlist_name || null,
           notes,
-          optional_member_ids: Array.isArray(optional_member_ids) ? optional_member_ids : [],
+          // optional_member_ids: Array.isArray(optional_member_ids) ? optional_member_ids : [], // Temporarily removed
         },
       ])
       .select()
@@ -102,7 +102,7 @@ export async function PUT(req: NextRequest) {
       is_potential,
       setlist_id,
       setlist_name,
-      optional_member_ids,
+      // optional_member_ids, // Temporarily removed - column doesn't exist in current schema
     } = body;
 
     // Verify ownership through band membership
@@ -135,7 +135,7 @@ export async function PUT(req: NextRequest) {
         is_potential: is_potential || false,
         setlist_id: setlist_id || null,
         setlist_name: setlist_name || null,
-        optional_member_ids: Array.isArray(optional_member_ids) ? optional_member_ids : [],
+        // optional_member_ids: Array.isArray(optional_member_ids) ? optional_member_ids : [], // Temporarily removed
       })
       .eq('id', id)
       .select()

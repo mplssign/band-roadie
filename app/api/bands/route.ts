@@ -54,7 +54,7 @@ export async function POST(req: Request): Promise<NextResponse<CreateBandRespons
 }
 
 // GET /api/bands — fetch user's bands
-export async function GET(req: NextRequest): Promise<NextResponse> {
+export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('sb-access-token')?.value;
@@ -77,29 +77,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     const userId = user.id;
-    // Get band memberships (feature-detect the optional is_active column)
-    let supportsIsActive = true;
-    let memberships: Array<Record<string, any>> | null = null;
-    let membershipError: any = null;
+    // Get band memberships (is_active column doesn't exist in production)
 
     const membershipsResult = await supabase
       .from('band_members')
-      .select('id, band_id, role, is_active')
+      .select('id, band_id, role')
       .eq('user_id', userId);
 
-    memberships = membershipsResult.data;
-    membershipError = membershipsResult.error;
-
-    if (membershipError?.code === '42703') {
-      supportsIsActive = false;
-      const fallbackResult = await supabase
-        .from('band_members')
-        .select('id, band_id, role')
-        .eq('user_id', userId);
-
-      memberships = fallbackResult.data;
-      membershipError = fallbackResult.error;
-    }
+    const memberships = membershipsResult.data;
+    const membershipError = membershipsResult.error;
 
     if (membershipError) {
       console.error('[api/bands] Error fetching memberships:', membershipError);
@@ -107,58 +93,20 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
 
     if (!memberships || memberships.length === 0) {
+      // eslint-disable-next-line no-console
       console.log('[api/bands] No memberships found for user:', userId);
       return NextResponse.json({ bands: [] }, { status: 200 });
     }
 
+    // eslint-disable-next-line no-console
     console.log('[api/bands] Memberships fetched:', memberships.length, {
       userId,
     });
 
-    let activeMemberships = memberships ?? [];
+    // Since is_active column doesn't exist, use all memberships
+    const activeMemberships = memberships ?? [];
 
-    if (supportsIsActive) {
-      const inactiveMemberships = (memberships || []).filter(
-        (membership: { is_active?: boolean | null }) => membership.is_active === false,
-      );
-
-      if (inactiveMemberships.length > 0) {
-        const inactiveIds = inactiveMemberships.map((membership: { id: string }) => membership.id);
-        console.log('[api/bands] Reactivating inactive memberships for user:', {
-          userId,
-          inactiveIds,
-        });
-
-        const { error: reactivateError } = await supabase
-          .from('band_members')
-          .update({ is_active: true })
-          .in('id', inactiveIds);
-
-        if (reactivateError) {
-          console.error('[api/bands] Failed to reactivate memberships:', reactivateError);
-        } else {
-          for (const membership of inactiveMemberships) {
-            (membership as { is_active?: boolean | null }).is_active = true;
-          }
-        }
-      }
-
-      activeMemberships = (memberships || []).filter(
-        (membership: { is_active?: boolean | null }) => membership.is_active !== false,
-      );
-
-      if (activeMemberships.length === 0) {
-        console.warn(
-          '[api/bands] No active memberships after reactivation attempt, falling back:',
-          {
-            userId,
-            membershipCount: memberships.length,
-          },
-        );
-        activeMemberships = memberships;
-      }
-    }
-
+    // eslint-disable-next-line no-console
     console.log('[api/bands] Found memberships:', activeMemberships.length);
 
     // Get band details
@@ -173,6 +121,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: bandsError.message }, { status: 500 });
     }
 
+    // eslint-disable-next-line no-console
     console.log('[api/bands] Returning bands:', bands?.length || 0, 'bands');
     return NextResponse.json({ bands: bands || [] }, { status: 200 });
   } catch (error) {
