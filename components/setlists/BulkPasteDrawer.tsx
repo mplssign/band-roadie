@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { X, ClipboardList, Music, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
-import { MusicSong } from '@/lib/types';
+import { MusicSong, TuningType } from '@/lib/types';
+import { normalizeTuning, getTuningsOrderedByPopularity, getTuningDisplayString } from '@/lib/utils/tuning';
 
 interface BulkPasteDrawerProps {
   open: boolean;
@@ -18,7 +19,7 @@ interface ParsedSong {
   artist: string;
   title: string;
   bpm?: number;
-  tuning?: 'standard' | 'drop_d' | 'half_step' | 'full_step';
+  tuning?: TuningType;
   duration_seconds?: number;
   id?: string;
   isDuplicate?: boolean;
@@ -268,20 +269,10 @@ export function BulkPasteDrawer({ open, onClose, onImportSongs, existingSongs = 
 
           // Try to parse tuning (4th column) with auto-matching
           if (parts[3]) {
-            const tuningText = parts[3].toLowerCase().trim();
-            
-            // Auto-match common tuning patterns
-            if (tuningText.includes('standard') || tuningText === 'std' || tuningText === 'e') {
-              song.tuning = 'standard';
-            } else if (tuningText.includes('drop') && tuningText.includes('d')) {
-              song.tuning = 'drop_d';
-            } else if (tuningText.includes('half') || tuningText.includes('1/2') || tuningText.includes('semitone')) {
-              song.tuning = 'half_step';
-            } else if (tuningText.includes('full') || tuningText.includes('whole') || tuningText.includes('tone')) {
-              song.tuning = 'full_step';
-            } else if (['standard', 'drop_d', 'half_step', 'full_step'].includes(tuningText)) {
-              // Direct match for exact values
-              song.tuning = tuningText as 'standard' | 'drop_d' | 'half_step' | 'full_step';
+            const tuningText = parts[3].trim();
+            const normalizedTuning = normalizeTuning(tuningText);
+            if (normalizedTuning) {
+              song.tuning = normalizedTuning;
             }
             // If no match, leave undefined (will show as "—" in UI)
           }
@@ -431,7 +422,7 @@ export function BulkPasteDrawer({ open, onClose, onImportSongs, existingSongs = 
       const numValue = parseInt(value, 10);
       song.bpm = isNaN(numValue) ? undefined : numValue;
     } else if (field === 'tuning') {
-      song.tuning = value as 'standard' | 'drop_d' | 'half_step' | 'full_step';
+      song.tuning = value as TuningType;
     } else if (field === 'artist') {
       song.artist = value;
     } else if (field === 'title') {
@@ -722,10 +713,11 @@ export function BulkPasteDrawer({ open, onClose, onImportSongs, existingSongs = 
                           disabled={song.isDuplicate}
                         >
                           <option value="">—</option>
-                          <option value="standard">STD</option>
-                          <option value="drop_d">DROP D</option>
-                          <option value="half_step">1/2 STEP</option>
-                          <option value="full_step">FULL STEP</option>
+                          {getTuningsOrderedByPopularity().map(({ type }) => (
+                            <option key={type} value={type}>
+                              {getTuningDisplayString(type).toUpperCase()}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>

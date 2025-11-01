@@ -91,13 +91,6 @@ function to12h(hour24: number): { hour12: number; period: 'AM' | 'PM' } {
   return { hour12: hour24 - 12, period: 'PM' };
 }
 
-// Helper: normalize incoming values and guard invalid dates
-const toDate = (v?: Date | string | null): Date | undefined => {
-  if (!v) return undefined;
-  const d = v instanceof Date ? v : new Date(v);
-  return isNaN(d.getTime()) ? undefined : d;
-};
-
 // Helper function to format date display like Create Gig page
 function formatDateDisplay(dateString: string): string {
   if (!dateString) return '';

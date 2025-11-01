@@ -1,179 +1,166 @@
 'use client';
 
-import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/Dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-import { Check, AlertCircle, Settings } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { TuningType } from '@/lib/types';
+import { getTuningInfo, getTuningsOrderedByPopularity } from '@/lib/utils/tuning';
+import { ChevronDown } from 'lucide-react';
 
 interface TuningBadgeProps {
-  tuning: string;
-  tuningSource?: 'fallback' | 'songsterr' | 'user_confirmed';
-  songId?: string;
-  songTitle?: string;
-  artist?: string;
+  tuning: TuningType;
+  onChange?: (newTuning: TuningType) => void;
+  disabled?: boolean;
   className?: string;
-  onTuningConfirm?: (newTuning: string) => void;
 }
-
-const TUNING_OPTIONS = [
-  { value: 'Standard (E)', label: 'Standard (E A D G B E)' },
-  { value: 'Drop D', label: 'Drop D (D A D G B E)' },
-  { value: 'Drop C', label: 'Drop C (C G C F A D)' },
-  { value: 'Drop B', label: 'Drop B (B F# B E G# C#)' },
-  { value: 'Half Step Down', label: 'Half Step Down (D# G# C# F# A# D#)' },
-  { value: 'Full Step Down', label: 'Full Step Down (D G C F A D)' },
-  { value: 'DADGAD', label: 'DADGAD (D A D G A D)' },
-  { value: 'Open G', label: 'Open G (D G D G B D)' },
-  { value: 'Open D', label: 'Open D (D A D F# A D)' },
-  { value: 'Open E', label: 'Open E (E B E G# B E)' },
-];
-
-const tuningColorConfig = {
-  'user_confirmed': 'bg-green-600 text-white border-green-700 hover:bg-green-700',
-  'songsterr': 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700',
-  'fallback': 'bg-gray-600 text-white border-gray-700 hover:bg-gray-700',
-};
 
 export function TuningBadge({ 
   tuning, 
-  tuningSource = 'fallback', 
-  songId, 
-  songTitle, 
-  artist, 
-  className,
-  onTuningConfirm 
+  onChange,
+  disabled = false,
+  className = ''
 }: TuningBadgeProps) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedTuning, setSelectedTuning] = useState(tuning);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
-  const color = tuningColorConfig[tuningSource] || tuningColorConfig.fallback;
-  const displayText = tuning.replace(/\s*\([^)]*\)$/, ''); // Remove "(Songsterr)" suffix for display
+  const tuningInfo = getTuningInfo(tuning);
+  const allTunings = getTuningsOrderedByPopularity();
   
-  const getSourceIcon = () => {
-    switch (tuningSource) {
-      case 'user_confirmed':
-        return <Check className="w-3 h-3 ml-1" />;
-      case 'songsterr':
-        return <AlertCircle className="w-3 h-3 ml-1" />;
-      default:
-        return <Settings className="w-3 h-3 ml-1" />;
-    }
-  };
-  
-  const getSourceText = () => {
-    switch (tuningSource) {
-      case 'user_confirmed':
-        return 'Confirmed by band member';
-      case 'songsterr':
-        return 'Suggested by Songsterr (click to confirm)';
-      default:
-        return 'Default tuning (click to customize)';
-    }
-  };
-  
-  const handleConfirmTuning = async () => {
-    if (!songId || !songTitle || !artist) return;
-    
-    setIsConfirming(true);
-    try {
-      const response = await fetch('/api/tunings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          song_id: songId,
-          title: songTitle,
-          artist: artist,
-          confirmed_tuning: selectedTuning
-        })
-      });
-      
-      if (response.ok) {
-        onTuningConfirm?.(selectedTuning);
-        setIsDialogOpen(false);
-      } else {
-        console.error('Failed to confirm tuning');
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setFocusedIndex(-1);
       }
-    } catch (error) {
-      console.error('Error confirming tuning:', error);
-    } finally {
-      setIsConfirming(false);
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (!isOpen) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        setIsOpen(true);
+        setFocusedIndex(allTunings.findIndex(t => t.type === tuning));
+      }
+      return;
+    }
+
+    switch (event.key) {
+      case 'Escape':
+        setIsOpen(false);
+        setFocusedIndex(-1);
+        buttonRef.current?.focus();
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        setFocusedIndex(prev => Math.min(prev + 1, allTunings.length - 1));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setFocusedIndex(prev => Math.max(prev - 1, 0));
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (focusedIndex >= 0) {
+          handleTuningSelect(allTunings[focusedIndex].type);
+        }
+        break;
     }
   };
-  
+
+  const handleTuningSelect = (newTuning: TuningType) => {
+    onChange?.(newTuning);
+    setIsOpen(false);
+    setFocusedIndex(-1);
+    buttonRef.current?.focus();
+  };
+
+  const handleButtonClick = () => {
+    if (disabled) return;
+    setIsOpen(!isOpen);
+    if (!isOpen) {
+      setFocusedIndex(allTunings.findIndex(t => t.type === tuning));
+    }
+  };
+
   return (
-    <>
-      <Badge 
-        variant="outline" 
-        className={`${color} whitespace-nowrap cursor-pointer flex items-center ${className || ''}`}
-        title={getSourceText()}
-        onClick={() => setIsDialogOpen(true)}
+    <div className={`relative inline-block ${className}`}>
+      <button
+        ref={buttonRef}
+        onClick={handleButtonClick}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
+        className={`
+          px-2 py-1 rounded-md text-xs font-medium text-white border transition-colors
+          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500
+          flex items-center gap-1 min-w-0
+          ${tuningInfo.color}
+          ${disabled 
+            ? 'opacity-50 cursor-not-allowed' 
+            : 'cursor-pointer hover:opacity-90'
+          }
+        `}
+        aria-label={`Guitar tuning: ${tuningInfo.name}. Click to change tuning.`}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
-        {displayText}
-        {getSourceIcon()}
-      </Badge>
-      
-      {isDialogOpen && (
-        <Dialog 
-          open={isDialogOpen} 
-          onClose={() => setIsDialogOpen(false)}
-          title="Confirm Guitar Tuning"
+        <span className="truncate">{tuningInfo.name}</span>
+        {!disabled && (
+          <ChevronDown 
+            className={`h-3 w-3 flex-shrink-0 transition-transform ${
+              isOpen ? 'rotate-180' : ''
+            }`} 
+          />
+        )}
+      </button>
+
+      {isOpen && !disabled && (
+        <div
+          ref={dropdownRef}
+          className="absolute z-50 mt-1 left-0 bg-popover border border-border rounded-md shadow-lg min-w-[200px] max-h-60 overflow-y-auto"
+          role="listbox"
+          aria-label="Guitar tuning options"
         >
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-600 mb-2">
-                <strong>{songTitle}</strong> by {artist}
-              </p>
-              <p className="text-sm text-gray-500">
-                Current tuning source: {getSourceText()}
-              </p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                Select the correct tuning for this song:
-              </label>
-              <Select value={selectedTuning} onValueChange={setSelectedTuning}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TUNING_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsDialogOpen(false)}
-                disabled={isConfirming}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleConfirmTuning}
-                disabled={isConfirming || selectedTuning === tuning}
-              >
-                {isConfirming ? 'Confirming...' : 'Confirm Tuning'}
-              </Button>
-            </div>
-            
-            {tuningSource === 'user_confirmed' && (
-              <p className="text-xs text-green-600 text-center">
-                ✓ This tuning has been confirmed by your band
-              </p>
-            )}
-          </div>
-        </Dialog>
+          {allTunings.map((tuningOption, index) => (
+            <button
+              key={tuningOption.type}
+              onClick={() => handleTuningSelect(tuningOption.type)}
+              className={`
+                w-full px-3 py-2 text-left text-sm transition-colors
+                flex items-center justify-between
+                ${index === focusedIndex 
+                  ? 'bg-accent text-accent-foreground' 
+                  : 'hover:bg-accent hover:text-accent-foreground'
+                }
+                ${tuningOption.type === tuning ? 'font-medium' : ''}
+              `}
+              role="option"
+              aria-selected={tuningOption.type === tuning}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">
+                  {tuningOption.info.name}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  ({tuningOption.info.notes})
+                </div>
+              </div>
+              {tuningOption.type === tuning && (
+                <div className="flex-shrink-0 ml-2 text-primary">✓</div>
+              )}
+            </button>
+          ))}
+        </div>
       )}
-    </>
+    </div>
   );
 }

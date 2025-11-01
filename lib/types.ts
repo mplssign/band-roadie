@@ -109,8 +109,8 @@ export interface Song {
   order: number;
 }
 
-// Tuning types for guitar tunings
-export type TuningType = 'standard' | 'drop_d' | 'half_step' | 'full_step';
+// Tuning types for guitar tunings (ordered by popularity)
+export type TuningType = 'standard' | 'half_step' | 'drop_d' | 'full_step' | 'drop_c' | 'drop_b' | 'dadgad' | 'open_g' | 'open_d' | 'open_e';
 
 // Music song interface for search results
 export interface MusicSong {

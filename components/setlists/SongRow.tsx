@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+
 import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -18,12 +18,7 @@ interface SongRowProps {
   isEditMode?: boolean;
 }
 
-const tuningOptions = [
-  { value: 'standard', label: 'Standard' },
-  { value: 'drop_d', label: 'Drop D' },
-  { value: 'half_step', label: 'Half Step' },
-  { value: 'full_step', label: 'Full Step' },
-] as const;
+
 
 function formatDuration(seconds?: number): string {
   if (!seconds) return '--:--';
@@ -33,7 +28,6 @@ function formatDuration(seconds?: number): string {
 }
 
 export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }: SongRowProps) {
-  const [tuningSelectOpen, setTuningSelectOpen] = useState(false);
 
   const {
     attributes,
@@ -53,10 +47,7 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
     onUpdate(setlistSong.id, { bpm: newBpm });
   };
 
-  const handleTuningChange = (newTuning: TuningType) => {
-    onUpdate(setlistSong.id, { tuning: newTuning });
-    setTuningSelectOpen(false);
-  };
+
 
   const displayBpm = setlistSong.bpm ?? setlistSong.songs?.bpm;
   const displayTuning = setlistSong.tuning ?? setlistSong.songs?.tuning ?? 'standard';
@@ -133,90 +124,12 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
               {formatDuration(displayDuration)}
             </div>
 
-            {/* Tuning - editable in edit mode, display only in view mode */}
-            <div className="relative flex-shrink-0">
-              {isEditMode ? (
-                <>
-                  <button
-                    onClick={() => setTuningSelectOpen(!tuningSelectOpen)}
-                    className="focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded"
-                  >
-                    <TuningBadge 
-                      tuning={displayTuning}
-                      songId={setlistSong.song_id}
-                      songTitle={setlistSong.songs?.title}
-                      artist={setlistSong.songs?.artist}
-                      onTuningConfirm={(newTuning) => {
-                        // Convert the tuning value to TuningType format
-                        let tuningValue: TuningType = 'standard';
-                        switch (newTuning) {
-                          case 'Drop D':
-                            tuningValue = 'drop_d';
-                            break;
-                          case 'Half Step Down':
-                            tuningValue = 'half_step';
-                            break;
-                          case 'Full Step Down':
-                            tuningValue = 'full_step';
-                            break;
-                          default:
-                            tuningValue = 'standard';
-                        }
-                        onUpdate(setlistSong.id, { tuning: tuningValue });
-                      }}
-                    />
-                  </button>
-                  
-                  {tuningSelectOpen && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-40"
-                        onClick={() => setTuningSelectOpen(false)}
-                      />
-                      <div className="absolute left-0 top-full mt-1 z-50 min-w-[140px] bg-popover border border-border rounded-md shadow-lg">
-                        {tuningOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            onClick={() => handleTuningChange(option.value)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground first:rounded-t-md last:rounded-b-md"
-                          >
-                            {option.label}
-                            {option.value === displayTuning && (
-                              <span className="ml-2 text-primary">✓</span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <TuningBadge 
-                  tuning={displayTuning}
-                  songId={setlistSong.song_id}
-                  songTitle={setlistSong.songs?.title}
-                  artist={setlistSong.songs?.artist}
-                  onTuningConfirm={(newTuning) => {
-                    // Convert the tuning value to TuningType format
-                    let tuningValue: TuningType = 'standard';
-                    switch (newTuning) {
-                      case 'Drop D':
-                        tuningValue = 'drop_d';
-                        break;
-                      case 'Half Step Down':
-                        tuningValue = 'half_step';
-                        break;
-                      case 'Full Step Down':
-                        tuningValue = 'full_step';
-                        break;
-                      default:
-                        tuningValue = 'standard';
-                    }
-                    onUpdate(setlistSong.id, { tuning: tuningValue });
-                  }}
-                />
-              )}
-            </div>
+            {/* Tuning */}
+            <TuningBadge 
+              tuning={displayTuning}
+              onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
+              disabled={!isEditMode}
+            />
           </div>
         </div>
 

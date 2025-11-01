@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
+import { broadcastGigCreated, broadcastGigUpdated, broadcastEvent } from '@/lib/utils/realtime-broadcast';
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,6 +71,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Broadcast real-time event
+    try {
+      await broadcastGigCreated(
+        band_id,
+        data.id,
+        {
+          name: data.name,
+          venue: data.location || 'TBD',
+          date: data.date,
+          isPotential: data.is_potential || false,
+        },
+        userId
+      );
+    } catch (broadcastError) {
+      console.error('[api/gigs] Broadcast error:', broadcastError);
+      // Don't fail the request if broadcast fails
+    }
+
     return NextResponse.json({ data }, { status: 201 });
   } catch (error) {
     console.error('[api/gigs] Unexpected error:', error);
@@ -123,6 +142,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Forbidden: Not a band member' }, { status: 403 });
     }
 
+    // Get original gig data for comparison
+    const { data: originalGig } = await supabase
+      .from('gigs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
     // Update gig
     const { data, error } = await supabase
       .from('gigs')
@@ -144,6 +170,45 @@ export async function PUT(req: NextRequest) {
     if (error) {
       console.error('[api/gigs] Update error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Broadcast real-time event
+    try {
+      const changes: Record<string, unknown> = {};
+      const previousValues: Record<string, unknown> = {};
+      
+      if (originalGig) {
+        // Track what changed
+        if (originalGig.name !== name) {
+          changes.name = name;
+          previousValues.name = originalGig.name;
+        }
+        if (originalGig.date !== date) {
+          changes.date = date;
+          previousValues.date = originalGig.date;
+        }
+        if (originalGig.start_time !== start_time) {
+          changes.start_time = start_time;
+          previousValues.start_time = originalGig.start_time;
+        }
+        if (originalGig.location !== (location || 'TBD')) {
+          changes.location = location || 'TBD';
+          previousValues.location = originalGig.location;
+        }
+      }
+      
+      if (Object.keys(changes).length > 0) {
+        await broadcastGigUpdated(
+          gig.band_id,
+          id,
+          changes,
+          previousValues,
+          userId
+        );
+      }
+    } catch (broadcastError) {
+      console.error('[api/gigs] Broadcast error:', broadcastError);
+      // Don't fail the request if broadcast fails
     }
 
     return NextResponse.json({ data }, { status: 200 });
@@ -198,6 +263,19 @@ export async function DELETE(req: NextRequest) {
     if (error) {
       console.error('[api/gigs] Delete error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Broadcast real-time event
+    try {
+      await broadcastEvent(
+        gig.band_id,
+        'gig:deleted',
+        { gigId: id },
+        userId
+      );
+    } catch (broadcastError) {
+      console.error('[api/gigs] Broadcast error:', broadcastError);
+      // Don't fail the request if broadcast fails
     }
 
     return NextResponse.json({ success: true }, { status: 200 });
