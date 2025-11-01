@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Plus, CalendarDays, Clock, MapPin } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
 import { createClient } from '@/lib/supabase/client';
-import Empty from '@/components/ui/empty';
 import { Card } from '@/components/ui/Card';
 import { GradientBorderButton } from '@/components/ui/gradient-border-button';
 import type { EventPayload } from '@/app/(protected)/calendar/AddEventDrawer';
@@ -39,15 +39,6 @@ interface Gig {
   is_potential?: boolean;
   setlist_id?: string;
   setlist_name?: string;
-}
-
-function convertTo12Hour(time24: string): string {
-  if (!time24) return '';
-  const [hour, minute] = time24.split(':');
-  const h = parseInt(hour, 10);
-  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  return `${hour12}:${minute} ${ampm}`;
 }
 
 function formatDateForDisplay(dateString: string): string {
@@ -237,6 +228,7 @@ export default function DashboardPage() {
     setEditEvent(rehearsalToEventPayload(rehearsal));
     setDrawerMode('edit');
     setDrawerOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const closeDrawer = useCallback(() => {
@@ -257,6 +249,7 @@ export default function DashboardPage() {
     setEditEvent(gigToEventPayload(gig));
     setDrawerMode('edit');
     setDrawerOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handler to open add event drawer
@@ -442,11 +435,7 @@ export default function DashboardPage() {
           <h2 className={sectionTitle + " mb-4"}>Upcoming Gigs</h2>
           {confirmedGigs.length > 0 ? (
             <div className="flex gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {confirmedGigs.map((gig, index) => {
-                // Vary animation speeds across gig cards (11s, 9s, 7s, 6s pattern)
-                const speeds = ['animate-gradient-11s', 'animate-gradient-9s', 'animate-gradient-7s', 'animate-gradient-6s'];
-                const speedClass = speeds[index % speeds.length];
-
+              {confirmedGigs.map((gig) => {
                 return (
                   <div key={gig.id} className="flex-shrink-0 snap-start" style={{ maxWidth: '320px' }}>
                     <GradientBorderButton
@@ -480,10 +469,12 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Spotlight Icon - 24px to the right of time, flipped */}
-                          <img
+                          <Image
                             src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNwb3RsaWdodC1pY29uIGx1Y2lkZS1zcG90bGlnaHQiPjxwYXRoIGQ9Ik0xNS4yOTUgMTkuNTYyIDE2IDIyIi8+PHBhdGggZD0ibTE3IDE2IDMuNzU4IDIuMDk4Ii8+PHBhdGggZD0ibTE5IDEyLjUgMy4wMjYtLjU5OCIvPjxwYXRoIGQ9Ik03LjYxIDYuM2EzIDMgMCAwIDAtMy45MiAxLjNsLTEuMzggMi43OWEzIDMgMCAwIDAgMS4zIDMuOTFsNi44OSAzLjU5N2ExIDEgMCAwIDAgMS4zNDItLjQ0N2wzLjEwNi02LjIxMWExIDEgMCAwIDAtLjQ0Ny0xLjM0MXoiLz48cGF0aCBkPSJNOCA5VjIiLz48L3N2Zz4="
                             alt="Spotlight"
-                            className="w-12 h-12 ml-6"
+                            width={48}
+                            height={48}
+                            className="ml-6"
                             style={{
                               filter: 'brightness(0) saturate(100%) invert(26%) sepia(8%) saturate(381%) hue-rotate(185deg) brightness(94%) contrast(87%)',
                               transform: 'scale(-1, -1)'
