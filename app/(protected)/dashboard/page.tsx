@@ -294,7 +294,10 @@ export default function DashboardPage() {
   if (bandsLoading || loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div>Loading...</div>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto"></div>
+          <div className="text-zinc-400">Loading dashboard...</div>
+        </div>
       </div>
     );
   }

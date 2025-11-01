@@ -6,6 +6,7 @@ import TopNav from '@/components/navigation/TopNav';
 import BottomNav from '@/components/navigation/BottomNav';
 import { BandsProvider } from '@/contexts/BandsContext';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { AppLoadingBoundary } from '@/components/layout/AppLoadingBoundary';
 
 export default function ProtectedLayout({
   children,
@@ -89,20 +90,22 @@ export default function ProtectedLayout({
 
   return (
     <BandsProvider>
-      <div className="fixed inset-0 flex flex-col bg-background text-foreground">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,113,133,0.18),_transparent_55%)] opacity-90"
-        />
-        <TopNav />
-        <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-16 pb-20">
-          <div className="px-0 py-0">
-            {children}
+      <AppLoadingBoundary>
+        <div className="fixed inset-0 flex flex-col bg-background text-foreground">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,113,133,0.18),_transparent_55%)] opacity-90"
+          />
+          <TopNav />
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-hide pt-16 pb-20">
+            <div className="px-0 py-0">
+              {children}
+            </div>
           </div>
+          <BottomNav />
+          <InstallPrompt />
         </div>
-        <BottomNav />
-        <InstallPrompt />
-      </div>
+      </AppLoadingBoundary>
     </BandsProvider>
   );
 }

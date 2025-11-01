@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 export interface Band {
   id: string;
@@ -45,9 +44,6 @@ function deleteCookie(name: string) {
 }
 
 export function BandsProvider({ children }: { children: React.ReactNode }) {
-  console.log('[BandsContext] Provider mounting/rendering');
-
-  const supabase = createClient();
   const [bands, setBands] = useState<Band[]>([]);
   const [currentBand, setCurrentBandState] = useState<Band | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,59 +119,52 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
     loadingRef.current = true;
     setLoading(true);
 
-    console.log('[BandsContext] fetchBands: Starting...');
-
     try {
-      // Get user's bands from API
-      console.log('[BandsContext] Calling /api/bands...');
+      // Get user's bands from API with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch('/api/bands', {
         credentials: 'include',
+        signal: controller.signal,
       });
 
-      console.log('[BandsContext] /api/bands response:', response.status);
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.log('[BandsContext] API call failed, clearing bands');
         setBands([]);
         setCurrentBandState(null);
-        setLoading(false);
-        loadingRef.current = false;
         return;
       }
 
       const { bands: bandList } = await response.json();
-      console.log('[BandsContext] Received bands:', bandList?.length || 0);
 
-      const list: Band[] = (bandList || []).map((row: any) => ({
-        id: row.id as string,
-        name: row.name as string,
+      const list: Band[] = (bandList || []).map((row: { 
+        id: string; 
+        name: string; 
+        image_url?: string | null; 
+        avatar_color?: string | null; 
+      }) => ({
+        id: row.id,
+        name: row.name,
         image_url: row.image_url ?? null,
         avatar_color: row.avatar_color ?? null,
       }));
 
       if (list.length === 0) {
-        console.log('[BandsContext] No bands found, clearing state');
         setBands([]);
         setCurrentBandState(null);
-        setLoading(false);
-        loadingRef.current = false;
         return;
       }
 
-      console.log('[BandsContext] Setting bands:', list.length, 'bands');
       setBands(list);
-
-      console.log('[BandsContext] Fetching band details...');
-
-      console.log('[BandsContext] Bands set:', list.length, 'bands');
 
       // restore selection
       let restored: Band | null = null;
       try {
         const saved = localStorage.getItem(CURRENT_BAND_KEY);
         if (saved) restored = list.find(b => b.id === saved) || null;
-        console.log('[BandsContext] Restored band:', restored?.name || 'none, using first');
+        // Band restored or default selected
       } catch {
         // localStorage read failed; ignore
         void 0;
@@ -195,15 +184,11 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
         // Persistence helpers may fail in private mode; ignore
         void 0;
       }
-      console.log('[BandsContext] fetchBands: Complete!');
+      // Bands fetch completed successfully
     } catch (error) {
-      console.error('BandsProvider: Error in fetchBands:', error);
       setBands([]);
       setCurrentBandState(null);
-      setLoading(false);
-      loadingRef.current = false;
     } finally {
-      console.log('[BandsContext] fetchBands: finally block, setting loading to false');
       setLoading(false);
       loadingRef.current = false;
     }
@@ -214,10 +199,8 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
   }, [fetchBands]);
 
   useEffect(() => {
-    console.log('[BandsContext] useEffect: Calling fetchBands');
-    fetchBands().catch(err => {
-      console.error('[BandsContext] useEffect: fetchBands failed:', err);
-      // Don't rethrow - just log it
+    fetchBands().catch(() => {
+      // Error handling done in fetchBands
       setLoading(false);
       loadingRef.current = false;
     });
