@@ -22,7 +22,7 @@ const ROLE_OPTIONS = [
   'DJ',
   'Backing Vocals',
   'Lead Guitar',
-  'Rythem Guitar',
+  'Rhythm Guitar',
   'Percussion',
   'Acoustic Guitar',
 ] as const;
@@ -725,17 +725,26 @@ const ProfileForm = ({ user, invitationId: _invitationId, invitation }: ProfileF
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isSubmitDisabled}
-            className={`w-full rounded-lg py-4 text-lg font-medium transition-opacity ${
-              isSubmitDisabled
-                ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
-                : 'bg-primary text-primary-foreground shadow shadow-primary/30 hover:opacity-90'
-            }`}
-          >
-            {isLoading ? 'Saving...' : 'Save Profile'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="px-6 py-4 text-lg font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitDisabled}
+              className={`flex-1 rounded-lg py-4 text-lg font-medium transition-opacity ${
+                isSubmitDisabled
+                  ? 'cursor-not-allowed bg-muted/40 text-muted-foreground'
+                  : 'bg-primary text-primary-foreground shadow shadow-primary/30 hover:opacity-90'
+              }`}
+            >
+              {isLoading ? 'Saving...' : 'Save Profile'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

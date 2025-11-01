@@ -160,12 +160,12 @@ export function ProviderImportDrawer({ open, provider, onClose, onImportSongs }:
     <>
       {/* Background overlay */}
       <div 
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-300"
         onClick={onClose}
       />
       
       {/* Drawer */}
-      <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border rounded-t-lg shadow-lg max-h-[80vh] flex flex-col animate-in slide-in-from-bottom-2 duration-300">
+      <div className="fixed inset-x-0 bottom-0 z-50 bg-background border-t border-border rounded-t-lg shadow-xl backdrop-blur-lg max-h-[80vh] flex flex-col animate-in slide-in-from-bottom-2 duration-300 ease-out">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">

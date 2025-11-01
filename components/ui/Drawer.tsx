@@ -20,21 +20,21 @@ export function Drawer({ open, onClose, side, children }: DrawerProps) {
     };
   }, [open]);
 
+  if (!open) return null;
+
   return (
     <>
-      {open && (
-        <div 
-          className="drawer-backdrop" 
-          onClick={onClose}
-        />
-      )}
+      <div 
+        className="drawer-backdrop animate-in fade-in-0 duration-300" 
+        onClick={onClose}
+      />
       <div 
         className={clsx(
           side === 'left' ? 'drawer-left' : 'drawer-right',
+          'animate-in duration-300 ease-out',
           {
-            '-translate-x-full': side === 'left' && !open,
-            'translate-x-full': side === 'right' && !open,
-            'translate-x-0': open,
+            'slide-in-from-left': side === 'left',
+            'slide-in-from-right': side === 'right',
           }
         )}
       >
