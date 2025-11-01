@@ -240,8 +240,8 @@ export default function TopNav() {
 
                 {/* App version info at bottom */}
                 <div className="border-t border-border/60 px-4 py-4">
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-foreground">{APP_NAME}</p>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-muted-foreground">{APP_NAME}</p>
                     <p className="text-xs text-muted-foreground mt-1">{APP_VERSION}</p>
                   </div>
                 </div>
