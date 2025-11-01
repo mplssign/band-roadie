@@ -94,42 +94,52 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
         )}
 
         {/* Song info */}
-        <div className="flex-1 min-w-0">
-          {/* Song title */}
-          <div className="text-lg font-medium truncate mb-1 whitespace-nowrap overflow-hidden">{setlistSong.songs?.title || 'Unknown Song'}</div>
-          
-          {/* Artist */}
-          <div className="text-sm text-muted-foreground truncate mb-3 whitespace-nowrap overflow-hidden">
-            {setlistSong.songs?.artist || 'Unknown Artist'}
-            {setlistSong.songs?.is_live && <span className="ml-2">[Live]</span>}
+        <div className="flex-1 min-w-0 relative">
+          {/* Top row: Song title and BPM */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            {/* Song title - with right margin to prevent overlap with BPM */}
+            <div className="text-lg font-medium truncate whitespace-nowrap overflow-hidden pr-2 flex-1 min-w-0" style={{ marginRight: '8px' }}>
+              {setlistSong.songs?.title || 'Unknown Song'}
+            </div>
+            
+            {/* BPM - positioned in top right */}
+            <div className="flex-shrink-0">
+              {isEditMode ? (
+                <BpmInput
+                  value={displayBpm}
+                  onChange={handleBpmChange}
+                  placeholder="BPM"
+                />
+              ) : (
+                <div className="text-base font-medium">
+                  {displayBpm ? `${displayBpm} BPM` : '— BPM'}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Bottom row with BPM, Duration, and Tuning */}
-          <div className="flex items-center gap-3">
-            {/* BPM - editable in edit mode, display only in view mode */}
-            {isEditMode ? (
-              <BpmInput
-                value={displayBpm}
-                onChange={handleBpmChange}
-                placeholder="BPM"
-              />
-            ) : (
-              <div className="text-base font-medium">
-                {displayBpm ? `${displayBpm} BPM` : '— BPM'}
-              </div>
-            )}
-
-            {/* Duration */}
-            <div className="bg-transparent text-white border border-white px-2 py-1 rounded text-sm font-medium flex-shrink-0">
-              {formatDuration(displayDuration)}
+          {/* Bottom row: Artist and Duration/Tuning */}
+          <div className="flex items-start justify-between gap-2">
+            {/* Artist */}
+            <div className="text-sm text-muted-foreground truncate whitespace-nowrap overflow-hidden flex-1 min-w-0">
+              {setlistSong.songs?.artist || 'Unknown Artist'}
+              {setlistSong.songs?.is_live && <span className="ml-2">[Live]</span>}
             </div>
 
-            {/* Tuning */}
-            <TuningBadge 
-              tuning={displayTuning}
-              onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
-              disabled={!isEditMode}
-            />
+            {/* Duration and Tuning - aligned under BPM */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Duration */}
+              <div className="bg-transparent text-white border border-white px-2 py-1 rounded text-sm font-medium">
+                {formatDuration(displayDuration)}
+              </div>
+
+              {/* Tuning */}
+              <TuningBadge 
+                tuning={displayTuning}
+                onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
+                disabled={!isEditMode}
+              />
+            </div>
           </div>
         </div>
 
