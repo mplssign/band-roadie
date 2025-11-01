@@ -1,0 +1,84 @@
+
+> band-roadie@1.2.4 dev /Users/tony/apps/band-roadie
+> next dev
+
+  ▲ Next.js 14.2.33
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 1006ms
+ ✓ Compiled /api/playlists/parse in 346ms (133 modules)
+Playlist parse API error: Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(rsc)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(rsc)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(rsc)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createClient (webpack-internal:///(rsc)/./lib/supabase/server.ts:11:79)
+    at POST (webpack-internal:///(rsc)/./app/api/playlists/parse/route.ts:127:98)
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:57234
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/trace/tracer.js:140:36
+    at NoopContextManager.with (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+    at ContextAPI.with (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+    at NoopTracer.startActiveSpan (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18093)
+    at ProxyTracer.startActiveSpan (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:18854)
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/trace/tracer.js:122:103
+    at NoopContextManager.with (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:7062)
+    at ContextAPI.with (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/@opentelemetry/api/index.js:1:518)
+    at NextTracerImpl.trace (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/lib/trace/tracer.js:122:28)
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:48896
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:40958)
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47472
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:38293)
+    at /Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:47434
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at eT.execute (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:46881)
+    at eT.handle (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/compiled/next-server/app-route.runtime.dev.js:6:58771)
+    at doRender (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1366:60)
+    at cacheEntry.responseCache.get.routeKind (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1588:34)
+    at ResponseCache.get (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/response-cache/index.js:49:26)
+    at DevServer.renderToResponseWithComponentsImpl (/Users/tony/apps/band-roadie/node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/server/base-server.js:1496:53)
+ POST /api/playlists/parse 500 in 414ms
+ ⨯ ./app/api/playlists/parse/route.ts
+Error: 
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/Users/tony/apps/band-roadie/app/api/playlists/parse/route.ts[0m:231:1]
+ [2m231[0m | 
+ [2m232[0m |     return NextResponse.json(result);
+ [2m233[0m | 
+ [2m234[0m |   } catch (error) {
+     : [31;1m    ^^^^^[0m
+ [2m235[0m |     console.error('Playlist parse API error:', error);
+ [2m236[0m |     return NextResponse.json(
+ [2m237[0m |       { error: 'Internal server error' },
+     `----
+
+  [31mx[0m Expected a semicolon
+     ,-[[36;1;4m/Users/tony/apps/band-roadie/app/api/playlists/parse/route.ts[0m:238:1]
+ [2m238[0m |       { status: 500 }
+ [2m239[0m |     );
+ [2m240[0m |   }
+ [2m241[0m | }
+     `----
+
+  [31mx[0m Expected '}', got '<eof>'
+     ,-[[36;1;4m/Users/tony/apps/band-roadie/app/api/playlists/parse/route.ts[0m:238:1]
+ [2m238[0m |       { status: 500 }
+ [2m239[0m |     );
+ [2m240[0m |   }
+ [2m241[0m | }
+     : [31;1m^[0m
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/api/playlists/parse/route.ts
+ ✓ Compiled in 7ms
+ ✓ Compiled in 559ms (203 modules)
+ ✓ Compiled in 69ms (203 modules)
+ ✓ Compiled /api/playlists/parse in 135ms (133 modules)
+ POST /api/playlists/parse 200 in 189ms
+ POST /api/playlists/parse 200 in 8ms

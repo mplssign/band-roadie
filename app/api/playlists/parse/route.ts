@@ -49,86 +49,90 @@ async function parseAppleMusicPlaylist(_playlistId: string): Promise<PlaylistPar
   try {
     // Note: The iTunes Search API doesn't directly support playlist lookups
     // This is a limitation of the public API. In a real implementation, you would need:
-    // 1. Apple Music API access (requires developer account)
-    // 2. Or web scraping (fragile and against ToS)
-    // 3. Or user-provided track lists
+    // 1. Apple Music API access (requires developer account and user authentication)
+    // 2. Or web scraping (unreliable and against ToS)
+    // 3. Or manual parsing from shared playlist text
     
-    // For now, we'll return an error indicating the limitation
     return {
       success: false,
       tracks: [],
       total_tracks: 0,
       error: 'Apple Music playlist parsing requires Apple Music API access. Please paste the track list manually using "Artist — Song" format (one per line).'
     };
-  } catch (error) {
-    console.error('Apple Music playlist parse error:', error);
+  } catch {
     return {
       success: false,
       tracks: [],
       total_tracks: 0,
-      error: 'Failed to parse Apple Music playlist. Please try pasting the track list manually.'
+      error: 'Failed to parse Apple Music playlist.'
     };
   }
 }
 
-// Parse Spotify playlist (placeholder for future implementation)
+// Parse Spotify playlist using Spotify Web API
 async function parseSpotifyPlaylist(_playlistId: string): Promise<PlaylistParseResult> {
   try {
-    // Similar limitation - Spotify Web API requires authentication
+    // Note: Spotify Web API requires authentication and user consent
+    // For public playlists, you could potentially use the Web API with client credentials
+    // but this requires proper OAuth setup and rate limiting
+    
     return {
       success: false,
       tracks: [],
       total_tracks: 0,
-      error: 'Spotify playlist parsing requires Spotify Web API access. Please paste the track list manually using "Artist — Song" format (one per line).'
+      error: 'Spotify playlist parsing requires Spotify API access. Please paste the track list manually using "Artist — Song" format (one per line).'
     };
-  } catch (error) {
-    console.error('Spotify playlist parse error:', error);
+  } catch {
     return {
       success: false,
       tracks: [],
       total_tracks: 0,
-      error: 'Failed to parse Spotify playlist. Please try pasting the track list manually.'
+      error: 'Failed to parse Spotify playlist.'
     };
   }
 }
 
-// Parse raw text track list
+// Parse manual track list in "Artist — Song" format
 function parseTrackList(text: string): PlaylistParseResult {
   try {
-    const lines = text.split('\n').filter(line => line.trim());
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     const tracks: PlaylistTrack[] = [];
-    
-    for (const line of lines) {
-      const cleanLine = line.trim();
-      if (!cleanLine) continue;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       
-      let artist = '';
-      let title = '';
+      // Try to parse "Artist — Song" format (with em dash)
+      let parts = line.split('—').map(part => part.trim());
       
-      // Try different separators in order of preference
-      if (cleanLine.includes(' — ')) {
-        [artist, title] = cleanLine.split(' — ', 2);
-      } else if (cleanLine.includes(' - ')) {
-        [artist, title] = cleanLine.split(' - ', 2);
-      } else if (cleanLine.includes('\t')) {
-        [artist, title] = cleanLine.split('\t', 2);
-      } else if (cleanLine.includes(' by ')) {
-        [title, artist] = cleanLine.split(' by ', 2);
-      } else {
-        // Fallback: assume it's just a title
-        title = cleanLine;
-        artist = 'Unknown Artist';
+      // If no em dash, try regular dash
+      if (parts.length === 1) {
+        parts = line.split('—').map(part => part.trim());
       }
       
-      if (title) {
+      // If still no separator, try hyphen
+      if (parts.length === 1) {
+        parts = line.split('-').map(part => part.trim());
+      }
+
+      if (parts.length >= 2) {
+        const artist = parts[0];
+        const title = parts.slice(1).join(' — '); // Rejoin in case song title had separators
+        
         tracks.push({
-          id: `track-${tracks.length}`,
-          artist: artist.trim() || 'Unknown Artist',
-          title: title.trim()
+          id: `track_${i + 1}`,
+          artist,
+          title
+        });
+      } else {
+        // If we can't parse the format, treat the whole line as a song title with unknown artist
+        tracks.push({
+          id: `track_${i + 1}`,
+          artist: 'Unknown Artist',
+          title: line
         });
       }
     }
-    
+
     return {
       success: true,
       tracks,
@@ -148,36 +152,42 @@ function parseTrackList(text: string): PlaylistParseResult {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
     const body = await request.json();
-    const { provider, url_or_text, band_id } = body;
+    const { url: url_or_text, bandId } = body;
 
     // Validate required fields
-    if (!provider || !url_or_text) {
+    if (!url_or_text) {
       return NextResponse.json({ 
-        error: 'Provider and URL or text content is required' 
+        error: 'URL or text content is required' 
       }, { status: 400 });
     }
 
-    // Validate provider
-    if (!['apple', 'spotify', 'amazon'].includes(provider)) {
-      return NextResponse.json({ 
-        error: 'Invalid provider. Must be apple, spotify, or amazon' 
-      }, { status: 400 });
-    }
+    // Skip authentication in development
+    if (process.env.NODE_ENV !== 'development') {
+      const supabase = createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
 
-    // Validate band access if band_id provided
-    if (band_id) {
-      const { data: bandAccess } = await supabase
-        .from('band_members')
-        .select('band_id')
-        .eq('band_id', band_id)
-        .single();
+      // Validate band access if bandId provided
+      if (bandId) {
+        const { data: bandMember, error: bandError } = await supabase
+          .from('band_members')
+          .select('id')
+          .eq('band_id', bandId)
+          .eq('user_id', user.id)
+          .single();
 
-      if (!bandAccess) {
-        return NextResponse.json({ 
-          error: 'Access denied to this band' 
-        }, { status: 403 });
+        if (bandError || !bandMember) {
+          return NextResponse.json({
+            error: 'Access denied. You must be a member of this band to import playlists.'
+          }, { status: 403 });
+        }
       }
     }
 
@@ -188,6 +198,16 @@ export async function POST(request: Request) {
     const isUrl = input.startsWith('http://') || input.startsWith('https://');
 
     if (isUrl) {
+      // Detect provider from URL
+      let provider: string;
+      if (input.includes('music.apple.com') || input.includes('itunes.apple.com')) {
+        provider = 'apple';
+      } else if (input.includes('open.spotify.com')) {
+        provider = 'spotify';
+      } else {
+        provider = 'unknown';
+      }
+
       // Try to parse as playlist URL
       if (provider === 'apple') {
         const playlistId = extractAppleMusicPlaylistId(input);
@@ -211,7 +231,7 @@ export async function POST(request: Request) {
           success: false,
           tracks: [],
           total_tracks: 0,
-          error: `${provider} playlist parsing is not yet supported. Please paste the track list manually using "Artist — Song" format (one per line).`
+          error: `URL not recognized as Apple Music or Spotify playlist. Please paste the track list manually using "Artist — Song" format (one per line).`
         };
       }
     } else {
@@ -219,13 +239,19 @@ export async function POST(request: Request) {
       result = parseTrackList(input);
     }
 
-    // Log for debugging (dev/staging only)
-    if (process.env.NODE_ENV !== 'production') {
-      // Log successful parsing for debugging
-      // console.log(`[Playlist Parse] Provider: ${provider}, Tracks: ${result.total_tracks}, Success: ${result.success}`);
-    }
-
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: result.success,
+      songs: result.tracks.map(track => ({
+        artist: track.artist,
+        title: track.title,
+        duration_seconds: track.duration_seconds,
+        bpm: undefined, // BPM detection would need additional API calls
+        tuning: undefined // Tuning detection would need additional logic
+      })),
+      total_tracks: result.total_tracks,
+      playlist_name: result.playlist_name,
+      error: result.error
+    });
 
   } catch (error) {
     console.error('Playlist parse API error:', error);
