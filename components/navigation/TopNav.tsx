@@ -8,6 +8,7 @@ import { useBands } from '@/contexts/BandsContext';
 import { createClient } from '@/lib/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Wordmark } from '@/components/branding/Wordmark';
+import { getAppName, getVersionDisplay } from '@/lib/utils/version';
 
 // Map Tailwind classes to hex colors
 const colorMap: Record<string, string> = {
@@ -189,7 +190,7 @@ export default function TopNav() {
             />
             <motion.div
               key="menu-panel"
-              className="fixed inset-y-0 left-0 z-50 w-80 border-r border-border/50 bg-card shadow-2xl shadow-primary/20"
+              className="fixed inset-y-0 left-0 z-50 w-80 border-r border-border/50 bg-card shadow-2xl shadow-primary/20 flex flex-col"
               role="dialog"
               aria-modal="true"
               initial={{ x: -320 }}
@@ -197,7 +198,7 @@ export default function TopNav() {
               exit={{ x: -320 }}
               transition={{ type: 'tween', duration: 0.22 }}
             >
-              <div className="flex h-16 items-center justify-between border-b border-border/60 px-4">
+              <div className="flex h-16 items-center justify-between border-b border-border/60 px-4 flex-shrink-0">
                 <h2 className="text-xl font-bold text-foreground">Menu</h2>
                 <button
                   onClick={() => setIsMenuOpen(false)}
@@ -209,31 +210,41 @@ export default function TopNav() {
 
               {/* User Info Section */}
               {profile && (
-                <div className="border-b border-border/60 px-4 py-6">
+                <div className="border-b border-border/60 px-4 py-6 flex-shrink-0">
                   <p className="text-lg font-semibold text-foreground">{getUserName()}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{profile.email}</p>
                 </div>
               )}
 
-              <div className="p-4 space-y-2">
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    router.push('/settings/profile');
-                  }}
-                  className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
-                >
-                  <UserIcon className="w-5 h-5" />
-                  <span>My Profile</span>
-                </button>
+              <div className="flex flex-col h-full min-h-0">
+                <div className="p-4 space-y-2 flex-1">
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      router.push('/settings/profile');
+                    }}
+                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    <span>My Profile</span>
+                  </button>
 
-                <button
-                  onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-rose-500 transition-colors hover:bg-accent/40 hover:text-rose-600"
-                >
-                  <LogOut className="w-5 h-5" />
-                  <span>Log Out</span>
-                </button>
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-rose-500 transition-colors hover:bg-accent/40 hover:text-rose-600"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+
+                {/* App version info at bottom */}
+                <div className="border-t border-border/60 px-4 py-4">
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">{getAppName()}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{getVersionDisplay()}</p>
+                  </div>
+                </div>
               </div>
             </motion.div>
           </>
