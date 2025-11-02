@@ -8,6 +8,7 @@ import { Setlist } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { SwipeToAction } from '@/components/setlists/SwipeToAction';
 import { Plus, Music, Clock, ListMusic } from 'lucide-react';
 
 function formatDuration(seconds: number): string {
@@ -22,40 +23,54 @@ function formatDuration(seconds: number): string {
   return `${minutes}m`;
 }
 
-function SetlistCard({ setlist, onClick }: { setlist: Setlist & { song_count?: number }; onClick: () => void }) {
+function SetlistCard({ 
+  setlist, 
+  onClick, 
+  onCopy 
+}: { 
+  setlist: Setlist & { song_count?: number }; 
+  onClick: () => void;
+  onCopy: () => void;
+}) {
   const songCount = setlist.song_count ?? setlist.songs?.length ?? 0;
   
   return (
-    <Card
-      className="p-4 cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      tabIndex={0}
-      role="button"
-      aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
+    <SwipeToAction
+      onSwipeAction={onCopy}
+      actionLabel="Copy"
+      className="rounded-lg"
     >
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold truncate mb-2">{setlist.name}</h3>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Music className="h-4 w-4" />
-              <span>{songCount} songs</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              <span>{formatDuration((setlist as { total_duration?: number }).total_duration || 0)}</span>
+      <Card
+        className="p-4 cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold truncate mb-2">{setlist.name}</h3>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Music className="h-4 w-4" />
+                <span>{songCount} songs</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                <span>{formatDuration((setlist as { total_duration?: number }).total_duration || 0)}</span>
+              </div>
             </div>
           </div>
+          <ListMusic className="h-5 w-5 text-muted-foreground" />
         </div>
-        <ListMusic className="h-5 w-5 text-muted-foreground" />
-      </div>
-    </Card>
+      </Card>
+    </SwipeToAction>
   );
 }
 
@@ -135,6 +150,29 @@ export default function SetlistsPage() {
     router.push(`/setlists/${setlist.id}`);
   };
 
+  const handleCopySetlist = async (setlist: Setlist) => {
+    if (!currentBand?.id) return;
+
+    try {
+      const response = await fetch(`/api/setlists/${setlist.id}/copy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ band_id: currentBand.id }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to copy setlist');
+      }
+
+      // Refresh the setlists list to show the new copy
+      await loadSetlists();
+    } catch (err) {
+      console.error('Error copying setlist:', err);
+      setError(err instanceof Error ? err.message : 'Failed to copy setlist');
+    }
+  };
+
   if (bandsLoading || loading) {
     return (
       <div className="flex min-h-[70vh] items-center justify-center bg-background text-foreground">
@@ -198,6 +236,7 @@ export default function SetlistsPage() {
                 key={setlist.id}
                 setlist={setlist}
                 onClick={() => handleSetlistClick(setlist)}
+                onCopy={() => handleCopySetlist(setlist)}
               />
             ))}
           </div>

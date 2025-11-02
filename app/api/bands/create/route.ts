@@ -1,18 +1,52 @@
 // app/api/bands/create/route.ts
-import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { sendBandInvites } from '@/lib/server/send-band-invites';
+
+const env = {
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  anon: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  service: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+};
+
+function admin() {
+  return createAdminClient(env.url, env.service, { auth: { persistSession: false } });
+}
+
+async function getUser() {
+  const jar = await cookies();
+  const supa = createServerClient(env.url, env.anon, {
+    cookies: {
+      get(name) {
+        return jar.get(name)?.value;
+      },
+      set(name, value, options) {
+        jar.set({ name, value, ...options });
+      },
+      remove(name, options) {
+        jar.delete({ name, ...options });
+      },
+    },
+  });
+  const {
+    data: { user },
+  } = await supa.auth.getUser();
+  return user ?? null;
+}
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    // Get current user with proper cookie-based auth
+    const user = await getUser();
     
-    // Get current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Use admin client for database operations
+    const supabase = admin();
 
     // Get user's name for email
     const { data: userData } = await supabase

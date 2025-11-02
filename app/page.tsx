@@ -59,6 +59,12 @@ export default async function Home() {
       redirect(PROFILE_ROUTE);
     }
   } catch (error) {
+    // For PWA launches, be more aggressive about fallback to prevent hangs
+    const source = cookieStore.get('pwa_source')?.value;
+    if (source === 'pwa') {
+      // Fast fallback for PWA - try dashboard even if profile check fails
+      redirect(DASHBOARD_ROUTE);
+    }
     redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
   }
 

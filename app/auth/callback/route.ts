@@ -291,7 +291,20 @@ export async function GET(request: NextRequest) {
     })),
   );
 
-  const response = NextResponse.redirect(new URL(redirectPath, url.origin));
+  // For PWA support, try to detect if we should prefer PWA launch
+  const userAgentHeader = request.headers.get('user-agent') || '';
+  const isWebView = userAgentHeader.includes('wv') || userAgentHeader.toLowerCase().includes('webview');
+  const fromMobileApp = isWebView || userAgentHeader.includes('Mobile/');
+  
+  const finalRedirectUrl = new URL(redirectPath, url.origin);
+  
+  // If this looks like a mobile request, try to use intent URLs for PWA
+  if (fromMobileApp && !isWebView) {
+    // Add PWA launch indicator
+    finalRedirectUrl.searchParams.set('pwa_preferred', '1');
+  }
+
+  const response = NextResponse.redirect(finalRedirectUrl);
 
   for (const pending of cookiesToSet) {
     response.cookies.set(pending.name, pending.value, pending.options);

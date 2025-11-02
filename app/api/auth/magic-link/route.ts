@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { generatePWAMagicLinkHTML } from '@/lib/utils/pwa-links';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -25,8 +26,11 @@ export async function POST(req: NextRequest) {
     const origin =
       process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : req.nextUrl.origin;
 
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] NODE_ENV:', process.env.NODE_ENV);
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] Origin:', origin);
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] Redirect will be:', `${origin}/auth/callback?next=/profile`);
 
     // Create admin client for generating magic links
@@ -62,10 +66,12 @@ export async function POST(req: NextRequest) {
 
     const supabaseMagicLink = data.properties.action_link;
 
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] Supabase action_link:', supabaseMagicLink);
 
     // Parse the original Supabase URL to see what we got
     const supabaseUrl = new URL(supabaseMagicLink);
+    // eslint-disable-next-line no-console
     console.log(
       '[api/auth/magic-link] Supabase redirect_to param:',
       supabaseUrl.searchParams.get('redirect_to'),
@@ -85,59 +91,43 @@ export async function POST(req: NextRequest) {
     }
 
     // Build URL that goes directly to Supabase verify with our callback
-    const emailLink = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${token}&type=${type}&redirect_to=${encodeURIComponent(`${origin}/auth/callback?next=/profile`)}`;
+    // Add PWA preference indicator to help with routing
+    const callbackUrl = `${origin}/auth/callback?next=/profile&pwa_preferred=1`;
+    const emailLink = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/verify?token=${token}&type=${type}&redirect_to=${encodeURIComponent(callbackUrl)}`;
 
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] Magic link generated for:', email);
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] 🔗 COPY THIS LINK TO TEST:', testLink);
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] 📧 Email will contain:', emailLink);
+    // eslint-disable-next-line no-console
     console.log('[api/auth/magic-link] ⬆️  Click the link above or paste into browser ⬆️');
 
     // Send email using Resend
     try {
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] Attempting to send email via Resend...');
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] From:', 'Band Roadie <noreply@bandroadie.com>');
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] To:', email);
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] Subject:', 'Sign in to Band Roadie');
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] Link in email will be:', emailLink);
 
       const emailResult = await resend.emails.send({
         from: 'Band Roadie <noreply@bandroadie.com>',
         to: email,
         subject: 'Sign in to Band Roadie',
-        html: `
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  </head>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 30px; margin: 20px 0;">
-      <h1 style="color: #000; margin: 0 0 20px 0; font-size: 24px;">Sign in to Band Roadie</h1>
-      <p style="margin: 0 0 20px 0; font-size: 16px;">Click the button below to sign in to your account:</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a
-          href="${emailLink}"
-          style="display: inline-block; background-color: #ffffff; color: #000000; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: 600; font-size: 16px; border: 2px solid #000000;">
-          Sign In
-        </a>
-      </div>
-      <p style="margin: 0 0 20px 0; font-size: 14px; color: #666; word-break: break-all;">
-        If the button above does not work, copy and paste this link into your browser:<br />
-        <a href="${emailLink}" style="color: #000000;">${emailLink}</a>
-      </p>
-      <p style="margin: 20px 0 0 0; font-size: 14px; color: #666;">
-        This link will expire in 1 hour. If you didn't request this email, you can safely ignore it.
-      </p>
-    </div>
-    <p style="font-size: 12px; color: #999; text-align: center; margin-top: 20px;">
-      Band Roadie - Your band management tool
-    </p>
-  </body>
-</html>
-        `,
+        html: generatePWAMagicLinkHTML({
+          url: emailLink,
+          preferPWA: true,
+        }),
       });
 
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] Resend result:', emailResult);
 
       if (emailResult.error) {
@@ -148,6 +138,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // eslint-disable-next-line no-console
       console.log('[api/auth/magic-link] Email sent successfully with ID:', emailResult.data?.id);
     } catch (emailError) {
       console.error('[api/auth/magic-link] Email send error:', emailError);

@@ -11,6 +11,7 @@ import { BpmInput } from '@/components/setlists/BpmInput';
 import { TuningBadge } from '@/components/setlists/TuningBadge';
 import { useDurationBackfill } from '@/hooks/useDurationBackfill';
 import { GripVertical, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface SongRowProps {
   setlistSong: SetlistSong;
@@ -29,6 +30,7 @@ function formatDuration(seconds?: number): string {
 }
 
 export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }: SongRowProps) {
+  const router = useRouter();
 
   const {
     attributes,
@@ -46,6 +48,12 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
 
   const handleBpmChange = (newBpm: number | undefined) => {
     onUpdate(setlistSong.id, { bpm: newBpm });
+  };
+
+  const handleSongClick = () => {
+    if (!isEditMode && setlistSong.songs?.id) {
+      router.push(`/songs/${setlistSong.songs.id}`);
+    }
   };
 
 
@@ -72,8 +80,8 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-card border border-border/40 rounded-lg p-4 transition-all ${
-        isDragging ? 'shadow-lg border-border/60' : 'hover:shadow-md hover:border-border/60'
+      className={`bg-card border border-border/20 rounded-lg p-4 transition-all ${
+        isDragging ? 'shadow-lg border-border/40' : 'hover:shadow-md hover:border-border/30'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -111,7 +119,15 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
           {/* Top row: Song title and BPM */}
           <div className="flex items-start justify-between gap-2 mb-1">
             {/* Song title - with right margin to prevent overlap with BPM */}
-            <div className="text-lg font-medium truncate whitespace-nowrap overflow-hidden pr-2 flex-1 min-w-0" style={{ marginRight: '8px' }}>
+            <div 
+              className={`text-lg font-medium truncate whitespace-nowrap overflow-hidden pr-2 flex-1 min-w-0 ${
+                !isEditMode && setlistSong.songs?.id 
+                  ? 'cursor-pointer hover:text-primary transition-colors' 
+                  : ''
+              }`} 
+              style={{ marginRight: '8px' }}
+              onClick={handleSongClick}
+            >
               {setlistSong.songs?.title || 'Unknown Song'}
             </div>
             
@@ -131,19 +147,19 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
             </div>
           </div>
 
-          {/* Bottom row: Artist and Duration/Tuning */}
-          <div className="flex items-start justify-between gap-2">
-            {/* Artist */}
-            <div className="text-sm text-muted-foreground truncate whitespace-nowrap overflow-hidden flex-1 min-w-0">
+          {/* Bottom row: Artist and fixed controls */}
+          <div className="flex items-start gap-2">
+            {/* Artist - takes available space */}
+            <div className="text-sm text-muted-foreground truncate flex-1 min-w-0">
               {setlistSong.songs?.artist || 'Unknown Artist'}
               {setlistSong.songs?.is_live && <span className="ml-2">[Live]</span>}
             </div>
 
-            {/* Duration and Tuning - aligned under BPM */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Duration */}
-              <div className="bg-transparent text-white border border-white px-2 py-1 rounded text-sm font-medium">
-                {formatDuration(displayDuration)}
+            {/* Fixed position duration - aligned under BPM */}
+            <div className="flex-shrink-0 flex items-center gap-2">
+              {/* Duration - fixed position */}
+              <div className="bg-background/80 text-foreground border border-border/30 px-2 py-1 rounded text-sm font-medium backdrop-blur-sm">
+                {displayDuration ? formatDuration(displayDuration) : '--:--'}
               </div>
 
               {/* Tuning */}

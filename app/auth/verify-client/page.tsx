@@ -121,7 +121,11 @@ function VerifyClientContent() {
             }
         };
 
-        // Add a timeout to prevent infinite loading
+        // Shorter timeout for PWA to prevent hangs
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                     ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true);
+        const timeoutDuration = isPWA ? 5000 : 10000; // 5s for PWA, 10s for browser
+        
         const timeoutId = setTimeout(() => {
             if (!cancelled) {
                 // eslint-disable-next-line no-console
@@ -129,7 +133,7 @@ function VerifyClientContent() {
                 setState('failed');
                 setErrorMessage('timeout');
             }
-        }, 10000); // 10 second timeout
+        }, timeoutDuration);
 
         bootstrap();
 

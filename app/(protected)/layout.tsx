@@ -28,10 +28,17 @@ export default function ProtectedLayout({
       }
 
       try {
+        // Add timeout to prevent hanging
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         // Get user from our cookie-based auth
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           // Shouldn't happen since middleware approved, but handle it
@@ -60,6 +67,7 @@ export default function ProtectedLayout({
       } catch (error) {
         console.error('Layout: Error checking profile:', error);
         if (mounted) {
+          // On error, continue loading to prevent hang
           setIsLoading(false);
         }
       }
@@ -67,8 +75,17 @@ export default function ProtectedLayout({
 
     checkProfile();
 
+    // Failsafe timeout to prevent infinite loading
+    const failsafeTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('Layout: Failsafe timeout triggered');
+        setIsLoading(false);
+      }
+    }, 8000);
+
     return () => {
       mounted = false;
+      clearTimeout(failsafeTimeout);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount, pathname and router are captured in closure

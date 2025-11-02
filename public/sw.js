@@ -2,7 +2,7 @@
 
 const CACHE_VERSION = 'v2';
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', (_event) => {
   console.log('Service Worker installed');
   // Force the waiting service worker to become the active service worker
   self.skipWaiting();
@@ -42,14 +42,31 @@ self.addEventListener('message', (event) => {
         for (const client of windowClients) {
           if ('focus' in client) {
             client.focus();
-            client.navigate(url);
+            if ('navigate' in client) {
+              client.navigate(url);
+            } else {
+              // Fallback for clients that don't support navigate
+              client.postMessage({ type: 'NAVIGATE_TO', url: url });
+            }
             return;
           }
         }
         // Otherwise open new window
-        clients.openWindow(url);
+        if (clients.openWindow) {
+          clients.openWindow(url);
+        }
       }),
     );
+  }
+  
+  // Handle skip waiting requests
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  // Handle PWA ready notification
+  if (event.data && event.data.type === 'PWA_READY') {
+    console.log('[SW] PWA ready signal received');
   }
 });
 

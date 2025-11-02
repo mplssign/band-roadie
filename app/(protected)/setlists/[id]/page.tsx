@@ -64,6 +64,18 @@ interface SetlistDetailPageProps {
   params: { id: string };
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds === 0) return 'TBD';
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${remainingMinutes}m`;
+  }
+  return `${minutes}m`;
+}
+
 export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const router = useRouter();
   const { currentBand } = useBands();
@@ -80,6 +92,15 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [providerImportOpen, setProviderImportOpen] = useState<'apple' | 'spotify' | 'amazon' | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
+
+  // Calculate totals from current songs
+  const totals = {
+    songCount: songs.length,
+    totalDuration: songs.reduce((sum, song) => {
+      const duration = song.duration_seconds ?? song.songs?.duration_seconds ?? 0;
+      return sum + duration;
+    }, 0)
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -473,16 +494,28 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
         {/* Page Title */}
         <div className="mb-6 flex items-center justify-between">
-          {isEditMode ? (
-            <Input
-              value={setlistName}
-              onChange={(e) => setSetlistName(capitalizeWords(e.target.value))}
-              className="text-2xl font-bold border-none p-0 h-auto bg-transparent focus-visible:ring-0"
-              placeholder="Setlist name"
-            />
-          ) : (
-            <h1 className="text-2xl font-bold">{setlistName}</h1>
-          )}
+          <div className="flex-1 min-w-0">
+            {isEditMode ? (
+              <Input
+                value={setlistName}
+                onChange={(e) => setSetlistName(capitalizeWords(e.target.value))}
+                className="text-2xl font-bold border-none p-0 h-auto bg-transparent focus-visible:ring-0"
+                placeholder="Setlist name"
+              />
+            ) : (
+              <h1 className="text-2xl font-bold">{setlistName}</h1>
+            )}
+            
+            {/* Totals Display - directly under title */}
+            <div className="flex items-center gap-4 mt-2 text-lg text-muted-foreground font-medium">
+              <div className="flex items-center gap-1">
+                <span>{totals.songCount} songs</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span>{formatDuration(totals.totalDuration)}</span>
+              </div>
+            </div>
+          </div>
 
           {setlist && !isEditMode && (
             <Button

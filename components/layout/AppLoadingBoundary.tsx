@@ -21,11 +21,16 @@ export function AppLoadingBoundary({ children, fallback }: AppLoadingBoundaryPro
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    // Add a small delay to prevent flash of loading screen
-    // for pages that load quickly
+    // Detect PWA mode for faster loading
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                 ('standalone' in window.navigator && (window.navigator as { standalone?: boolean }).standalone === true);
+    
+    // Shorter delay for PWA to improve perceived performance
+    const delay = isPWA ? 50 : 100;
+    
     const timer = setTimeout(() => {
       setIsHydrated(true);
-    }, 100);
+    }, delay);
 
     return () => clearTimeout(timer);
   }, []);

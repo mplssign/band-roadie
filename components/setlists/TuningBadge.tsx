@@ -100,13 +100,13 @@ export function TuningBadge({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         className={`
-          px-2 py-1 rounded-md text-xs font-medium text-white transition-colors
+          px-2 py-1 rounded-md text-xs font-semibold text-white transition-all
           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500
-          flex items-center gap-1 min-w-0
+          flex items-center gap-1 min-w-0 shadow-sm
           ${tuningInfo.color}
           ${disabled 
-            ? 'opacity-50 cursor-not-allowed' 
-            : 'cursor-pointer hover:opacity-90'
+            ? 'opacity-60 cursor-not-allowed' 
+            : 'cursor-pointer hover:opacity-95 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
           }
         `}
         aria-label={`Guitar tuning: ${tuningInfo.name}. Click to change tuning.`}

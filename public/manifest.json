@@ -35,6 +35,12 @@
   },
   "capture_links": "existing-client-navigate",
   "handle_links": "preferred",
+  "protocol_handlers": [
+    {
+      "protocol": "web+bandroadie",
+      "url": "/?protocol=%s"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Dashboard",

@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global touch behavior - prevent pinch-zoom */
+html {
+  touch-action: manipulation;
+}
+
+/* Hide scrollbars globally while maintaining functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
+
 /* Gradient animations and utilities */
 @keyframes gradient-spin {
   0% {
