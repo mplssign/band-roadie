@@ -10,11 +10,12 @@ export async function DELETE(
   const { id: setlistId, songId } = params;
 
   try {
+    // songId is actually the setlist_songs.id (junction table record ID)
     const { error } = await supabase
       .from('setlist_songs')
       .delete()
-      .eq('setlist_id', setlistId)
-      .eq('id', songId);
+      .eq('id', songId)
+      .eq('setlist_id', setlistId); // Extra safety check
 
     if (error) {
       console.error('Error removing song from setlist:', error);

@@ -187,7 +187,7 @@ export default function SongDetailPage({ params }: SongDetailPageProps) {
         <div className="mb-8">
           <div className="flex items-start gap-4 mb-4">
             {/* Album Artwork */}
-            {song.album_artwork ? (
+            {song.album_artwork && (
               <div className="flex-shrink-0">
                 <Image 
                   src={song.album_artwork} 
@@ -200,10 +200,6 @@ export default function SongDetailPage({ params }: SongDetailPageProps) {
                     target.style.display = 'none';
                   }}
                 />
-              </div>
-            ) : (
-              <div className="flex-shrink-0 w-30 h-30 bg-muted/50 rounded-lg flex items-center justify-center">
-                <Music className="h-12 w-12 text-muted-foreground" />
               </div>
             )}
 

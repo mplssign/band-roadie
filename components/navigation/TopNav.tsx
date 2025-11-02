@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, X, LogOut, User as UserIcon, Zap } from 'lucide-react';
+import { Menu, X, LogOut, User as UserIcon, Zap, Bug } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { createClient } from '@/lib/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -229,6 +229,20 @@ export default function TopNav() {
                     <span>My Profile</span>
                   </button>
 
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      router.push('/report-bug');
+                    }}
+                    className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+                  >
+                    <Bug className="w-5 h-5" />
+                    <span>Report bugs</span>
+                  </button>
+                </div>
+
+                {/* Logout button with spacing */}
+                <div className="p-4 pt-0">
                   <button
                     onClick={handleLogout}
                     className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-rose-500 transition-colors hover:bg-accent/40 hover:text-rose-600"
