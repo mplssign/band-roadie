@@ -10,7 +10,7 @@ export async function DELETE(
   const { id: setlistId, songId } = params;
 
   try {
-    // console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
+    console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
     
     // First check if the record exists
     const { data: existing, error: selectError } = await supabase

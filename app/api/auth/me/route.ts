@@ -1,58 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 
 /**
  * Get current user from server session cookies
  */
 export async function GET(req: NextRequest) {
-  const accessToken = req.cookies.get('sb-access-token')?.value;
-  const refreshToken = req.cookies.get('sb-refresh-token')?.value;
-
-  console.log('[api/auth/me] Checking cookies:', {
-    hasAccessToken: !!accessToken,
-    hasRefreshToken: !!refreshToken,
-    accessTokenLength: accessToken?.length,
-    cookieNames: Array.from(req.cookies.getAll().map((c) => c.name)),
-  });
-
-  if (!accessToken || !refreshToken) {
-    console.error('[api/auth/me] No session cookies found');
-    return NextResponse.json({ error: 'No session' }, { status: 401 });
-  }
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return req.cookies.get(name)?.value;
+        },
+        set() {
+          // No-op for read-only operations
+        },
+        remove() {
+          // No-op for read-only operations  
+        },
+      },
+    }
+  );
 
   try {
-    // Decode JWT to get user ID (no network call needed - token came from Supabase)
-    const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
-    const userId = payload.sub;
+    // Get the user from the session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      return NextResponse.json({ error: 'No session' }, { status: 401 });
+    }
 
-    console.log('[api/auth/me] Decoded user ID:', userId);
-
-    // Get user profile from database
-    const supabase = createClient(
+    // Get user profile from database using service role client
+    const serviceClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return [];
+          },
+          setAll() {
+            // No-op for read-only operations
+          },
+        },
+      }
     );
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('users')
       .select('profile_completed, first_name, last_name')
-      .eq('id', userId)
+      .eq('id', user.id)
       .single();
-
-    console.log('[api/auth/me] Profile data:', profile);
-
-    // Return minimal user object from JWT payload
-    const user = {
-      id: userId,
-      email: payload.email,
-      user_metadata: payload.user_metadata,
-    };
-
-    console.log('[api/auth/me] Returning user and profile');
 
     return NextResponse.json({ user, profile });
   } catch (err) {
-    console.error('[api/auth/me] Error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
