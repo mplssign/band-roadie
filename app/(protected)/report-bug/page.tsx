@@ -48,6 +48,18 @@ export default function ReportBugPage() {
     setErrorMessage('');
 
     try {
+      // Collect device and browser information
+      const deviceInfo = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${screen.width}x${screen.height}`,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        cookiesEnabled: navigator.cookieEnabled,
+        onlineStatus: navigator.onLine,
+      };
+
       const response = await fetch('/api/bug-report', {
         method: 'POST',
         headers: {
@@ -57,7 +69,7 @@ export default function ReportBugPage() {
           location: location || 'Unspecified',
           description: description.trim(),
           currentRoute: window.location.pathname,
-          userAgent: navigator.userAgent,
+          deviceInfo,
           timestamp: new Date().toISOString(),
         }),
       });
