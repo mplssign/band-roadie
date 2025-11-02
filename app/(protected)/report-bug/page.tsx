@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useBands } from '@/hooks/useBands';
 
 // Location options for the dropdown
 const LOCATION_OPTIONS = [
@@ -29,6 +30,7 @@ const MIN_DESCRIPTION_LENGTH = 15;
 
 export default function ReportBugPage() {
   const router = useRouter();
+  const { currentBand } = useBands();
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -69,6 +71,8 @@ export default function ReportBugPage() {
           location: location || 'Unspecified',
           description: description.trim(),
           currentRoute: window.location.pathname,
+          currentBandId: currentBand?.id || null,
+          currentBandName: currentBand?.name || null,
           deviceInfo,
           timestamp: new Date().toISOString(),
         }),

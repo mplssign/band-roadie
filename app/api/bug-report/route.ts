@@ -19,6 +19,8 @@ interface BugReportRequest {
   location: string;
   description: string;
   currentRoute: string;
+  currentBandId: string | null;
+  currentBandName: string | null;
   deviceInfo: DeviceInfo;
   timestamp: string;
 }
@@ -76,7 +78,7 @@ function parseDeviceInfo(deviceInfo: DeviceInfo) {
 export async function POST(request: NextRequest) {
   try {
     const body: BugReportRequest = await request.json();
-    const { location, description, currentRoute, deviceInfo, timestamp } = body;
+    const { location, description, currentRoute, currentBandId, currentBandName, deviceInfo, timestamp } = body;
 
     // Validate required fields
     if (!description || description.trim().length < 15) {
@@ -119,26 +121,38 @@ export async function POST(request: NextRequest) {
           userInfo = `${displayName} (${profile.email}) - ID: ${userId}`;
         }
 
-        // Get current band info - get all bands user is a member of
-        const { data: memberships } = await supabase
-          .from('band_members')
-          .select(`
-            band_id,
-            bands!inner (
-              id,
-              name
-            )
-          `)
-          .eq('user_id', userId)
-          .eq('is_active', true);
+        // Use current band from frontend first, then try to get all user bands as fallback
+        if (currentBandId && currentBandName) {
+          currentBandInfo = `${currentBandName} (ID: ${currentBandId})`;
+        } else {
+          // Fallback: Direct query with service role bypassing RLS to get all user bands
+          try {
+            const { data: directBands, error: bandError } = await supabase
+              .from('band_members')
+              .select(`
+                band_id,
+                bands!inner (
+                  id,
+                  name
+                )
+              `)
+              .eq('user_id', userId)
+              .eq('is_active', true);
 
-        if (memberships && memberships.length > 0) {
-          // For bug reports, show all bands the user is in
-          const bandNames = memberships.map(m => {
-            const band = m.bands as unknown as { id: string; name: string };
-            return `${band.name} (ID: ${band.id})`;
-          });
-          currentBandInfo = bandNames.join(', ');
+            if (!bandError && directBands && directBands.length > 0) {
+              const bandNames = directBands.map(m => {
+                const band = m.bands as unknown as { id: string; name: string };
+                return `${band.name} (ID: ${band.id})`;
+              });
+              currentBandInfo = bandNames.join(', ');
+            } else {
+              console.error('Error fetching user bands:', bandError);
+              currentBandInfo = 'Error fetching band info';
+            }
+          } catch (bandQueryError) {
+            console.error('Exception fetching user bands:', bandQueryError);
+            currentBandInfo = 'Exception fetching band info';
+          }
         }
       } catch (error) {
         console.error('Error parsing access token:', error);
