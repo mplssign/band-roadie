@@ -6,7 +6,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; songId: string } }
 ) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { id: setlistId, songId } = params;
 
   try {
@@ -56,7 +56,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; songId: string } }
 ) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { id: setlistId, songId } = params;
 
   try {

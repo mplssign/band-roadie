@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         const payload = JSON.parse(Buffer.from(accessToken.split('.')[1], 'base64').toString());
         userId = payload.sub;
 
-        const supabase = await createClient();
+        const supabase = createClient();
         
         // Get user profile
         const { data: profile } = await supabase
