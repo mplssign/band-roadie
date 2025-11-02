@@ -10,6 +10,28 @@ export async function DELETE(
   const { id: setlistId, songId } = params;
 
   try {
+    console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
+    
+    // First check if the record exists
+    const { data: existing, error: selectError } = await supabase
+      .from('setlist_songs')
+      .select('*')
+      .eq('id', songId)
+      .eq('setlist_id', setlistId)
+      .single();
+
+    if (selectError) {
+      console.error(`[DELETE] Error finding record:`, selectError);
+      return NextResponse.json({ error: 'Song not found in setlist' }, { status: 404 });
+    }
+
+    if (!existing) {
+      console.log(`[DELETE] No record found with id=${songId} in setlist=${setlistId}`);
+      return NextResponse.json({ error: 'Song not found in setlist' }, { status: 404 });
+    }
+
+    console.log(`[DELETE] Found record:`, existing);
+
     // songId is actually the setlist_songs.id (junction table record ID)
     const { error } = await supabase
       .from('setlist_songs')
@@ -18,13 +40,14 @@ export async function DELETE(
       .eq('setlist_id', setlistId); // Extra safety check
 
     if (error) {
-      console.error('Error removing song from setlist:', error);
+      console.error('[DELETE] Error removing song from setlist:', error);
       return NextResponse.json({ error: 'Failed to remove song from setlist' }, { status: 500 });
     }
 
+    console.log(`[DELETE] Successfully deleted setlist_songs record with id=${songId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in remove song from setlist API:', error);
+    console.error('[DELETE] Exception in remove song from setlist API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
