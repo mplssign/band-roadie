@@ -41,14 +41,29 @@ export async function DELETE(
 
     if (error) {
       console.error('[DELETE] Error removing song from setlist:', error);
-      return NextResponse.json({ error: 'Failed to remove song from setlist' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to remove song from setlist',
+        debug: {
+          supabaseError: error,
+          setlistId,
+          songId,
+          existing
+        }
+      }, { status: 500 });
     }
 
     console.log(`[DELETE] Successfully deleted setlist_songs record with id=${songId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[DELETE] Exception in remove song from setlist API:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      debug: {
+        exception: error instanceof Error ? error.message : 'Unknown error',
+        setlistId,
+        songId
+      }
+    }, { status: 500 });
   }
 }
 
