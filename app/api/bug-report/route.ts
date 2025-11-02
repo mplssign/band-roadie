@@ -27,7 +27,7 @@ interface BugReportRequest {
 
 // Helper function to parse device and OS information from user agent
 function parseDeviceInfo(deviceInfo: DeviceInfo) {
-  const { userAgent, platform } = deviceInfo;
+  const { userAgent } = deviceInfo;
   
   // Detect OS
   let os = 'Unknown OS';

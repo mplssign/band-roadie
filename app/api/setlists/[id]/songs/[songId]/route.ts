@@ -10,7 +10,7 @@ export async function DELETE(
   const { id: setlistId, songId } = params;
 
   try {
-    console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
+    // console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
     
     // First check if the record exists
     const { data: existing, error: selectError } = await supabase
@@ -26,11 +26,11 @@ export async function DELETE(
     }
 
     if (!existing) {
-      console.log(`[DELETE] No record found with id=${songId} in setlist=${setlistId}`);
+      // console.log(`[DELETE] No record found with id=${songId} in setlist=${setlistId}`);
       return NextResponse.json({ error: 'Song not found in setlist' }, { status: 404 });
     }
 
-    console.log(`[DELETE] Found record:`, existing);
+    // console.log(`[DELETE] Found record:`, existing);
 
     // songId is actually the setlist_songs.id (junction table record ID)
     const { error } = await supabase
@@ -52,7 +52,7 @@ export async function DELETE(
       }, { status: 500 });
     }
 
-    console.log(`[DELETE] Successfully deleted setlist_songs record with id=${songId}`);
+    // console.log(`[DELETE] Successfully deleted setlist_songs record with id=${songId}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[DELETE] Exception in remove song from setlist API:', error);
