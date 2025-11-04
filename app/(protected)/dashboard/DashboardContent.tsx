@@ -30,6 +30,7 @@ interface DashboardData {
     date: string;
     time: string;
     location: string;
+    setlist?: string;
   } | null;
   upcomingGigs: Gig[];
   potentialGig: {
@@ -123,28 +124,52 @@ export default function DashboardContent({
           {dashboardData.nextRehearsal && (
             <button
               onClick={() => {/* setIsRehearsalDrawerOpen(true) - temporarily disabled */ }}
-              className="w-full rounded-2xl p-4 shadow-xl text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity"
+              className="block w-full rounded-2xl p-5 text-left bg-zinc-900/60 border border-zinc-800 hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
             >
+              {/* Header with title */}
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 px-3 py-1 border border-blue-300 rounded-full">
-                  <Calendar className="w-4 h-4 text-blue-200" />
-                  <span className="text-sm font-medium text-blue-200">Rehearsal</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  <span className="text-lg font-semibold">{dashboardData.nextRehearsal.date}</span>
-                </div>
+                <h2 className="text-xl font-bold text-white">Next Rehearsal</h2>
               </div>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5" />
-                  <span className="text-base text-gray-200">{dashboardData.nextRehearsal.location}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  <span className="text-lg font-semibold">{dashboardData.nextRehearsal.time}</span>
-                </div>
+
+              {/* Primary row: Time • Day, Date */}
+              <div className="flex items-center gap-2 text-white font-medium text-lg mb-2.5 min-h-[28px]">
+                <span className="flex-shrink-0">{dashboardData.nextRehearsal.time}</span>
+                <span className="text-white/60 flex-shrink-0">•</span>
+                <span className="truncate">{dashboardData.nextRehearsal.date}</span>
               </div>
+
+              {/* Location line with setlist badge */}
+              {dashboardData.nextRehearsal.location && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MapPin className="w-4 h-4 text-white/70 flex-shrink-0" />
+                    <span
+                      className="text-white/90 text-sm truncate"
+                      title={dashboardData.nextRehearsal.location}
+                    >
+                      {dashboardData.nextRehearsal.location}
+                    </span>
+                  </div>
+                  {dashboardData.nextRehearsal.setlist && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white/70">Setlist</span>
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/90 text-white font-medium">
+                        {dashboardData.nextRehearsal.setlist}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Standalone setlist line for cases without location */}
+              {!dashboardData.nextRehearsal.location && dashboardData.nextRehearsal.setlist && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white/70">Setlist</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/90 text-white font-medium">
+                    {dashboardData.nextRehearsal.setlist}
+                  </span>
+                </div>
+              )}
             </button>
           )}
 

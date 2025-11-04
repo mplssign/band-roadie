@@ -56,31 +56,6 @@ const DAY_OPTIONS = [
   { short: "S", label: "Sun" },
 ] as const;
 
-// Shadcn default calendar classes for proper flex layout
-const shadcnCalendarClasses = {
-  months: "flex flex-col space-y-4",
-  month: "space-y-4",
-  caption: "flex justify-center pt-1 relative items-center",
-  caption_label: "text-sm font-medium",
-  nav: "space-x-1 flex items-center",
-  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
-  nav_button_previous: "absolute left-1",
-  nav_button_next: "absolute right-1",
-  table: "w-full border-collapse space-y-1",
-  head_row: "flex",
-  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-  row: "flex w-full mt-2",
-  cell: "text-center text-sm p-0 relative [&:has([aria-selected].day-outside)]:bg-accent/50",
-  day: "h-9 w-9 p-0 font-normal rounded-md aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground",
-  day_range_end: "day-range-end",
-  day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
-  day_today: "bg-accent text-accent-foreground",
-  day_outside: "day-outside text-muted-foreground opacity-50",
-  day_disabled: "text-muted-foreground opacity-50",
-  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-  day_hidden: "invisible",
-} as const;
-
 const DAY_TO_FULL: Record<(typeof DAY_OPTIONS)[number]["label"], string> = {
   Mon: "Monday",
   Tue: "Tuesday",
@@ -141,25 +116,6 @@ export type EditRehearsalDrawerProps = {
     setlist_id?: string | null;
   } | null;
 };
-
-function toIsoDate(date: Date | undefined): string | undefined {
-  if (!date || Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().split("T")[0];
-}
-
-function formatDateDisplay(date: Date | undefined): string {
-  if (!date || Number.isNaN(date.getTime())) {
-    return "Pick a date";
-  }
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 function parseTimeString(timeStr: string): { hour: string; minute: string; period: "AM" | "PM" } {
   if (!timeStr) return { hour: "7", minute: "00", period: "PM" };
@@ -394,9 +350,21 @@ export default function EditRehearsalDrawer({
   }, [startHour, startMinute, startPeriod]);
 
   const endTimeLabel = useMemo(() => {
-    const baseHour = Number.parseInt(startHour, 10) % 12;
+    // Validate inputs
+    const hourNum = Number.parseInt(startHour, 10);
+    const minuteNum = Number.parseInt(startMinute, 10);
+    
+    // Return placeholder for invalid inputs
+    if (isNaN(hourNum) || isNaN(minuteNum) || isNaN(durationMinutes) ||
+        hourNum < 1 || hourNum > 12 ||
+        minuteNum < 0 || minuteNum > 59 ||
+        durationMinutes <= 0) {
+      return "—";
+    }
+
+    const baseHour = hourNum % 12;
     const hour24 = startPeriod === "PM" ? (baseHour === 0 ? 12 : baseHour + 12) : baseHour;
-    const minutesStart = (hour24 % 24) * 60 + Number.parseInt(startMinute, 10);
+    const minutesStart = (hour24 % 24) * 60 + minuteNum;
     const total = minutesStart + durationMinutes;
     const normalized = ((total % (24 * 60)) + (24 * 60)) % (24 * 60);
     const hour24End = Math.floor(normalized / 60);
@@ -524,7 +492,7 @@ export default function EditRehearsalDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <SheetContent
         side="bottom"
-        className="mx-auto flex h-[90vh] w-full max-w-md flex-col border-border bg-background px-0 pb-0 text-foreground overflow-visible"
+        className="mx-auto flex h-[90vh] w-full max-w-md flex-col border-border br-drawer-surface px-0 pb-0 text-foreground overflow-visible"
       >
         <SheetHeader className="border-b border-border px-4 py-4">
           <SheetTitle className="text-xl font-semibold">

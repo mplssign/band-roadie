@@ -119,12 +119,7 @@ type MemberOption = {
   initials: string;
 };
 
-function toIsoDate(date: Date | undefined): string | undefined {
-  if (!date || Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-  return date.toISOString().split("T")[0];
-}
+
 
 function buildInitials(name: string): string {
   if (!name) return "?";
@@ -373,9 +368,21 @@ export default function EditGigDrawer({
   }, [startHour, startMinute, startPeriod]);
 
   const endTimeLabel = useMemo(() => {
-    const baseHour = Number.parseInt(startHour, 10) % 12;
+    // Validate inputs
+    const hourNum = Number.parseInt(startHour, 10);
+    const minuteNum = Number.parseInt(startMinute, 10);
+    
+    // Return placeholder for invalid inputs
+    if (isNaN(hourNum) || isNaN(minuteNum) || isNaN(durationMinutes) ||
+        hourNum < 1 || hourNum > 12 ||
+        minuteNum < 0 || minuteNum > 59 ||
+        durationMinutes <= 0) {
+      return "—";
+    }
+
+    const baseHour = hourNum % 12;
     const hour24 = startPeriod === "PM" ? (baseHour === 0 ? 12 : baseHour + 12) : baseHour;
-    const minutesStart = (hour24 % 24) * 60 + Number.parseInt(startMinute, 10);
+    const minutesStart = (hour24 % 24) * 60 + minuteNum;
     const total = minutesStart + durationMinutes;
     const normalized = ((total % (24 * 60)) + (24 * 60)) % (24 * 60);
     const hour24End = Math.floor(normalized / 60);
@@ -506,7 +513,7 @@ export default function EditGigDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? onClose() : undefined)}>
       <SheetContent
         side="bottom"
-        className="mx-auto flex h-[90vh] w-full max-w-md flex-col border-border bg-background px-0 pb-0 text-foreground overflow-visible"
+        className="mx-auto flex h-[90vh] w-full max-w-md flex-col border-border br-drawer-surface px-0 pb-0 text-foreground overflow-visible"
       >
         <SheetHeader className="border-b border-border px-4 py-4">
           <SheetTitle className="text-xl font-semibold">Edit Gig</SheetTitle>

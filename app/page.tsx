@@ -19,33 +19,54 @@ function decodeUserId(token: string): string | null {
 }
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const loggedOut = cookieStore.get('br_logged_out')?.value === 'true';
+  try {
+    const cookieStore = await cookies();
+    const loggedOut = cookieStore.get('br_logged_out')?.value === 'true';
 
-  if (loggedOut) {
-    redirect(LOGIN_ROUTE);
-  }
+    if (loggedOut) {
+      redirect(LOGIN_ROUTE);
+    }
 
-  const accessToken = cookieStore.get('sb-access-token')?.value;
+    const accessToken = cookieStore.get('sb-access-token')?.value;
 
-  if (!accessToken) {
-    redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
-  }
+    if (!accessToken) {
+      redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
+    }
 
-  const userId = decodeUserId(accessToken);
+    const userId = decodeUserId(accessToken);
 
-  if (!userId) {
-    redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
+    if (!userId) {
+      redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
+    }
+
+  // Fast path for PWA and returning users - skip profile check if recently verified
+  const source = cookieStore.get('pwa_source')?.value;
+  const profileVerified = cookieStore.get('profile_verified')?.value;
+  const recentVerification = profileVerified && (Date.now() - parseInt(profileVerified) < 24 * 60 * 60 * 1000); // 24 hours
+
+  if (source === 'pwa' || recentVerification) {
+    redirect(DASHBOARD_ROUTE);
   }
 
   try {
+    // Use a more efficient query with timeout
     const supabase = await createClient();
-    const { data: profile } = await supabase
+    const profileQuery = supabase
       .from('users')
       .select('profile_completed, first_name, last_name, phone, address, zip')
       .eq('id', userId)
       .maybeSingle();
 
+    // Add a timeout to prevent hanging
+    const profileResult = await Promise.race([
+      profileQuery,
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Profile query timeout')), 3000)
+      )
+    ]);
+
+    const profile = profileResult.data;
+    
     const isProfileComplete = Boolean(
       profile?.profile_completed &&
       profile?.first_name &&
@@ -57,16 +78,26 @@ export default async function Home() {
 
     if (!isProfileComplete) {
       redirect(PROFILE_ROUTE);
-    }
-  } catch (error) {
-    // For PWA launches, be more aggressive about fallback to prevent hangs
-    const source = cookieStore.get('pwa_source')?.value;
-    if (source === 'pwa') {
-      // Fast fallback for PWA - try dashboard even if profile check fails
+    } else {
+      // Cache successful profile verification using cookies API
+      const cookieStore = await cookies();
+      cookieStore.set('profile_verified', Date.now().toString(), {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 86400 // 24 hours
+      });
       redirect(DASHBOARD_ROUTE);
     }
-    redirect(`${VERIFY_CLIENT_ROUTE}?next=${encodeURIComponent(DASHBOARD_ROUTE)}&source=landing`);
-  }
+    } catch (error) {
+      // Fast fallback for any errors to prevent hanging
+      redirect(DASHBOARD_ROUTE);
+    }
 
-  redirect(DASHBOARD_ROUTE);
+    redirect(DASHBOARD_ROUTE);
+  } catch (error) {
+    // Top-level catch for any critical errors
+    console.error('Critical error in Home component:', error);
+    redirect(DASHBOARD_ROUTE);
+  }
 }

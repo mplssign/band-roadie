@@ -23,7 +23,7 @@ export default function BottomNav() {
           href="/dashboard"
           className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
             isActive('/dashboard')
-              ? 'text-blue-500'
+              ? 'text-rose-400 bg-rose-500/10 rounded-lg mx-1'
               : 'text-zinc-400 hover:text-white'
           }`}
         >
@@ -35,7 +35,7 @@ export default function BottomNav() {
           href="/setlists"
           className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
             isActive('/setlists')
-              ? 'text-blue-500'
+              ? 'text-rose-400 bg-rose-500/10 rounded-lg mx-1'
               : 'text-zinc-400 hover:text-white'
           }`}
         >
@@ -47,7 +47,7 @@ export default function BottomNav() {
           href="/calendar"
           className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
             isActive('/calendar')
-              ? 'text-blue-500'
+              ? 'text-rose-400 bg-rose-500/10 rounded-lg mx-1'
               : 'text-zinc-400 hover:text-white'
           }`}
         >
@@ -59,7 +59,7 @@ export default function BottomNav() {
           href="/members"
           className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${
             isActive('/members')
-              ? 'text-blue-500'
+              ? 'text-rose-400 bg-rose-500/10 rounded-lg mx-1'
               : 'text-zinc-400 hover:text-white'
           }`}
         >

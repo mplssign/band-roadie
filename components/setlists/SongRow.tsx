@@ -12,6 +12,7 @@ import { TuningBadge } from '@/components/setlists/TuningBadge';
 import { useDurationBackfill } from '@/hooks/useDurationBackfill';
 import { GripVertical, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { DurationInput } from '@/components/setlists/DurationInput';
 
 interface SongRowProps {
   setlistSong: SetlistSong;
@@ -157,10 +158,18 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
 
             {/* Fixed position duration - aligned under BPM */}
             <div className="flex-shrink-0 flex items-center gap-2">
-              {/* Duration - fixed position */}
-              <div className="bg-background/80 text-foreground border border-border/30 px-2 py-1 rounded text-sm font-medium backdrop-blur-sm">
-                {displayDuration ? formatDuration(displayDuration) : '--:--'}
-              </div>
+              {/* Duration - editable in edit mode */}
+              {isEditMode ? (
+                <DurationInput
+                  value={displayDuration}
+                  onChange={(newDuration) => onUpdate(setlistSong.id, { duration_seconds: newDuration })}
+                  placeholder="M:SS"
+                />
+              ) : (
+                <div className="bg-background/80 text-foreground border border-border/30 px-2 py-1 rounded text-sm font-medium backdrop-blur-sm">
+                  {displayDuration ? formatDuration(displayDuration) : '--:--'}
+                </div>
+              )}
 
               {/* Tuning */}
               <TuningBadge 

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Dialog } from '@/components/ui/Dialog';
-import { SongRow } from '@/components/setlists/SongRow';
+import { SetlistSongRow } from '@/components/setlists/SetlistSongRow';
 import { ArrowLeft, Search, Save, Plus, Edit, X, ClipboardList } from 'lucide-react';
 import { capitalizeWords } from '@/lib/utils/formatters';
 import { AppleMusicIcon, SpotifyIcon, AmazonMusicIcon } from '@/components/icons/ProviderIcons';
@@ -656,9 +656,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-2">
                   {songs.map((song) => (
-                    <SongRow
+                    <SetlistSongRow
                       key={song.id}
                       setlistSong={song}
+                      setlistId={params.id}
                       onUpdate={handleUpdateSong}
                       onRemove={handleRemoveSong}
                       isEditMode={isEditMode}
@@ -668,11 +669,12 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               </SortableContext>
             </DndContext>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-0">
               {songs.map((song) => (
-                <SongRow
+                <SetlistSongRow
                   key={song.id}
                   setlistSong={song}
+                  setlistId={params.id}
                   onUpdate={handleUpdateSong}
                   onRemove={handleRemoveSong}
                   isEditMode={isEditMode}

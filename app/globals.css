@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Drawer surface "one shade lighter" */
+.br-drawer-surface {
+  background: color-mix(in oklab, hsl(var(--popover)) 88%, white);
+}
+
+[data-theme="dark"] .br-drawer-surface {
+  background: color-mix(in oklab, hsl(var(--popover)) 92%, white);
+}
+
 @property --angle {
   syntax: '<angle>';
   inherits: false;

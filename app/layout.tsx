@@ -40,6 +40,24 @@ export default function RootLayout({
         <meta name="theme-color" content="#dc2626" />
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="manifest" href="/manifest.json" />
+        
+        {/* Performance optimizations */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        
+        {/* Critical resource hints */}
+        <link rel="modulepreload" href="/_next/static/chunks/webpack.js" />
+        <link rel="modulepreload" href="/_next/static/chunks/main.js" />
+        
+        {/* Preload critical CSS */}
+        <style id="critical-css">{`
+          .min-h-dvh{min-height:100dvh}
+          .bg-background{background-color:hsl(var(--background))}
+          .text-foreground{color:hsl(var(--foreground))}
+          .h-full{height:100%}
+          .dark{color-scheme:dark}
+        `}</style>
       </head>
       <body className={`${inter.className} min-h-dvh bg-background text-foreground`}>
         <OrientationGuard />

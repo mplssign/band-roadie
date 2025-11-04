@@ -132,7 +132,7 @@ export default function AddBlockoutDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? handleClose() : undefined)}>
-      <SheetContent side="bottom" className="h-[90vh] w-full bg-background text-foreground border-border p-0">
+      <SheetContent side="bottom" className="h-[90vh] w-full br-drawer-surface text-foreground border-border p-0">
         <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle>{isEditing ? 'Edit Block Out' : 'Add Block Out'}</SheetTitle>
           <SheetDescription />

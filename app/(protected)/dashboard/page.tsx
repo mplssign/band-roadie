@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Plus, CalendarDays, Clock, MapPin } from 'lucide-react';
+import { Plus, CalendarDays, MapPin } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
 import { createClient } from '@/lib/supabase/client';
@@ -27,6 +27,8 @@ interface Rehearsal {
   start_time?: string;
   end_time?: string;
   raw_date?: string;
+  setlist_id?: string;
+  setlist_name?: string;
 }
 
 interface Gig {
@@ -53,6 +55,13 @@ function formatDateWithYear(dateString: string): string {
   const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateForRehearsalCard(dateString: string): string {
+  if (!dateString) return '';
+  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // Shared section title styling
@@ -159,14 +168,29 @@ export default function DashboardPage() {
 
       if (rehearsals && rehearsals.length) {
         const r = rehearsals[0];
+        
+        // Fetch setlist name if rehearsal has a setlist
+        let setlist_name = undefined;
+        if (r.setlist_id) {
+          const { data: setlist } = await supabase
+            .from('setlists')
+            .select('name')
+            .eq('id', r.setlist_id)
+            .eq('band_id', currentBand.id)
+            .single();
+          setlist_name = setlist?.name;
+        }
+        
         setNextRehearsal({
           id: r.id,
           date: formatDateForDisplay(r.date),
-          time: formatTimeRange(r.start_time, r.end_time, r.date),
+          time: formatTimeRange(r.start_time, undefined, r.date),
           location: r.location,
           start_time: r.start_time,
           end_time: r.end_time,
-          raw_date: r.date
+          raw_date: r.date,
+          setlist_id: r.setlist_id,
+          setlist_name
         });
       } else {
         setNextRehearsal(null);
@@ -244,6 +268,32 @@ export default function DashboardPage() {
     loadDashboardData(); // Refresh the dashboard data
   }, [loadDashboardData]);
 
+  // Handler to create new setlist (matches Setlists page behavior)
+  const handleCreateSetlist = useCallback(async () => {
+    if (!currentBand?.id) return;
+
+    try {
+      const response = await fetch('/api/setlists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          band_id: currentBand.id,
+          name: 'New Setlist'
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create setlist');
+      }
+
+      router.push(`/setlists/${data.setlist.id}`);
+    } catch (err) {
+      console.error('Error creating setlist:', err);
+      // You could add error handling here if needed
+    }
+  }, [currentBand?.id, router]);
+
   // Handler to open edit gig drawer
   const openEditGig = useCallback((gig: Gig) => {
     setEditEvent(gigToEventPayload(gig));
@@ -284,12 +334,36 @@ export default function DashboardPage() {
     else if (!bandsLoading) setLoading(false);
   }, [bandsLoading, currentBand?.id, loadDashboardData]);
 
+  // Skeleton for Next Rehearsal card
+  const NextRehearsalSkeleton = () => (
+    <section>
+      <h2 className={`${sectionTitle} mb-4`}>Next Rehearsal</h2>
+      <div className="block w-full rounded-2xl overflow-hidden bg-gradient-rehearsal">
+        <div className="p-5">
+          {/* Primary row skeleton: Time • Day, Date */}
+          <div className="flex items-center gap-2 mb-2.5 min-h-[28px]">
+            <div className="h-5 bg-white/20 rounded w-16 animate-pulse"></div>
+            <span className="text-white/60">•</span>
+            <div className="h-5 bg-white/20 rounded w-24 animate-pulse"></div>
+          </div>
+          {/* Location line skeleton */}
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-white/70 flex-shrink-0" />
+            <div className="h-4 bg-white/20 rounded w-32 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
   if (bandsLoading || loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500 mx-auto"></div>
-          <div className="text-zinc-400">Loading dashboard...</div>
+      <div className="min-h-screen bg-black text-white pb-28">
+        <div className="px-4 pt-4 space-y-6">
+          <NextRehearsalSkeleton />
+          <div className="text-center text-zinc-400 text-sm py-8">
+            Loading dashboard...
+          </div>
         </div>
       </div>
     );
@@ -369,10 +443,10 @@ export default function DashboardPage() {
 
         {/* Next Rehearsal */}
         {nextRehearsal ? (
-          <section
+          <div
             role="button"
             tabIndex={0}
-            aria-label={`Edit rehearsal: ${nextRehearsal.date} ${nextRehearsal.time}`}
+            aria-label={`Edit rehearsal: ${formatDateForRehearsalCard(nextRehearsal.raw_date || '')} ${nextRehearsal.time}`}
             onClick={() => openEditRehearsal(nextRehearsal)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -380,38 +454,55 @@ export default function DashboardPage() {
                 openEditRehearsal(nextRehearsal);
               }
             }}
-            className="rounded-2xl overflow-hidden bg-gradient-rehearsal cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 transition-transform hover:scale-[1.01]"
+            className="block w-full rounded-2xl overflow-hidden bg-gradient-rehearsal cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 transition-transform hover:scale-[1.01]"
           >
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-white mb-4">Next Rehearsal</h2>
-              <div className="space-y-3">
-                {/* Date */}
-                <div className="flex items-center gap-2.5">
-                  <CalendarDays className="w-5 h-5 text-white/80 flex-shrink-0" />
-                  <span className="text-white font-medium">{nextRehearsal.date}</span>
-                </div>
+            <div className="p-5">
+              {/* Header with title */}
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-bold text-white">Next Rehearsal</h2>
+              </div>
 
-                {/* Time */}
-                <div className="flex items-center gap-2.5">
-                  <Clock className="w-5 h-5 text-white/80 flex-shrink-0" />
-                  <span className="text-white font-medium">{nextRehearsal.time}</span>
-                </div>
+              {/* Primary row: Time • Day, Date */}
+              <div className="flex items-center gap-2 text-white font-medium text-lg mb-2.5 min-h-[28px]">
+                <span className="flex-shrink-0">{nextRehearsal.time}</span>
+                <span className="text-white/60 flex-shrink-0">•</span>
+                <span className="truncate">{formatDateForRehearsalCard(nextRehearsal.raw_date || '')}</span>
+              </div>
 
-                {/* Location */}
-                {nextRehearsal.location && (
-                  <div className="flex items-center gap-2.5">
-                    <MapPin className="w-5 h-5 text-white/80 flex-shrink-0" />
+              {/* Location line with setlist badge */}
+              {nextRehearsal.location && (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <MapPin className="w-4 h-4 text-white/70 flex-shrink-0" />
                     <span
-                      className="text-white font-medium truncate"
+                      className="text-white/90 text-sm truncate"
                       title={nextRehearsal.location}
                     >
                       {nextRehearsal.location}
                     </span>
                   </div>
-                )}
-              </div>
+                  {nextRehearsal.setlist_name && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white/70">Setlist</span>
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/90 text-white font-medium">
+                        {nextRehearsal.setlist_name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Standalone setlist line for cases without location */}
+              {!nextRehearsal.location && nextRehearsal.setlist_name && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-white/70">Setlist</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-purple-500/90 text-white font-medium">
+                    {nextRehearsal.setlist_name}
+                  </span>
+                </div>
+              )}
             </div>
-          </section>
+          </div>
         ) : (
           <section className="rounded-2xl overflow-hidden bg-zinc-900">
             <div className="p-6">
@@ -526,7 +617,7 @@ export default function DashboardPage() {
 
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
-                onClick={() => router.push('/setlists/new')}
+                onClick={handleCreateSetlist}
                 gradientClass="bg-rose-500"
                 className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
               >
@@ -543,17 +634,6 @@ export default function DashboardPage() {
               >
                 <Plus className="w-5 h-5 inline mr-2" />
                 <span className="text-base font-semibold">Create Gig</span>
-              </GradientBorderButton>
-            </div>
-
-            <div className="flex-shrink-0 snap-start">
-              <GradientBorderButton
-                onClick={() => router.push('/calendar/block-dates')}
-                gradientClass="bg-rose-500"
-                className="px-5 bg-zinc-900 hover:bg-zinc-800 transition-colors whitespace-nowrap h-14"
-              >
-                <Plus className="w-5 h-5 inline mr-2" />
-                <span className="text-base font-semibold">Add Block Out Dates</span>
               </GradientBorderButton>
             </div>
           </div>

@@ -110,31 +110,26 @@ export default function CalendarContent({ events, user: _user, loading = false, 
         return;
       }
 
-      const dateKey = event.date; // Already in YYYY-MM-DD format
-      const existing = map.get(dateKey) || [];
-      map.set(dateKey, [...existing, event]);
+      // For blockout events, add to every day in the range
+      if (event.type === 'blockout' && event.blockout) {
+        const startDate = new Date(`${event.blockout.startDate}T00:00:00`);
+        const endDate = new Date(`${event.blockout.endDate}T00:00:00`);
+        
+        // Add blockout event to every day in the range
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dateKey = d.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+          const existing = map.get(dateKey) || [];
+          map.set(dateKey, [...existing, event]);
+        }
+      } else {
+        // For non-blockout events, use original logic
+        const dateKey = event.date; // Already in YYYY-MM-DD format
+        const existing = map.get(dateKey) || [];
+        map.set(dateKey, [...existing, event]);
+      }
     });
 
     return map;
-  }, [events.calendarEvents]);
-
-  const blockoutRanges = useMemo(() => {
-    return events.calendarEvents
-      .filter((evt) => evt.type === 'blockout' && evt.blockout)
-      .map((evt) => {
-        const { blockout, blockedBy } = evt;
-        if (!blockout) return null;
-        const startISO = blockout.startDate;
-        const endISO = blockout.endDate;
-        return {
-          id: evt.id ?? startISO,
-          startISO,
-          endISO,
-          color: blockout.color,
-          label: blockedBy?.name || 'Unavailable',
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
   }, [events.calendarEvents]);
 
   const getMonthDay = (dateStr?: string) => {
@@ -288,45 +283,6 @@ export default function CalendarContent({ events, user: _user, loading = false, 
         reason: event.location ?? '',
       });
       setAddBlockoutDrawerOpen(true);
-    }
-  };
-
-  // Delete handlers
-  const handleDeleteGig = async (gigId: string) => {
-    try {
-      const { error } = await supabase
-        .from('gigs')
-        .delete()
-        .eq('id', gigId);
-
-      if (error) throw error;
-
-      // Refresh events after deletion
-      onEventUpdated();
-      showToast('Gig deleted successfully', 'success');
-    } catch (error) {
-      console.error('Error deleting gig:', error);
-      showToast('Failed to delete gig', 'error');
-      throw error;
-    }
-  };
-
-  const handleDeleteRehearsal = async (rehearsalId: string) => {
-    try {
-      const { error } = await supabase
-        .from('rehearsals')
-        .delete()
-        .eq('id', rehearsalId);
-
-      if (error) throw error;
-
-      // Refresh events after deletion
-      onEventUpdated();
-      showToast('Rehearsal deleted successfully', 'success');
-    } catch (error) {
-      console.error('Error deleting rehearsal:', error);
-      showToast('Failed to delete rehearsal', 'error');
-      throw error;
     }
   };
 

@@ -288,16 +288,66 @@ export default function AddEventDrawer({
     return `${hour24.toString().padStart(2, '0')}:${startMinute}`;
   }, [hour24, startMinute]);
 
+  // For API - returns 24-hour format (HH:MM)
   const endTimeString = useMemo(() => {
-    const startMinutes = hour24 * 60 + parseInt(startMinute, 10);
-    const endMinutes = startMinutes + parseInt(duration, 10);
-    const h = Math.floor(endMinutes / 60) % 24;
-    const m = endMinutes % 60;
+    // Validate inputs
+    const hourNum = parseInt(startHour, 10);
+    const minuteNum = parseInt(startMinute, 10);
+    const durationNum = parseInt(duration, 10);
+    
+    // Return fallback for invalid inputs (API needs a valid time)
+    if (isNaN(hourNum) || isNaN(minuteNum) || isNaN(durationNum) || 
+        hourNum < 1 || hourNum > 12 || 
+        minuteNum < 0 || minuteNum > 59 || 
+        durationNum <= 0) {
+      // Default to 1 hour after start time if duration is invalid
+      const fallbackDuration = 60;
+      const startMinutesFromMidnight = hour24 * 60 + (isNaN(minuteNum) ? 0 : minuteNum);
+      const endMinutesFromMidnight = startMinutesFromMidnight + fallbackDuration;
+      const endHour24 = Math.floor(endMinutesFromMidnight / 60) % 24;
+      const endMinute = endMinutesFromMidnight % 60;
+      return `${endHour24.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+    }
+
+    // Calculate total start minutes from midnight
+    const startMinutesFromMidnight = hour24 * 60 + minuteNum;
+    const endMinutesFromMidnight = startMinutesFromMidnight + durationNum;
+    
+    // Handle cross-midnight (end time next day)
+    const endHour24 = Math.floor(endMinutesFromMidnight / 60) % 24;
+    const endMinute = endMinutesFromMidnight % 60;
+
+    // Return 24-hour format for API
+    return `${endHour24.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+  }, [startHour, startMinute, duration, hour24]);
+
+  // For display - returns 12-hour format with proper placeholder
+  const endTimeDisplay = useMemo(() => {
+    // Validate inputs
+    const hourNum = parseInt(startHour, 10);
+    const minuteNum = parseInt(startMinute, 10);
+    const durationNum = parseInt(duration, 10);
+    
+    // Return placeholder for invalid inputs
+    if (isNaN(hourNum) || isNaN(minuteNum) || isNaN(durationNum) || 
+        hourNum < 1 || hourNum > 12 || 
+        minuteNum < 0 || minuteNum > 59 || 
+        durationNum <= 0) {
+      return '—';
+    }
+
+    // Calculate total start minutes from midnight
+    const startMinutesFromMidnight = hour24 * 60 + minuteNum;
+    const endMinutesFromMidnight = startMinutesFromMidnight + durationNum;
+    
+    // Handle cross-midnight (end time next day)
+    const endHour24 = Math.floor(endMinutesFromMidnight / 60) % 24;
+    const endMinute = endMinutesFromMidnight % 60;
 
     // Convert to 12-hour format
-    const { hour12, period } = to12h(h);
-    return `${hour12}:${m.toString().padStart(2, '0')} ${period}`;
-  }, [hour24, startMinute, duration]);
+    const { hour12, period } = to12h(endHour24);
+    return `${hour12}:${endMinute.toString().padStart(2, '0')} ${period}`;
+  }, [startHour, startMinute, duration, hour24]);
 
   const toggleDay = (index: number) => {
     setSelectedDays((prev) => (prev.includes(index) ? prev.filter((d) => d !== index) : [...prev, index]));
@@ -529,7 +579,7 @@ export default function AddEventDrawer({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (!open ? onClose() : null)}>
-      <SheetContent side="bottom" className="h-[90vh] w-full p-0 bg-background text-foreground border-border overflow-x-hidden">
+      <SheetContent side="bottom" className="h-[90vh] w-full p-0 br-drawer-surface text-foreground border-border overflow-x-hidden">
         <SheetHeader className="border-b border-border px-4 py-3">
           <SheetTitle>{mode === 'edit' ? 'Edit Event' : 'Add Event'}</SheetTitle>
           <SheetDescription />
@@ -648,7 +698,7 @@ export default function AddEventDrawer({
                 </ToggleGroup>
               </div>
               <div className="text-sm text-muted-foreground">
-                Ends at {endTimeString}
+                {endTimeDisplay === '—' ? 'Ends at —' : `Ends at ${endTimeDisplay}`}
               </div>
             </div>
 

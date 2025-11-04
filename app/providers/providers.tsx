@@ -1,14 +1,17 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { SessionSync } from '@/components/auth/SessionSync';
-import { PWABootstrap } from '@/components/pwa/PWABootstrap';
-import { PWARedirectHandler } from '@/components/pwa/PWARedirectHandler';
-import { ServiceWorkerNavigationHandler } from '@/components/pwa/ServiceWorkerNavigationHandler';
-import { ServiceWorkerRegistration } from '@/components/pwa/ServiceWorkerRegistration';
-import { PWAPerformanceMonitor } from '@/components/pwa/PWAPerformanceMonitor';
-import { PWAErrorHandler, NetworkStatusIndicator } from '@/components/pwa/PWAErrorHandler';
 import { PWASessionSync } from '@/hooks/usePWASession';
+
+// Lazy load non-critical PWA components
+const PWABootstrap = lazy(() => import('@/components/pwa/PWABootstrap').then(m => ({ default: m.PWABootstrap })));
+const PWARedirectHandler = lazy(() => import('@/components/pwa/PWARedirectHandler').then(m => ({ default: m.PWARedirectHandler })));
+const ServiceWorkerNavigationHandler = lazy(() => import('@/components/pwa/ServiceWorkerNavigationHandler').then(m => ({ default: m.ServiceWorkerNavigationHandler })));
+const ServiceWorkerRegistration = lazy(() => import('@/components/pwa/ServiceWorkerRegistration').then(m => ({ default: m.ServiceWorkerRegistration })));
+const PWAPerformanceMonitor = lazy(() => import('@/components/pwa/PWAPerformanceMonitor').then(m => ({ default: m.PWAPerformanceMonitor })));
+const PWAErrorHandler = lazy(() => import('@/components/pwa/PWAErrorHandler').then(m => ({ default: m.PWAErrorHandler })));
+const NetworkStatusIndicator = lazy(() => import('@/components/pwa/PWAErrorHandler').then(m => ({ default: m.NetworkStatusIndicator })));
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -17,17 +20,21 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <>
+      {/* Critical components loaded immediately */}
       <SessionSync />
       <PWASessionSync />
-      <ServiceWorkerRegistration />
-      <PWAPerformanceMonitor />
-      <PWAErrorHandler />
-      <NetworkStatusIndicator />
+      
+      {/* Non-critical PWA components loaded after initial render */}
       <Suspense fallback={null}>
+        <ServiceWorkerRegistration />
         <PWABootstrap />
         <PWARedirectHandler />
         <ServiceWorkerNavigationHandler />
+        <PWAPerformanceMonitor />
+        <PWAErrorHandler />
+        <NetworkStatusIndicator />
       </Suspense>
+      
       {children}
     </>
   );

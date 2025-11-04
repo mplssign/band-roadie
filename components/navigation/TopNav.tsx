@@ -99,6 +99,8 @@ export default function TopNav() {
   const handleBandSelect = (bandId: string) => {
     setCurrentBand(bandId);
     setIsBandSwitcherOpen(false);
+    // Navigate to dashboard when switching bands
+    router.push('/dashboard');
   };
 
   const getUserName = () => {

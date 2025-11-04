@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global touch behavior - prevent pinch-zoom */
+/* Performance optimizations */
 html {
   touch-action: manipulation;
+  /* Enable GPU acceleration */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  /* Optimize font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Optimize scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optimize repaints */
+body {
+  /* Enable GPU acceleration */
+  will-change: scroll-position;
+  /* Optimize transforms */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /* Hide scrollbars globally while maintaining functionality */

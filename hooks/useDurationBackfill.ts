@@ -82,6 +82,7 @@ export function useDurationBackfill({
             onUpdate(data.duration);
           }
         } else {
+          // Silently handle 404s and other errors - this is background processing
           // Cache null result to prevent retrying
           durationCache.set(cacheKey, {
             duration: null,

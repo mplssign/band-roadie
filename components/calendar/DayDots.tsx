@@ -118,33 +118,33 @@ export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDot
         ))}
       </div>
 
-      {/* Blockout range spans - enhanced pill-style rendering with better week wrapping */}
+      {/* Blockout range spans - layered behind date numbers with reduced thickness */}
       {hasBlockoutRange && (
-        <div className="absolute inset-x-0 bottom-3.5 h-2.5">
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 -z-10">
           {blockoutRanges.map((range, idx) => {
             if (range.isSingleDay) return null;
 
             return (
               <div key={`blockout-range-${idx}`} className="relative w-full h-full">
-                {/* Enhanced connecting pill with improved visual continuity */}
+                {/* Enhanced connecting pill with improved visual continuity - always visible with reduced transparency */}
                 {range.isStartDay && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-2 bg-red-500/80 rounded-l-full shadow-sm" />
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-1 bg-red-600 rounded-l-full shadow-sm" />
                 )}
                 
                 {range.isMiddleDay && (
-                  <div className="absolute inset-0 top-1/2 -translate-y-1/2 w-full h-2 bg-red-500/80 shadow-sm" />
+                  <div className="absolute inset-0 top-1/2 -translate-y-1/2 w-full h-1 bg-red-600 shadow-sm" />
                 )}
                 
                 {range.isEndDay && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-2 bg-red-500/80 rounded-r-full shadow-sm" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-1 bg-red-600 rounded-r-full shadow-sm" />
                 )}
 
-                {/* Stronger visual markers for start/end days with better accessibility */}
+                {/* Stronger visual markers for start/end days - always visible with consistent color */}
                 {range.isStartDay && (
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-background shadow-md" />
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full ring-1 ring-background shadow-md" />
                 )}
                 {range.isEndDay && (
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-background shadow-md" />
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full ring-1 ring-background shadow-md" />
                 )}
               </div>
             );

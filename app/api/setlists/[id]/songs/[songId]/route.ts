@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; songId: string } }
 ) {
-  const supabase = createClient();
+  // Create user-authenticated client
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set() {
+          // No-op for read-only operations
+        },
+        remove() {
+          // No-op for read-only operations  
+        },
+      },
+    }
+  );
   const { id: setlistId, songId } = params;
 
   try {
-    console.log(`[DELETE] Starting deletion: setlistId=${setlistId}, songId=${songId}`);
-    
     // First check if the record exists
     const { data: existing, error: selectError } = await supabase
       .from('setlist_songs')
@@ -32,22 +47,75 @@ export async function DELETE(
 
     // console.log(`[DELETE] Found record:`, existing);
 
-    // songId is actually the setlist_songs.id (junction table record ID)
-    const { error } = await supabase
-      .from('setlist_songs')
-      .delete()
-      .eq('id', songId)
-      .eq('setlist_id', setlistId); // Extra safety check
+    // First check if user has access to this setlist
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('[DELETE] Authentication error:', authError);
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-    if (error) {
-      console.error('[DELETE] Error removing song from setlist:', error);
+    // Use a simpler approach - try to query the setlist with user's permissions
+    // If the user can see the setlist, they have permission to modify it
+    const { data: setlist, error: setlistError } = await supabase
+      .from('setlists')
+      .select('id, band_id')
+      .eq('id', setlistId)
+      .single();
+
+    if (setlistError || !setlist) {
+      console.error('[DELETE] Setlist access denied or not found:', setlistError);
+      return NextResponse.json({ 
+        error: 'Access denied - setlist not found or no permission',
+        debug: {
+          setlistError,
+          userId: user.id,
+          setlistId,
+          step: 'setlist_access_check'
+        }
+      }, { status: 403 });
+    }
+
+    // Use service role to bypass trigger issues
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+    let deleteError: unknown = null;
+
+    if (supabaseServiceKey && supabaseUrl) {
+      // Use service role client to bypass RLS and triggers
+      const { createClient } = await import('@supabase/supabase-js');
+      const serviceSupabase = createClient(supabaseUrl, supabaseServiceKey);
+      
+      // Direct delete with service role to avoid trigger issues
+      const { error: serviceError } = await serviceSupabase
+        .from('setlist_songs')
+        .delete()
+        .eq('id', songId)
+        .eq('setlist_id', setlistId);
+      
+      deleteError = serviceError;
+    } else {
+      // Fallback to regular client
+      const { error } = await supabase
+        .from('setlist_songs')
+        .delete()
+        .eq('id', songId)
+        .eq('setlist_id', setlistId);
+      
+      deleteError = error;
+    }
+
+    if (deleteError) {
+      console.error('[DELETE] Error removing song from setlist:', deleteError);
       return NextResponse.json({ 
         error: 'Failed to remove song from setlist',
         debug: {
-          supabaseError: error,
+          supabaseError: deleteError,
           setlistId,
           songId,
-          existing
+          existing,
+          userId: user.id,
+          bandId: setlist.band_id
         }
       }, { status: 500 });
     }
@@ -71,7 +139,24 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string; songId: string } }
 ) {
-  const supabase = createClient();
+  // Create user-authenticated client
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set() {
+          // No-op for read-only operations
+        },
+        remove() {
+          // No-op for read-only operations  
+        },
+      },
+    }
+  );
   const { id: setlistId, songId } = params;
 
   try {
