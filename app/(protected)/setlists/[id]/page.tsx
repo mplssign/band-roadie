@@ -593,20 +593,6 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           )}
         </div>
 
-        {/* Setlist Summary - only in view mode */}
-        {!isEditMode && setlist && songs.length > 0 && (
-          <div className="mb-6 p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span>{songs.length} songs</span>
-                <span>
-                  {Math.floor((setlist.total_duration || 0) / 60)}m {(setlist.total_duration || 0) % 60}s total
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {error && (
           <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
             <p>{error}</p>
