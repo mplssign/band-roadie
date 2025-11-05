@@ -11,6 +11,11 @@
   background: color-mix(in oklab, hsl(var(--popover)) 92%, white);
 }
 
+/* Song card solid rendering for swipe actions */
+.song-card {
+  backface-visibility: hidden;
+}
+
 @property --angle {
   syntax: '<angle>';
   inherits: false;

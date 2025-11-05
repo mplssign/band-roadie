@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { motion, useMotionValue, useTransform, animate, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -45,7 +45,6 @@ export function SetlistSongRow({
   const [isDeleting, setIsDeleting] = useState(false);
   
   const x = useMotionValue(0);
-  const opacity = useTransform(x, [-375, 0, 375], [0, 1, 0]);
   const dragStartedRef = useRef(false);
   const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
 
@@ -264,6 +263,11 @@ export function SetlistSongRow({
         style={style}
         className="relative overflow-hidden border-t border-border/60 first:border-t-0"
       >
+        {/* Black backdrop behind actions - only in edit mode */}
+        {isEditMode && (
+          <div className="absolute inset-0 bg-black z-0" />
+        )}
+
         {/* Swipe actions background - only in edit mode */}
         {isEditMode && (
           <SwipeActions 
@@ -279,8 +283,8 @@ export function SetlistSongRow({
           dragElastic={0.12}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          style={{ x, opacity }}
-          className={`bg-card p-4 transition-all relative ${
+          style={{ x }}
+          className={`song-card bg-card rounded-xl shadow-sm overflow-hidden isolate will-change-transform z-10 p-4 transition-all relative ${
             isDndDragging ? 'shadow-lg border-border/40' : 'hover:shadow-md hover:border-border/30'
           } ${
             !isEditMode && setlistSong.songs?.id ? 'cursor-pointer' : ''

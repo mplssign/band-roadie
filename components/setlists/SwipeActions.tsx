@@ -9,7 +9,7 @@ interface SwipeActionsProps {
 
 export function SwipeActions({ onCopy, onDelete }: SwipeActionsProps) {
   return (
-    <div className="absolute inset-0 flex items-center justify-between pointer-events-none">
+    <div className="absolute inset-0 flex items-center justify-between pointer-events-none z-0">
       {/* Left zone (copy action) */}
       <div className="flex items-center justify-start h-full" style={{ width: '25vw' }}>
         <button
