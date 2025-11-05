@@ -1,6 +1,6 @@
 /* eslint-disable no-console, no-unused-vars, no-undef */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3-1.4.0';
 
 self.addEventListener('install', (_event) => {
   console.log('Service Worker installed');
