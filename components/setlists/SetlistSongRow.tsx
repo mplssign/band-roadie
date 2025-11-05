@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { motion, useMotionValue, animate, PanInfo } from 'framer-motion';
+import { useState, useRef, memo, useMemo, useCallback } from 'react';
+import { motion, useMotionValue, animate, PanInfo, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -32,7 +32,7 @@ function formatDuration(seconds?: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-export function SetlistSongRow({ 
+export const SetlistSongRow = memo(function SetlistSongRow({ 
   setlistSong, 
   setlistId, 
   onUpdate, 
@@ -78,9 +78,9 @@ export function SetlistSongRow({
     },
   });
 
-  const handleBpmChange = (newBpm: number | undefined) => {
+  const handleBpmChange = useCallback((newBpm: number | undefined) => {
     onUpdate(setlistSong.id, { bpm: newBpm });
-  };
+  }, [onUpdate, setlistSong.id]);
 
   const handleRowClick = () => {
     if (!dragStartedRef.current && setlistSong.songs?.id && !isEditMode) {
@@ -101,6 +101,8 @@ export function SetlistSongRow({
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const currentX = info.offset.x;
+    const leftTarget = -0.25 * vw;
+    const rightTarget = 0.25 * vw;
     
     // Reset drag started flag after a short delay
     setTimeout(() => {
@@ -126,14 +128,21 @@ export function SetlistSongRow({
       return;
     }
 
-    // Snap to positions
-    if (currentX <= -0.18 * vw) {
-      animate(x, -0.25 * vw, SPRING);
-    } else if (currentX >= 0.18 * vw) {
-      animate(x, 0.25 * vw, SPRING);
-    } else {
-      animate(x, 0, SPRING);
+    // Snap to nearest target using improved logic
+    const targets = [leftTarget, 0, rightTarget];
+    const closestTarget = targets.reduce((closest, target) => {
+      return Math.abs(currentX - target) < Math.abs(currentX - closest) ? target : closest;
+    });
+
+    // Apply threshold for revealing actions (18% of viewport width)
+    const threshold = 0.18 * vw;
+    let finalTarget = closestTarget;
+
+    if (Math.abs(currentX) < threshold) {
+      finalTarget = 0; // Return to center if below threshold
     }
+
+    animate(x, finalTarget, SPRING);
   };
 
   const handleDelete = async () => {
@@ -159,7 +168,8 @@ export function SetlistSongRow({
     setShowCopySheet(true);
   };
 
-  const rowContent = (
+  // Memoize row content to prevent unnecessary re-renders during drag
+  const rowContent = useMemo(() => (
     <div className="flex items-start gap-3">
       {/* Drag handle - only in edit mode */}
       {isEditMode && (
@@ -250,54 +260,77 @@ export function SetlistSongRow({
         </div>
       </div>
     </div>
-  );
-
-  if (isDeleting) {
-    return null; // Row is being deleted
-  }
+  ), [
+    isEditMode,
+    setlistSong,
+    displayBpm,
+    displayTuning,
+    displayDuration,
+    handleBpmChange,
+    onUpdate,
+    attributes,
+    listeners
+  ]);
 
   return (
     <>
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="relative overflow-hidden border-t border-border/60 first:border-t-0"
-      >
-        {/* Black backdrop behind actions - only in edit mode */}
-        {isEditMode && (
-          <div className="absolute inset-0 bg-black z-0" />
-        )}
+      <AnimatePresence mode="popLayout">
+        {!isDeleting && (
+          <motion.div
+            key={setlistSong.id}
+            ref={setNodeRef}
+            style={style}
+            className="relative overflow-hidden border-t border-border/60 first:border-t-0"
+            initial={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ 
+              opacity: 0, 
+              height: 0,
+              transition: { duration: 0.2, ease: 'easeOut' }
+            }}
+            layout
+          >
+            {/* Black backdrop behind actions - only in edit mode */}
+            {isEditMode && (
+              <div className="absolute inset-0 bg-black z-0" />
+            )}
 
-        {/* Swipe actions background - only in edit mode */}
-        {isEditMode && (
-          <SwipeActions 
-            onCopy={handleCopy}
-            onDelete={handleDelete}
-          />
-        )}
+            {/* Swipe actions background - only in edit mode */}
+            {isEditMode && (
+              <SwipeActions 
+                onCopy={handleCopy}
+                onDelete={handleDelete}
+              />
+            )}
 
-        {/* Main row content */}
-        <motion.div
-          drag={isEditMode ? "x" : false}
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.12}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          style={{ x }}
-          className={`song-card bg-card rounded-xl shadow-sm overflow-hidden isolate will-change-transform z-10 p-4 transition-all relative ${
-            isDndDragging ? 'shadow-lg border-border/40' : 'hover:shadow-md hover:border-border/30'
-          } ${
-            !isEditMode && setlistSong.songs?.id ? 'cursor-pointer' : ''
-          }`}
-          role={!isEditMode ? "button" : undefined}
-          tabIndex={!isEditMode ? 0 : undefined}
-          onClick={handleRowClick}
-          onKeyDown={handleKeyDown}
-          aria-label={!isEditMode ? `View notes for ${setlistSong.songs?.title}` : undefined}
-        >
-          {rowContent}
-        </motion.div>
-      </div>
+            {/* Main row content */}
+            <motion.div
+              drag={isEditMode ? "x" : false}
+              dragDirectionLock={true}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.12}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              style={{ 
+                x, 
+                touchAction: 'pan-y'
+              }}
+              className={`song-card bg-card rounded-xl overflow-hidden isolate will-change-transform z-10 p-4 relative ${
+                isDndDragging ? 'border-border/40' : isEditMode ? '' : 'hover:shadow-md hover:border-border/30'
+              } ${
+                !isEditMode && setlistSong.songs?.id ? 'cursor-pointer' : ''
+              }`}
+              role={!isEditMode ? "button" : undefined}
+              tabIndex={!isEditMode ? 0 : undefined}
+              onClick={handleRowClick}
+              onKeyDown={handleKeyDown}
+              aria-label={!isEditMode ? `View notes for ${setlistSong.songs?.title}` : undefined}
+            >
+              {rowContent}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Copy to setlist sheet */}
       <CopyToSetlistSheet
@@ -309,4 +342,4 @@ export function SetlistSongRow({
       />
     </>
   );
-}
+});
