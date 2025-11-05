@@ -396,13 +396,13 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   };
 
-  const handleRemoveSong = async (songId: string) => {
+  const handleRemoveSong = async (songId: string): Promise<boolean> => {
     const setlistId = setlist?.id || params.id;
     const songToRemove = songs.find(song => song.id === songId);
     
     if (!songToRemove) {
       showToast('Song not found', 'error');
-      return;
+      return false;
     }
 
     // Optimistic UI: Remove immediately
@@ -411,7 +411,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     // For new setlists, no server call needed
     if (setlistId === 'new') {
       showToast(`Removed "${songToRemove.songs?.title || 'song'}" from setlist`, 'success');
-      return;
+      return true;
     }
 
     try {
@@ -420,6 +420,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       
       if (result.success) {
         showToast(`Removed "${songToRemove.songs?.title || 'song'}" from setlist`, 'success');
+        return true;
       } else {
         // Handle detailed error responses
         const { error } = result;
@@ -441,6 +442,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         });
 
         showToast(errorMessage, 'error');
+        return false;
       }
     } catch (err) {
       console.error('Exception in handleRemoveSong:', err);
@@ -455,6 +457,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         `Failed to remove song: ${err instanceof Error ? err.message : 'Unknown error'}`,
         'error'
       );
+      return false;
     }
   };
 

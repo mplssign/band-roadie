@@ -19,7 +19,7 @@ interface SetlistSongRowProps {
   setlistSong: SetlistSong;
   setlistId: string;
   onUpdate: (songId: string, updates: { bpm?: number; tuning?: TuningType; duration_seconds?: number }) => void;
-  onRemove: (songId: string) => void;
+  onRemove: (songId: string) => Promise<boolean>;
   isEditMode?: boolean;
 }
 
@@ -142,10 +142,15 @@ export function SetlistSongRow({
     
     setIsDeleting(true);
     try {
-      await onRemove(setlistSong.id);
-      // Success toast is handled by parent
+      const success = await onRemove(setlistSong.id);
+      if (!success) {
+        // Delete failed, reset UI state
+        animate(x, 0, SPRING);
+        setIsDeleting(false);
+      }
+      // Success case: row will be removed from parent's state, no UI reset needed
     } catch (error) {
-      // Error handling is done by parent, just reset UI state
+      // Unexpected error, reset UI state
       animate(x, 0, SPRING);
       setIsDeleting(false);
     }
