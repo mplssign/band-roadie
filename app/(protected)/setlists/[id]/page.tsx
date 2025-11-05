@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Dialog } from '@/components/ui/Dialog';
 import { SetlistSongRow } from '@/components/setlists/SetlistSongRow';
+import { deleteSetlistSong } from '@/lib/supabase/setlists';
+import { useToast } from '@/hooks/useToast';
 import { ArrowLeft, Search, Save, Plus, Edit, X, ClipboardList } from 'lucide-react';
 import { capitalizeWords } from '@/lib/utils/formatters';
 import { AppleMusicIcon, SpotifyIcon, AmazonMusicIcon } from '@/components/icons/ProviderIcons';
@@ -79,6 +81,7 @@ function formatDuration(seconds: number): string {
 export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const router = useRouter();
   const { currentBand } = useBands();
+  const { showToast } = useToast();
   const [setlist, setSetlist] = useState<Setlist | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -394,24 +397,64 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   };
 
   const handleRemoveSong = async (songId: string) => {
-    try {
-      const setlistId = setlist?.id || params.id;
+    const setlistId = setlist?.id || params.id;
+    const songToRemove = songs.find(song => song.id === songId);
+    
+    if (!songToRemove) {
+      showToast('Song not found', 'error');
+      return;
+    }
 
-      if (setlistId !== 'new') {
-        const response = await fetch(`/api/setlists/${setlistId}/songs/${songId}`, {
-          method: 'DELETE',
+    // Optimistic UI: Remove immediately
+    setSongs(prev => prev.filter(song => song.id !== songId));
+
+    // For new setlists, no server call needed
+    if (setlistId === 'new') {
+      showToast(`Removed "${songToRemove.songs?.title || 'song'}" from setlist`, 'success');
+      return;
+    }
+
+    try {
+      // Use the new helper function with proper validation
+      const result = await deleteSetlistSong(songId, setlistId);
+      
+      if (result.success) {
+        showToast(`Removed "${songToRemove.songs?.title || 'song'}" from setlist`, 'success');
+      } else {
+        // Handle detailed error responses
+        const { error } = result;
+        let errorMessage = error?.message || 'Unknown error';
+        
+        if (error?.isRLSIssue) {
+          errorMessage = `Permission denied (${error.status}): ${error.message}. Check RLS policies.`;
+        } else if (error?.status) {
+          errorMessage = `Delete failed (${error.status}): ${error.message}`;
+          if (error.code) {
+            errorMessage += ` [${error.code}]`;
+          }
+        }
+
+        // Restore the song on error
+        setSongs(prev => {
+          const restored = [...prev, songToRemove].sort((a, b) => a.position - b.position);
+          return restored;
         });
 
-        if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || 'Failed to remove song');
-        }
+        showToast(errorMessage, 'error');
       }
-
-      setSongs(prev => prev.filter(song => song.id !== songId));
     } catch (err) {
-      console.error('Error removing song:', err);
-      setError(err instanceof Error ? err.message : 'Failed to remove song');
+      console.error('Exception in handleRemoveSong:', err);
+      
+      // Restore the song on exception
+      setSongs(prev => {
+        const restored = [...prev, songToRemove].sort((a, b) => a.position - b.position);
+        return restored;
+      });
+
+      showToast(
+        `Failed to remove song: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        'error'
+      );
     }
   };
 

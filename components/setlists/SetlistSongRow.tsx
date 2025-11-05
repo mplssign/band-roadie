@@ -13,7 +13,6 @@ import { DurationInput } from '@/components/setlists/DurationInput';
 import { SwipeActions } from '@/components/setlists/SwipeActions';
 import { CopyToSetlistSheet } from '@/components/setlists/CopyToSetlistSheet';
 import { useDurationBackfill } from '@/hooks/useDurationBackfill';
-import { useToast } from '@/hooks/useToast';
 import { GripVertical } from 'lucide-react';
 
 interface SetlistSongRowProps {
@@ -41,7 +40,6 @@ export function SetlistSongRow({
   isEditMode = false 
 }: SetlistSongRowProps) {
   const router = useRouter();
-  const { showToast } = useToast();
   
   const [showCopySheet, setShowCopySheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -139,19 +137,15 @@ export function SetlistSongRow({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (isDeleting) return;
     
     setIsDeleting(true);
     try {
-      onRemove(setlistSong.id);
-      showToast(`Removed "${setlistSong.songs?.title || 'song'}" from setlist`, 'success');
+      await onRemove(setlistSong.id);
+      // Success toast is handled by parent
     } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : 'Failed to remove song',
-        'error'
-      );
-      // Reset position on error
+      // Error handling is done by parent, just reset UI state
       animate(x, 0, SPRING);
       setIsDeleting(false);
     }

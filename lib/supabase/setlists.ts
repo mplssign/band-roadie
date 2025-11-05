@@ -134,3 +134,106 @@ export async function getSetlistById(setlistId: string): Promise<SetlistOption |
 
   return data;
 }
+
+/**
+ * Delete result interface for comprehensive error reporting
+ */
+export interface DeleteResult {
+  success: boolean;
+  error?: {
+    message: string;
+    code?: string;
+    status: number;
+    isRLSIssue?: boolean;
+  };
+}
+
+/**
+ * Delete a song from a setlist with comprehensive error handling
+ */
+export async function deleteSetlistSong(
+  setlistSongId: string,
+  expectedSetlistId: string
+): Promise<DeleteResult> {
+  const supabase = createClient();
+
+  try {
+    // Pre-check: Verify ownership and get current row
+    const { data: existingRow, error: checkError } = await supabase
+      .from('setlist_songs')
+      .select('id, setlist_id')
+      .eq('id', setlistSongId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Pre-check error:', checkError);
+      return {
+        success: false,
+        error: {
+          message: `Pre-check failed: ${checkError.message}`,
+          code: checkError.code,
+          status: 500,
+          isRLSIssue: checkError.code === 'PGRST116' || checkError.code === '42501'
+        }
+      };
+    }
+
+    if (!existingRow) {
+      return {
+        success: false,
+        error: {
+          message: 'Setlist song not found',
+          code: 'NOT_FOUND',
+          status: 404
+        }
+      };
+    }
+
+    // Verify setlist ownership
+    if (existingRow.setlist_id !== expectedSetlistId) {
+      return {
+        success: false,
+        error: {
+          message: 'Setlist mismatch - unauthorized access',
+          code: 'SETLIST_MISMATCH',
+          status: 403
+        }
+      };
+    }
+
+    // Delete the row - DO NOT use .single() after DELETE
+    const { error: deleteError, status } = await supabase
+      .from('setlist_songs')
+      .delete()
+      .eq('id', setlistSongId);
+
+    if (deleteError) {
+      console.error('Delete error:', deleteError);
+      const statusCode = status || 500;
+      const isRLSIssue = statusCode === 401 || statusCode === 403 || statusCode === 404 ||
+                         deleteError.code === 'PGRST116' || deleteError.code === '42501';
+      
+      return {
+        success: false,
+        error: {
+          message: deleteError.message || 'Failed to delete setlist song',
+          code: deleteError.code || 'DELETE_FAILED',
+          status: statusCode,
+          isRLSIssue
+        }
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Exception in deleteSetlistSong:', error);
+    return {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        code: 'EXCEPTION',
+        status: 500
+      }
+    };
+  }
+}
