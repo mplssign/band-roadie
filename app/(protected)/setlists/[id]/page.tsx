@@ -721,7 +721,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
       {/* Fixed Bottom Buttons - only in edit mode */}
       {isEditMode && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-border/60 bg-background/95 backdrop-blur-xl p-4 pb-24">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-background/95 backdrop-blur-xl p-4 pb-24">
           <div className="flex flex-col gap-3 max-w-4xl mx-auto">
             <Button
               onClick={handleSaveSetlist}
