@@ -16,6 +16,20 @@
   backface-visibility: hidden;
 }
 
+/* Song card pressed state - lighter overlay for contrast against black background */
+.song-card[data-pressed="true"] {
+  position: relative;
+}
+
+.song-card[data-pressed="true"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  z-index: 1;
+}
+
 @property --angle {
   syntax: '<angle>';
   inherits: false;

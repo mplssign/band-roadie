@@ -43,6 +43,7 @@ export const SetlistSongRow = memo(function SetlistSongRow({
   
   const [showCopySheet, setShowCopySheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
   
   const x = useMotionValue(0);
   const dragStartedRef = useRef(false);
@@ -97,6 +98,7 @@ export const SetlistSongRow = memo(function SetlistSongRow({
 
   const handleDragStart = () => {
     dragStartedRef.current = true;
+    setIsPressed(true);
   };
 
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -143,6 +145,9 @@ export const SetlistSongRow = memo(function SetlistSongRow({
     }
 
     animate(x, finalTarget, SPRING);
+    
+    // Clear pressed state after drag ends
+    setIsPressed(false);
   };
 
   const handleDelete = async () => {
@@ -311,10 +316,15 @@ export const SetlistSongRow = memo(function SetlistSongRow({
               dragElastic={0.12}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
+              onPointerDown={() => setIsPressed(true)}
+              onPointerUp={() => setIsPressed(false)}
+              onPointerCancel={() => setIsPressed(false)}
+              onPointerLeave={() => setIsPressed(false)}
               style={{ 
                 x, 
                 touchAction: 'pan-y'
               }}
+              data-pressed={isPressed}
               className={`song-card bg-card rounded-xl overflow-hidden isolate will-change-transform z-10 p-4 relative ${
                 isDndDragging ? 'border-border/40' : isEditMode ? '' : 'hover:shadow-md hover:border-border/30'
               } ${
