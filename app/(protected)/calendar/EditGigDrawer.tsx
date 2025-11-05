@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import {
-  Sheet,
+  SheetWithClose as Sheet,
   SheetContent,
   SheetHeader,
   SheetFooter,
   SheetTitle,
-} from "@/components/ui/sheet";
+} from "@/components/ui/SheetWithClose";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useBands } from '@/contexts/BandsContext';
 import { listSetlists, copySongToSetlist, SetlistOption } from '@/lib/supabase/setlists';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { SheetWithClose as Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/SheetWithClose';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/useToast';

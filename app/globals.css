@@ -5,6 +5,7 @@
 /* Drawer surface "one shade lighter" */
 .br-drawer-surface {
   background: color-mix(in oklab, hsl(var(--popover)) 88%, white);
+  border-top: 1px solid hsl(var(--border));
 }
 
 [data-theme="dark"] .br-drawer-surface {

@@ -8,13 +8,13 @@ import type { GigMemberResponse } from '@/lib/types';
 import { PotentialGigMembersSection } from '@/components/calendar/PotentialGigMembersSection';
 
 import {
-  Sheet,
+  SheetWithClose as Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
   SheetFooter,
-} from '@/components/ui/sheet';
+} from '@/components/ui/SheetWithClose';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
