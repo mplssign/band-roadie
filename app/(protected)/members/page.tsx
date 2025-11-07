@@ -96,7 +96,21 @@ export default function MembersPage() {
               <p className="text-zinc-500">Add bandmates to get started!</p>
             </div>
           ) : (
-            members.map((member) => {
+            members
+              .sort((a, b) => {
+                const lastNameA = (a.user?.last_name || "").toLowerCase();
+                const lastNameB = (b.user?.last_name || "").toLowerCase();
+                
+                // If last names are equal, sort by first name
+                if (lastNameA === lastNameB) {
+                  const firstNameA = (a.user?.first_name || "").toLowerCase();
+                  const firstNameB = (b.user?.first_name || "").toLowerCase();
+                  return firstNameA.localeCompare(firstNameB);
+                }
+                
+                return lastNameA.localeCompare(lastNameB);
+              })
+              .map((member) => {
               // Use first_name and last_name from users table
               const firstName = member.user?.first_name || "";
               const lastName = member.user?.last_name || "";
@@ -151,12 +165,30 @@ export default function MembersPage() {
                   {/* Phone Number */}
                   <div className="text-lg text-primary-foreground mb-1 flex items-center gap-2">
                     <Phone className="w-5 h-5 text-primary" />
-                    {formattedPhone}
+                    {phone ? (
+                      <a 
+                        href={`tel:${phone}`}
+                        className="hover:text-primary hover:underline transition-colors cursor-pointer"
+                      >
+                        {formattedPhone}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No phone</span>
+                    )}
                   </div>
                   {/* Email */}
                   <div className="text-base text-primary-foreground mb-2 flex items-center gap-2">
                     <Mail className="w-5 h-5 text-primary" />
-                    {member.user?.email || "No email"}
+                    {member.user?.email ? (
+                      <a 
+                        href={`mailto:${member.user.email}`}
+                        className="hover:text-primary hover:underline transition-colors cursor-pointer"
+                      >
+                        {member.user.email}
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">No email</span>
+                    )}
                   </div>
                   {/* Address, City */}
                   <div className="text-base text-primary-foreground mb-2 flex items-center gap-2">

@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useRef, memo, useMemo, useCallback } from 'react';
-import { motion, useMotionValue, animate, PanInfo, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SPRING_CONFIG } from '@/lib/motion-config';
 import { useRouter } from 'next/navigation';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Image from 'next/image';
 import { SetlistSong, TuningType } from '@/lib/types';
+import { Card } from '@/components/ui/Card';
 import { BpmInput } from '@/components/setlists/BpmInput';
 import { TuningBadge } from '@/components/setlists/TuningBadge';
 import { DurationInput } from '@/components/setlists/DurationInput';
-import { SwipeActions } from '@/components/setlists/SwipeActions';
+import { SwipeableContainer } from '@/components/setlists/SwipeableContainer';
 import { CopyToSetlistSheet } from '@/components/setlists/CopyToSetlistSheet';
 import { useDurationBackfill } from '@/hooks/useDurationBackfill';
 import { GripVertical } from 'lucide-react';
@@ -18,12 +20,10 @@ import { GripVertical } from 'lucide-react';
 interface SetlistSongRowProps {
   setlistSong: SetlistSong;
   setlistId: string;
-  onUpdate: (songId: string, updates: { bpm?: number; tuning?: TuningType; duration_seconds?: number }) => void;
+  onUpdate: (songId: string, updates: { bpm?: number; tuning?: TuningType; duration_seconds?: number }) => Promise<void>;
   onRemove: (songId: string) => Promise<boolean>;
   isEditMode?: boolean;
 }
-
-const SPRING = { type: 'spring', stiffness: 420, damping: 28, mass: 1, bounce: 0.2 } as const;
 
 function formatDuration(seconds?: number): string {
   if (!seconds) return '--:--';
@@ -44,10 +44,6 @@ export const SetlistSongRow = memo(function SetlistSongRow({
   const [showCopySheet, setShowCopySheet] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
-  
-  const x = useMotionValue(0);
-  const dragStartedRef = useRef(false);
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
 
   const {
     attributes,
@@ -83,95 +79,31 @@ export const SetlistSongRow = memo(function SetlistSongRow({
     onUpdate(setlistSong.id, { bpm: newBpm });
   }, [onUpdate, setlistSong.id]);
 
-  const handleRowClick = () => {
-    if (!dragStartedRef.current && setlistSong.songs?.id && !isEditMode) {
+  const handleRowClick = useCallback(() => {
+    if (setlistSong.songs?.id && !isEditMode) {
       router.push(`/songs/${setlistSong.songs.id}`);
     }
-  };
+  }, [setlistSong.songs?.id, isEditMode, router]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.key === 'Enter' || e.key === ' ') && !isEditMode && setlistSong.songs?.id) {
-      e.preventDefault();
-      router.push(`/songs/${setlistSong.songs.id}`);
-    }
-  };
-
-  const handleDragStart = () => {
-    dragStartedRef.current = true;
-    setIsPressed(true);
-  };
-
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-    const currentX = info.offset.x;
-    const leftTarget = -0.25 * vw;
-    const rightTarget = 0.25 * vw;
-    
-    // Reset drag started flag after a short delay
-    setTimeout(() => {
-      dragStartedRef.current = false;
-    }, 100);
-
-    // Hard trigger thresholds
-    if (currentX <= -0.6 * vw) {
-      // Delete action - animate off screen left
-      animate(x, -vw, SPRING).then(() => {
-        handleDelete();
-      });
-      return;
-    }
-
-    if (currentX >= 0.6 * vw) {
-      // Copy action - animate off screen right
-      animate(x, vw, SPRING).then(() => {
-        handleCopy();
-        // Reset position after opening drawer
-        animate(x, 0, SPRING);
-      });
-      return;
-    }
-
-    // Snap to nearest target using improved logic
-    const targets = [leftTarget, 0, rightTarget];
-    const closestTarget = targets.reduce((closest, target) => {
-      return Math.abs(currentX - target) < Math.abs(currentX - closest) ? target : closest;
-    });
-
-    // Apply threshold for revealing actions (18% of viewport width)
-    const threshold = 0.18 * vw;
-    let finalTarget = closestTarget;
-
-    if (Math.abs(currentX) < threshold) {
-      finalTarget = 0; // Return to center if below threshold
-    }
-
-    animate(x, finalTarget, SPRING);
-    
-    // Clear pressed state after drag ends
-    setIsPressed(false);
-  };
-
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (isDeleting) return;
     
     setIsDeleting(true);
     try {
       const success = await onRemove(setlistSong.id);
       if (!success) {
-        // Delete failed, reset UI state
-        animate(x, 0, SPRING);
         setIsDeleting(false);
       }
       // Success case: row will be removed from parent's state, no UI reset needed
     } catch (error) {
       // Unexpected error, reset UI state
-      animate(x, 0, SPRING);
       setIsDeleting(false);
     }
-  };
+  }, [isDeleting, onRemove, setlistSong.id]);
 
-  const handleCopy = () => {
+  const handleCopy = useCallback(() => {
     setShowCopySheet(true);
-  };
+  }, []);
 
   // Memoize row content to prevent unnecessary re-renders during drag
   const rowContent = useMemo(() => (
@@ -257,9 +189,10 @@ export const SetlistSongRow = memo(function SetlistSongRow({
             )}
 
             <TuningBadge 
-              tuning={displayTuning}
-              onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
-              disabled={!isEditMode}
+              value={displayTuning}
+              setlistSongId={setlistSong.id}
+              editMode={isEditMode}
+              onLocalChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
             />
           </div>
         </div>
@@ -283,61 +216,58 @@ export const SetlistSongRow = memo(function SetlistSongRow({
         {!isDeleting && (
           <motion.div
             key={setlistSong.id}
-            ref={setNodeRef}
-            style={style}
-            className="relative overflow-hidden border-t border-border/60 first:border-t-0"
+            ref={isEditMode ? setNodeRef : undefined}
+            style={isEditMode ? style : undefined}
+            className="border-t border-border/60 first:border-t-0"
             initial={{ opacity: 1, height: 'auto' }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ 
               opacity: 0, 
               height: 0,
-              transition: { duration: 0.2, ease: 'easeOut' }
+              transition: SPRING_CONFIG.gentle
             }}
             layout
+            transition={SPRING_CONFIG.default}
           >
-            {/* Black backdrop behind actions - only in edit mode */}
-            {isEditMode && (
-              <div className="absolute inset-0 bg-black z-0" />
-            )}
-
-            {/* Swipe actions background - only in edit mode */}
-            {isEditMode && (
-              <SwipeActions 
-                onCopy={handleCopy}
-                onDelete={handleDelete}
-              />
-            )}
-
-            {/* Main row content */}
-            <motion.div
-              drag={isEditMode ? "x" : false}
-              dragDirectionLock={true}
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.12}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onPointerDown={() => setIsPressed(true)}
-              onPointerUp={() => setIsPressed(false)}
-              onPointerCancel={() => setIsPressed(false)}
-              onPointerLeave={() => setIsPressed(false)}
-              style={{ 
-                x, 
-                touchAction: 'pan-y'
-              }}
-              data-pressed={isPressed}
-              className={`song-card bg-card rounded-xl overflow-hidden isolate will-change-transform z-10 p-4 relative ${
-                isDndDragging ? 'border-border/40' : isEditMode ? '' : 'hover:shadow-md hover:border-border/30'
-              } ${
-                !isEditMode && setlistSong.songs?.id ? 'cursor-pointer' : ''
-              }`}
-              role={!isEditMode ? "button" : undefined}
-              tabIndex={!isEditMode ? 0 : undefined}
-              onClick={handleRowClick}
-              onKeyDown={handleKeyDown}
-              aria-label={!isEditMode ? `View notes for ${setlistSong.songs?.title}` : undefined}
+            <SwipeableContainer
+              mode="edit"
+              onCopy={handleCopy}
+              onDelete={handleDelete}
+              onTap={handleRowClick}
+              className="rounded-lg"
             >
-              {rowContent}
-            </motion.div>
+              <Card
+                className={`song-card transition-all ${
+                  isEditMode && isDndDragging ? 'border-gray-600' : ''
+                } ${
+                  !isEditMode && setlistSong.songs?.id ? 'cursor-pointer hover:shadow-md hover:border-gray-600' : ''
+                } ${
+                  isPressed ? 'bg-gray-900' : ''
+                }`}
+              >
+                <div 
+                  className="p-4"
+                  data-pressed={isPressed}
+                  onPointerDown={() => setIsPressed(true)}
+                  onPointerUp={() => setIsPressed(false)}
+                  onPointerCancel={() => setIsPressed(false)}
+                  onPointerLeave={() => setIsPressed(false)}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !isEditMode && setlistSong.songs?.id) {
+                      e.preventDefault();
+                      setIsPressed(true);
+                      handleRowClick();
+                    }
+                  }}
+                  onKeyUp={() => setIsPressed(false)}
+                  role={!isEditMode && setlistSong.songs?.id ? "button" : undefined}
+                  tabIndex={!isEditMode && setlistSong.songs?.id ? 0 : undefined}
+                  aria-label={!isEditMode && setlistSong.songs?.id ? `View notes for ${setlistSong.songs?.title}` : undefined}
+                >
+                  {rowContent}
+                </div>
+              </Card>
+            </SwipeableContainer>
           </motion.div>
         )}
       </AnimatePresence>

@@ -7,6 +7,7 @@ import { Menu, X, LogOut, User as UserIcon, Zap, Bug } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { createClient } from '@/lib/supabase/client';
 import { AnimatePresence, motion } from 'framer-motion';
+import { SPRING_CONFIG, TRANSFORM_ONLY_VARIANTS } from '@/lib/motion-config';
 import { Wordmark } from '@/components/branding/Wordmark';
 import { APP_NAME, APP_VERSION } from '@/src/version';
 
@@ -185,20 +186,22 @@ export default function TopNav() {
               key="menu-overlay"
               className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm"
               onClick={() => setIsMenuOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              variants={TRANSFORM_ONLY_VARIANTS.fade}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={SPRING_CONFIG.gentle}
             />
             <motion.div
               key="menu-panel"
               className="fixed inset-y-0 left-0 z-50 w-80 border-r border-border/50 bg-card shadow-2xl shadow-primary/20 flex flex-col"
               role="dialog"
               aria-modal="true"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: 'tween', duration: 0.22 }}
+              variants={TRANSFORM_ONLY_VARIANTS.slideInLeft}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={SPRING_CONFIG.default}
             >
               <div className="flex h-16 items-center justify-between border-b border-border/60 px-4 flex-shrink-0">
                 <h2 className="text-xl font-bold text-foreground">Menu</h2>
@@ -275,20 +278,22 @@ export default function TopNav() {
               key="switcher-overlay"
               className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm"
               onClick={() => setIsBandSwitcherOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.18 }}
+              variants={TRANSFORM_ONLY_VARIANTS.fade}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={SPRING_CONFIG.gentle}
             />
             <motion.div
               key="switcher-panel"
               className="fixed inset-y-0 right-0 z-50 w-80 border-l border-border/50 bg-card shadow-2xl shadow-primary/20"
               role="dialog"
               aria-modal="true"
-              initial={{ x: 320 }}
-              animate={{ x: 0 }}
-              exit={{ x: 320 }}
-              transition={{ type: 'tween', duration: 0.22 }}
+              variants={TRANSFORM_ONLY_VARIANTS.slideInRight}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={SPRING_CONFIG.default}
             >
               <div className="flex h-16 items-center justify-between border-b border-border/60 px-4">
                 <h2 className="text-xl font-bold text-foreground">Switch Band</h2>

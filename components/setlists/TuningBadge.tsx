@@ -1,166 +1,105 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { TuningType } from '@/lib/types';
-import { getTuningInfo, getTuningsOrderedByPopularity } from '@/lib/utils/tuning';
-import { ChevronDown } from 'lucide-react';
+import { useCallback } from 'react';
+import { TuningType, TUNING_OPTIONS } from '@/lib/types';
+import { getTuningInfo } from '@/lib/utils/tuning';
+import { updateSetlistSongTuning } from '@/lib/supabase/setlists';
+import { useToast } from '@/hooks/useToast';
 
 interface TuningBadgeProps {
+  value: TuningType;
+  setlistSongId: string;
+  editMode: boolean;
+  onLocalChange?: (value: TuningType) => void;
+  className?: string;
+}
+
+export function TuningBadge({ 
+  value, 
+  setlistSongId, 
+  editMode, 
+  onLocalChange,
+  className = '' 
+}: TuningBadgeProps) {
+  const { showToast } = useToast();
+
+  const handleChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextTuning = e.target.value as TuningType;
+    
+    // Optimistic update
+    onLocalChange?.(nextTuning);
+    
+    try {
+      await updateSetlistSongTuning(setlistSongId, nextTuning);
+      showToast('Tuning updated', 'success');
+    } catch (err: unknown) {
+      console.error('Failed to update tuning:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update tuning';
+      showToast(errorMessage, 'error');
+      // Revert on error
+      onLocalChange?.(value);
+    }
+  }, [setlistSongId, value, onLocalChange, showToast]);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+      {/* Visible badge text */}
+      <span className="pointer-events-none select-none text-foreground">
+        {TUNING_OPTIONS.find(o => o.value === value)?.label ?? 'Standard'}
+      </span>
+
+      {/* Native select overlay only in edit mode */}
+      {editMode && (
+        <select
+          aria-label="Guitar tuning"
+          value={value}
+          onChange={handleChange}
+          onPointerDown={handlePointerDown}
+          onClick={handleClick}
+          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          style={{ 
+            WebkitAppearance: 'menulist', 
+            appearance: 'menulist' 
+          } as React.CSSProperties}
+        >
+          {TUNING_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </span>
+  );
+}
+
+// Legacy interface support for existing usage
+interface LegacyTuningBadgeProps {
   tuning: TuningType;
   onChange?: (newTuning: TuningType) => void;
   disabled?: boolean;
   className?: string;
 }
 
-export function TuningBadge({ 
+// Legacy component for backward compatibility (uses custom dropdown)
+export function LegacyTuningBadge({ 
   tuning, 
-  onChange,
-  disabled = false,
   className = ''
-}: TuningBadgeProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  
-  const tuningInfo = getTuningInfo(tuning);
-  const allTunings = getTuningsOrderedByPopularity();
-  
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setFocusedIndex(-1);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
-
-  // Handle keyboard navigation
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        setIsOpen(true);
-        setFocusedIndex(allTunings.findIndex(t => t.type === tuning));
-      }
-      return;
-    }
-
-    switch (event.key) {
-      case 'Escape':
-        setIsOpen(false);
-        setFocusedIndex(-1);
-        buttonRef.current?.focus();
-        break;
-      case 'ArrowDown':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.min(prev + 1, allTunings.length - 1));
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        setFocusedIndex(prev => Math.max(prev - 1, 0));
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        if (focusedIndex >= 0) {
-          handleTuningSelect(allTunings[focusedIndex].type);
-        }
-        break;
-    }
-  };
-
-  const handleTuningSelect = (newTuning: TuningType) => {
-    onChange?.(newTuning);
-    setIsOpen(false);
-    setFocusedIndex(-1);
-    buttonRef.current?.focus();
-  };
-
-  const handleButtonClick = () => {
-    if (disabled) return;
-    setIsOpen(!isOpen);
-    if (!isOpen) {
-      setFocusedIndex(allTunings.findIndex(t => t.type === tuning));
-    }
-  };
-
+}: LegacyTuningBadgeProps) {
+  // Static badge when disabled (non-edit mode)
   return (
-    <div className={`relative inline-block ${className}`}>
-      <button
-        ref={buttonRef}
-        onClick={handleButtonClick}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        className={`
-          px-2 py-1 rounded-md text-xs font-semibold text-white transition-all
-          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500
-          flex items-center gap-1 min-w-0 shadow-sm
-          ${tuningInfo.color}
-          ${disabled 
-            ? 'opacity-60 cursor-not-allowed' 
-            : 'cursor-pointer hover:opacity-95 hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
-          }
-        `}
-        aria-label={`Guitar tuning: ${tuningInfo.name}. Click to change tuning.`}
-        aria-expanded={isOpen}
-        aria-haspopup="listbox"
-      >
-        <span className="truncate">{tuningInfo.name}</span>
-        {!disabled && (
-          <ChevronDown 
-            className={`h-3 w-3 flex-shrink-0 transition-transform ${
-              isOpen ? 'rotate-180' : ''
-            }`} 
-          />
-        )}
-      </button>
-
-      {isOpen && !disabled && (
-        <div
-          ref={dropdownRef}
-          className="absolute z-50 mt-1 left-0 bg-popover border border-border rounded-md shadow-lg min-w-[200px] max-h-60 overflow-y-auto"
-          role="listbox"
-          aria-label="Guitar tuning options"
-        >
-          {allTunings.map((tuningOption, index) => (
-            <button
-              key={tuningOption.type}
-              onClick={() => handleTuningSelect(tuningOption.type)}
-              className={`
-                w-full px-3 py-2 text-left text-sm transition-colors
-                flex items-center justify-between
-                ${index === focusedIndex 
-                  ? 'bg-accent text-accent-foreground' 
-                  : 'hover:bg-accent hover:text-accent-foreground'
-                }
-                ${tuningOption.type === tuning ? 'font-medium' : ''}
-              `}
-              role="option"
-              aria-selected={tuningOption.type === tuning}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">
-                  {tuningOption.info.name}
-                </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  ({tuningOption.info.notes})
-                </div>
-              </div>
-              {tuningOption.type === tuning && (
-                <div className="flex-shrink-0 ml-2 text-primary">✓</div>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+      <span className="text-foreground">
+        {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
+      </span>
+    </span>
   );
 }

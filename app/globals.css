@@ -17,18 +17,31 @@
   backface-visibility: hidden;
 }
 
-/* Song card pressed state - lighter overlay for contrast against black background */
-.song-card[data-pressed="true"] {
-  position: relative;
+/* Hide scrollbar for horizontal scrolling */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
-.song-card[data-pressed="true"]::before {
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Song card pressed state - lighter overlay for contrast against black background */
+.song-card::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0);  /* off by default */
   pointer-events: none;
-  z-index: 1;
+  transition: opacity 120ms ease-out;
+  opacity: 0;
+}
+
+/* Lighten effect: subtle white wash that works in light & dark themes */
+.song-card[data-pressed="true"]::after {
+  background: rgba(255, 255, 255, 0.08); /* tune 0.06–0.12 as needed */
+  opacity: 1;
 }
 
 @property --angle {

@@ -20,10 +20,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Verify this setlist belongs to the band
     await requireResourceInBand('setlists', id, bandId);
 
-    const { data: setlist, error } = await supabase
+    // Check if setlist_type column exists
+    const { error: columnCheckError } = await supabase
       .from('setlists')
-      .select(
-        `
+      .select('setlist_type')
+      .limit(1);
+      
+    let selectFields = `
         id,
         name,
         total_duration,
@@ -45,8 +48,39 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             duration_seconds
           )
         )
-      `,
-      )
+      `;
+      
+    if (!columnCheckError) {
+      // Column exists, include setlist_type in select
+      selectFields = `
+        id,
+        name,
+        setlist_type,
+        total_duration,
+        created_at,
+        updated_at,
+        setlist_songs (
+          id,
+          position,
+          bpm,
+          tuning,
+          duration_seconds,
+          songs (
+            id,
+            title,
+            artist,
+            is_live,
+            bpm,
+            tuning,
+            duration_seconds
+          )
+        )
+      `;
+    }
+
+    const { data: setlist, error } = await supabase
+      .from('setlists')
+      .select(selectFields)
       .eq('id', id)
       .eq('band_id', bandId)
       .single();
@@ -61,11 +95,11 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     // Sort songs by position and add tuning information
-    if (setlist.setlist_songs) {
-      setlist.setlist_songs.sort((a, b) => a.position - b.position);
+    if (setlist && (setlist as any).setlist_songs) {
+      (setlist as any).setlist_songs.sort((a: any, b: any) => a.position - b.position);
 
       // Add tuning names and notes to each song
-      setlist.setlist_songs = setlist.setlist_songs.map((song) => {
+      (setlist as any).setlist_songs = (setlist as any).setlist_songs.map((song: any) => {
         const tuningInfo = getTuningInfo(song.tuning);
         const enhancedSong = {
           ...song,
@@ -84,6 +118,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     console.error('Error in setlist detail API:', error);
     return NextResponse.json({ error: errorMessage }, { status: isForbidden ? 403 : 500 });
   }
+}
+
+function isAllSongsVariant(name: string): boolean {
+  const normalized = name.toLowerCase().replace(/[^a-z]/g, '');
+  const variants = ['allsongs', 'all_songs', 'allsong'];
+  return variants.includes(normalized);
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
@@ -105,6 +145,30 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Verify user is a member and resource belongs to band
     await requireBandMembership(band_id);
     await requireResourceInBand('setlists', id, band_id);
+
+    // Check if this is the "All Songs" setlist - use both setlist_type and name for backward compatibility
+    const { data: existingSetlist } = await supabase
+      .from('setlists')
+      .select('setlist_type, name')
+      .eq('id', id)
+      .eq('band_id', band_id)
+      .single();
+
+    // Check if this is "All Songs" setlist (by setlist_type or by name for backward compatibility)
+    const isAllSongs = existingSetlist?.setlist_type === 'all_songs' || existingSetlist?.name === 'All Songs';
+    
+    if (isAllSongs) {
+      return NextResponse.json({ 
+        error: 'The "All Songs" setlist cannot be renamed.' 
+      }, { status: 400 });
+    }
+
+    // Prevent renaming to "All Songs" variants
+    if (isAllSongsVariant(name)) {
+      return NextResponse.json({ 
+        error: 'The name "All Songs" is reserved. Please choose a different name for your setlist.' 
+      }, { status: 400 });
+    }
 
     const { data: setlist, error } = await supabase
       .from('setlists')
@@ -142,6 +206,23 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     // Verify user is a member and resource belongs to band
     await requireBandMembership(bandId);
     await requireResourceInBand('setlists', id, bandId);
+
+    // Check if this is the "All Songs" setlist - use both setlist_type and name for backward compatibility
+    const { data: setlistToDelete } = await supabase
+      .from('setlists')
+      .select('setlist_type, name')
+      .eq('id', id)
+      .eq('band_id', bandId)
+      .single();
+
+    // Check if this is "All Songs" setlist (by setlist_type or by name for backward compatibility)
+    const isAllSongs = setlistToDelete?.setlist_type === 'all_songs' || setlistToDelete?.name === 'All Songs';
+    
+    if (isAllSongs) {
+      return NextResponse.json({ 
+        error: 'The "All Songs" setlist cannot be deleted.' 
+      }, { status: 400 });
+    }
 
     const { error } = await supabase.from('setlists').delete().eq('id', id).eq('band_id', bandId);
 

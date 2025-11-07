@@ -95,6 +95,7 @@ export interface Setlist {
   id: string;
   band_id: string;
   name: string;
+  setlist_type?: 'regular' | 'all_songs';
   songs: Song[];
   created_at: string;
   updated_at: string;
@@ -111,6 +112,26 @@ export interface Song {
 
 // Tuning types for guitar tunings (ordered by popularity)
 export type TuningType = 'standard' | 'half_step' | 'drop_d' | 'full_step' | 'drop_c' | 'drop_b' | 'dadgad' | 'open_g' | 'open_d' | 'open_e';
+
+// Tuning constants for native select
+export const STANDARD = 'standard' as const;
+export const DROP_D = 'drop_d' as const;
+export const HALF_STEP = 'half_step' as const;
+export const FULL_STEP = 'full_step' as const;
+
+// Tuning options for dropdowns
+export const TUNING_OPTIONS = [
+  { value: STANDARD, label: 'Standard' },
+  { value: DROP_D, label: 'Drop D' },
+  { value: HALF_STEP, label: 'Half-Step' },
+  { value: FULL_STEP, label: 'Full-Step' },
+  { value: 'drop_c' as const, label: 'Drop C' },
+  { value: 'drop_b' as const, label: 'Drop B' },
+  { value: 'dadgad' as const, label: 'DADGAD' },
+  { value: 'open_g' as const, label: 'Open G' },
+  { value: 'open_d' as const, label: 'Open D' },
+  { value: 'open_e' as const, label: 'Open E' },
+] as const;
 
 // Music song interface for search results
 export interface MusicSong {

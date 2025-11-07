@@ -149,6 +149,111 @@ export interface DeleteResult {
 }
 
 /**
+ * Delete a setlist with comprehensive error handling and RLS validation
+ */
+export async function deleteSetlist(setlistId: string): Promise<DeleteResult> {
+  const supabase = createClient();
+
+  try {
+    // Pre-check: Verify setlist exists and user has access
+    const { data: existingSetlist, error: checkError } = await supabase
+      .from('setlists')
+      .select('id, name, band_id')
+      .eq('id', setlistId)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Pre-check error:', checkError);
+      return {
+        success: false,
+        error: {
+          message: `Pre-check failed: ${checkError.message}`,
+          code: checkError.code,
+          status: 500,
+          isRLSIssue: checkError.code === 'PGRST116' || checkError.code === '42501'
+        }
+      };
+    }
+
+    if (!existingSetlist) {
+      return {
+        success: false,
+        error: {
+          message: 'Setlist not found or you do not have permission to delete it',
+          code: 'NOT_FOUND',
+          status: 404,
+          isRLSIssue: true
+        }
+      };
+    }
+
+    // Delete the setlist - CASCADE will handle setlist_songs automatically
+    const { error: deleteError, status } = await supabase
+      .from('setlists')
+      .delete()
+      .eq('id', setlistId);
+
+    if (deleteError) {
+      console.error('Delete setlist error:', deleteError);
+      const statusCode = status || 500;
+      const isRLSIssue = statusCode === 401 || statusCode === 403 || statusCode === 404 ||
+                         deleteError.code === 'PGRST116' || deleteError.code === '42501';
+      
+      // Provide specific error messages based on common failure cases
+      let message = deleteError.message || 'Failed to delete setlist';
+      if (isRLSIssue) {
+        message = "You don't have permission to delete this setlist";
+      } else if (deleteError.code === '23503') {
+        message = 'Cannot delete setlist - it may be referenced by other records';
+      }
+      
+      return {
+        success: false,
+        error: {
+          message,
+          code: deleteError.code || 'DELETE_FAILED',
+          status: statusCode,
+          isRLSIssue
+        }
+      };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Exception in deleteSetlist:', error);
+    return {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        code: 'EXCEPTION',
+        status: 500
+      }
+    };
+  }
+}
+
+/**
+ * Update setlist song tuning with error handling
+ */
+export async function updateSetlistSongTuning(setlistSongId: string, tuning: string): Promise<void> {
+  if (!setlistSongId) {
+    throw new Error('MISSING_ID');
+  }
+
+  const supabase = createClient();
+
+  const { error, status } = await supabase
+    .from('setlist_songs')
+    .update({ tuning })
+    .eq('id', setlistSongId);
+
+  if (error) {
+    console.error('Error updating setlist song tuning:', error);
+    throw new Error(`UPDATE_TUNING_FAILED:${status}:${error.code}:${error.message}`);
+  }
+}
+
+/**
  * Delete a song from a setlist with comprehensive error handling
  */
 export async function deleteSetlistSong(

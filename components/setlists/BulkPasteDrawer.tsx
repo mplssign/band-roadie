@@ -11,7 +11,7 @@ import { normalizeTuning, getTuningsOrderedByPopularity, getTuningDisplayString 
 interface BulkPasteDrawerProps {
   open: boolean;
   onClose: () => void;
-  onImportSongs: (songs: MusicSong[]) => void;
+  onImportSongs: (songs: MusicSong[]) => Promise<void>;
   existingSongs?: MusicSong[];
 }
 

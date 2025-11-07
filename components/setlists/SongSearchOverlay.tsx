@@ -9,7 +9,7 @@ import { Music, Clock, X } from 'lucide-react';
 interface SongSearchOverlayProps {
   open: boolean;
   onClose: () => void;
-  onSelectSong: (song: MusicSong) => void;
+  onSelectSong: (song: MusicSong) => Promise<void>;
 }
 
 function formatDuration(seconds?: number): string {

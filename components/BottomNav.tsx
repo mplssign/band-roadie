@@ -17,7 +17,7 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 pb-safe z-[5]">
+    <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900/70 backdrop-blur-md border-t border-zinc-800/50 pb-safe z-[5]">
       <div className="flex justify-around items-center h-20 px-2">
         <Link
           href="/dashboard"

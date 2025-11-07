@@ -146,9 +146,9 @@ export default function EditBandPage() {
             const invited = Array.isArray(data?.invites)
               ? data.invites
                 .map((inv: { email?: string | null }) => inv?.email)
-                .filter((email): email is string => Boolean(email))
+                .filter((email: string | null | undefined): email is string => Boolean(email))
               : [];
-            const normalizedInvites = invited.map((email) => email.toLowerCase());
+            const normalizedInvites = invited.map((email: string) => email.toLowerCase());
             const sortedInvites = [...normalizedInvites].sort();
             setInviteEmails(sortedInvites);
             setInitialInviteEmails([...sortedInvites]);

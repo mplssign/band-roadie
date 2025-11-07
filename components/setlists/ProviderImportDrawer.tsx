@@ -14,7 +14,7 @@ interface ProviderImportDrawerProps {
   open: boolean;
   provider: 'apple' | 'spotify' | 'amazon' | null;
   onClose: () => void;
-  onImportSongs: (songs: MusicSong[]) => void;
+  onImportSongs: (songs: MusicSong[]) => Promise<void>;
 }
 
 type ImportStep = 'input' | 'parsing' | 'preview' | 'importing';

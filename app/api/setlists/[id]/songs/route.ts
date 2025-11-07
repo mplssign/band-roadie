@@ -14,6 +14,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 });
     }
 
+    // Get setlist info to check if this is "All Songs" and get band_id
+    const { data: setlistInfo } = await supabase
+      .from('setlists')
+      .select('band_id, setlist_type, name')
+      .eq('id', setlistId)
+      .single();
+
+    if (!setlistInfo) {
+      return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
+    }
+
     // Get the next position for the song
     const { data: lastSong } = await supabase
       .from('setlist_songs')
@@ -26,7 +37,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const nextPosition = (lastSong?.position || 0) + 1;
 
     // Adding song to setlist
-
     const { data: setlistSong, error } = await supabase
       .from('setlist_songs')
       .insert({
@@ -59,7 +69,6 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (error) {
       console.error('Error adding song to setlist:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       
       // Handle duplicate song constraint
       if (error.code === '23505' && error.message.includes('setlist_songs_setlist_id_song_id_key')) {
@@ -75,6 +84,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       }, { status: 500 });
     }
 
+    // If this isn't the "All Songs" setlist, auto-add to "All Songs"
+    // Use both setlist_type and name for backward compatibility
+    const isAllSongs = setlistInfo.setlist_type === 'all_songs' || setlistInfo.name === 'All Songs';
+    if (!isAllSongs) {
+      await autoAddToAllSongs(setlistInfo.band_id, song_id, {
+        bpm,
+        tuning: tuning || 'standard',
+        duration_seconds
+      });
+    }
+
     // Add tuning information to the response
     const tuningInfo = getTuningInfo(setlistSong.tuning);
     const enhancedSetlistSong = {
@@ -87,6 +107,91 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   } catch (error) {
     console.error('Error in add song to setlist API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+async function autoAddToAllSongs(bandId: string, songId: string, songData: {
+  bpm?: number;
+  tuning: string;
+  duration_seconds?: number;
+}) {
+  const supabase = await createClient();
+  
+  try {
+    // Get or create "All Songs" setlist - use backward compatible approach
+    let { data: allSongsSetlist } = await supabase
+      .from('setlists')
+      .select('id')
+      .eq('band_id', bandId)
+      .eq('name', 'All Songs')  // Use name for backward compatibility
+      .single();
+    
+    if (!allSongsSetlist) {
+      // Create "All Songs" setlist if it doesn't exist
+      // Check if setlist_type column exists by trying to include it
+      let insertData: any = {
+        band_id: bandId,
+        name: 'All Songs',
+        total_duration: 0,
+      };
+      
+      // Try to include setlist_type if the column exists
+      const { error: columnCheckError } = await supabase
+        .from('setlists')
+        .select('setlist_type')
+        .limit(1);
+        
+      if (!columnCheckError) {
+        insertData.setlist_type = 'all_songs';
+      }
+      
+      const { data: newSetlist } = await supabase
+        .from('setlists')
+        .insert(insertData)
+        .select()
+        .single();
+      
+      allSongsSetlist = newSetlist;
+    }
+    
+    if (!allSongsSetlist) return; // Failed to create/find All Songs
+    
+    // Check if song already exists in "All Songs"
+    const { data: existingSong } = await supabase
+      .from('setlist_songs')
+      .select('id')
+      .eq('setlist_id', allSongsSetlist.id)
+      .eq('song_id', songId)
+      .single();
+    
+    if (existingSong) return; // Song already in "All Songs"
+    
+    // Get next position in "All Songs"
+    const { data: lastSong } = await supabase
+      .from('setlist_songs')
+      .select('position')
+      .eq('setlist_id', allSongsSetlist.id)
+      .order('position', { ascending: false })
+      .limit(1)
+      .single();
+    
+    const nextPosition = (lastSong?.position || 0) + 1;
+    
+    // Add song to "All Songs"
+    await supabase
+      .from('setlist_songs')
+      .insert({
+        setlist_id: allSongsSetlist.id,
+        song_id: songId,
+        position: nextPosition,
+        bpm: songData.bpm,
+        tuning: songData.tuning,
+        duration_seconds: songData.duration_seconds,
+      });
+      
+  } catch (error) {
+    console.error('Error auto-adding to All Songs:', error);
+    // Don't throw - this shouldn't fail the main operation
   }
 }
 

@@ -9,26 +9,29 @@ import { useBands } from '@/contexts/BandsContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { Dialog } from '@/components/ui/Dialog';
+
 import { SetlistSongRow } from '@/components/setlists/SetlistSongRow';
-import { deleteSetlistSong } from '@/lib/supabase/setlists';
+import { AllSongsEditor } from '@/components/setlists/AllSongsEditor';
+import { SetlistImportRow } from '@/components/setlists/SetlistImportRow';
+import { ConfirmDeleteSetlistDialog } from '@/components/setlists/ConfirmDeleteSetlistDialog';
+import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
-import { ArrowLeft, Search, Save, Plus, Edit, X, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2 } from 'lucide-react';
 import { capitalizeWords } from '@/lib/utils/formatters';
-import { AppleMusicIcon, SpotifyIcon, AmazonMusicIcon } from '@/components/icons/ProviderIcons';
+
+// Import types from main types file
+import type { TuningType } from '@/lib/types';
 
 // Dynamic imports for performance optimization
 const SongSearchOverlay = lazy(() => import('@/components/setlists/OptimizedSongSearchOverlay'));
 import { ProviderImportDrawer } from '@/components/setlists/ProviderImportDrawer';
 import { BulkPasteDrawer } from '@/components/setlists/BulkPasteDrawer';
 
-// Define types based on actual API usage
-type TuningType = 'standard' | 'drop_d' | 'half_step' | 'full_step';
-
 interface Setlist {
   id: string;
   band_id: string;
   name: string;
+  setlist_type?: 'regular' | 'all_songs';
   total_duration?: number; // Based on API response structure
   created_at: string;
   updated_at: string;
@@ -245,24 +248,29 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     return JSON.stringify(songs) !== JSON.stringify(originalSongs);
   };
 
-  const handleDeleteSetlist = async () => {
+  const confirmDeleteSetlist = async (setlistId: string) => {
     if (!setlist?.id || !currentBand?.id) return;
-    setShowDeleteDialog(false);
 
-    try {
-      const response = await fetch(`/api/setlists/${setlist.id}?band_id=${currentBand.id}`, {
-        method: 'DELETE',
-      });
+    const result = await deleteSetlist(setlistId);
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to delete setlist');
-      }
-
+    if (result.success) {
+      setShowDeleteDialog(false);
+      showToast('Setlist deleted', 'success');
       router.push('/setlists');
-    } catch (err) {
-      console.error('Error deleting setlist:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete setlist');
+    } else {
+      const error = result.error!;
+      console.error('Error deleting setlist:', error);
+      
+      // Show appropriate error message
+      let errorMessage = error.message;
+      if (error.isRLSIssue) {
+        errorMessage = "You don't have permission to delete this setlist";
+      } else if (error.status >= 500) {
+        errorMessage = 'Server error occurred. Please try again.';
+      }
+      
+      showToast(errorMessage, 'error');
+      // Keep dialog open for retry
     }
   };
 
@@ -487,6 +495,54 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   };
 
+  const handleBulkRemoveSongs = async (songIds: string[]): Promise<void> => {
+    const setlistId = setlist?.id || params.id;
+    const songsToRemove = songs.filter(song => songIds.includes(song.id));
+    
+    if (songsToRemove.length === 0) {
+      showToast('No songs to remove', 'error');
+      return;
+    }
+
+    // Optimistic UI: Remove immediately
+    setSongs(prev => prev.filter(song => !songIds.includes(song.id)));
+
+    // For new setlists, no server call needed
+    if (setlistId === 'new') {
+      showToast(`Removed ${songsToRemove.length} song${songsToRemove.length === 1 ? '' : 's'} from setlist`, 'success');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/setlists/${setlistId}/songs/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ songIds }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete songs');
+      }
+
+      showToast(`Removed ${songsToRemove.length} song${songsToRemove.length === 1 ? '' : 's'} from setlist`, 'success');
+    } catch (err) {
+      console.error('Error bulk removing songs:', err);
+      
+      // Restore the songs on error
+      setSongs(prev => {
+        const restored = [...prev, ...songsToRemove].sort((a, b) => a.position - b.position);
+        return restored;
+      });
+
+      showToast(
+        `Failed to remove songs: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        'error'
+      );
+      throw err; // Re-throw so caller can handle
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -541,7 +597,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         {/* Page Title */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex-1 min-w-0">
-            {isEditMode ? (
+            {isEditMode && setlist?.setlist_type !== 'all_songs' && setlist?.name !== 'All Songs' ? (
               <Input
                 value={setlistName}
                 onChange={(e) => setSetlistName(capitalizeWords(e.target.value))}
@@ -549,7 +605,14 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 placeholder="Setlist name"
               />
             ) : (
-              <h1 className="text-2xl font-bold">{setlistName}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{setlistName}</h1>
+                {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') && (
+                  <span className="px-2 py-1 text-xs font-medium bg-rose-100 text-rose-700 rounded-full">
+                    All Songs
+                  </span>
+                )}
+              </div>
             )}
             
             {/* Totals Display - directly under title */}
@@ -564,15 +627,34 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           </div>
 
           {setlist && !isEditMode && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditMode(true)}
-              className="gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              Edit
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditMode(true)}
+                className="gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                Edit
+              </Button>
+              {setlist.setlist_type !== 'all_songs' && setlist.name !== 'All Songs' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="gap-2 border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+            </div>
+          )}
+
+          {setlist && !isEditMode && (setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs') && (
+            <div className="text-sm text-muted-foreground">
+              Auto-managed catalog
+            </div>
           )}
 
           {isEditMode && setlist && (
@@ -599,66 +681,38 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           </div>
         )}
 
-        {/* Song Action Buttons - only in edit mode */}
+        {/* Song Import Actions - only in edit mode */}
         {isEditMode && (
-          <div className="mb-6 space-y-4">
-            {/* 1. Song Actions Row - Song Lookup and Bulk Paste */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                onClick={() => setSearchOpen(true)}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-                size="lg"
-                aria-label="Search and add songs to setlist"
-              >
-                <Search className="h-4 w-4" />
-                Song Lookup
-              </Button>
-              
-              <Button
-                onClick={() => setBulkPasteOpen(true)}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-                size="lg"
-                aria-label="Bulk paste songs from spreadsheet"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Bulk Paste
-              </Button>
-            </div>
+          <div className="mb-6">
+            {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') && (
+              <div className="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-rose-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-rose-900 mb-1">
+                      Master Catalog Editor
+                    </h4>
+                    <p className="text-sm text-rose-800 mb-2">
+                      This is your complete song catalog. Songs added here are available to all your setlists. 
+                      Removing songs from here won't affect your other setlists.
+                    </p>
+                    <p className="text-xs text-rose-700">
+                      💡 Add songs to any other setlist and they'll automatically appear here too!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {/* 2. Provider Import Row - Three Equal-Width Buttons */}
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                onClick={() => setProviderImportOpen('spotify')}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-                aria-label="Import from Spotify"
-              >
-                <SpotifyIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Spotify</span>
-              </Button>
-              
-              <Button
-                onClick={() => setProviderImportOpen('apple')}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-                aria-label="Import from Apple Music"
-              >
-                <AppleMusicIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Apple Music</span>
-              </Button>
-              
-              <Button
-                onClick={() => setProviderImportOpen('amazon')}
-                variant="outline"
-                className="gap-2 border-rose-600 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-500 dark:text-rose-400 dark:hover:bg-rose-950 dark:hover:text-rose-300 focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-                aria-label="Import from Amazon Music"
-              >
-                <AmazonMusicIcon className="h-5 w-5" />
-                <span className="text-sm font-medium">Amazon</span>
-              </Button>
-            </div>
+            <SetlistImportRow
+              onSongLookup={() => setSearchOpen(true)}
+              onBulkPaste={() => setBulkPasteOpen(true)}
+              onSpotify={() => setProviderImportOpen('spotify')}
+              onAppleMusic={() => setProviderImportOpen('apple')}
+              onAmazonMusic={() => setProviderImportOpen('amazon')}
+            />
           </div>
         )}
 
@@ -666,53 +720,80 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         {songs.length === 0 ? (
           <div className="text-center py-12">
             <Plus className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No songs in this setlist</h3>
-            <p className="text-muted-foreground mb-4">
-              Search and add songs to build your setlist
-            </p>
+            {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') ? (
+              <>
+                <h3 className="text-lg font-medium mb-2">Your band catalog is empty</h3>
+                <p className="text-muted-foreground mb-4">
+                  This is your master catalog. Songs added to any other setlist will automatically appear here.
+                  You can also add songs directly to build your complete repertoire.
+                </p>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-medium mb-2">No songs in this setlist</h3>
+                <p className="text-muted-foreground mb-4">
+                  Search and add songs to build your setlist
+                </p>
+              </>
+            )}
             {isEditMode && (
               <Button onClick={() => setSearchOpen(true)} className="gap-2">
                 <Search className="h-4 w-4" />
-                Add Your First Song
+                {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') 
+                  ? 'Add Your First Song to Catalog' 
+                  : 'Add Your First Song'
+                }
               </Button>
             )}
           </div>
         ) : (
-          isEditMode ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-              modifiers={[restrictToVerticalAxis]}
-            >
-              <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {songs.map((song) => (
-                    <SetlistSongRow
-                      key={song.id}
-                      setlistSong={song}
-                      setlistId={params.id}
-                      onUpdate={handleUpdateSong}
-                      onRemove={handleRemoveSong}
-                      isEditMode={isEditMode}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+          // Use AllSongsEditor for "All Songs" setlists, regular editor for others
+          (setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') ? (
+            <AllSongsEditor
+              songs={songs}
+              setlistId={params.id}
+              onUpdate={handleUpdateSong}
+              onRemove={handleRemoveSong}
+              onBulkRemove={handleBulkRemoveSongs}
+              isEditMode={isEditMode}
+            />
           ) : (
-            <div className="space-y-0">
-              {songs.map((song) => (
-                <SetlistSongRow
-                  key={song.id}
-                  setlistSong={song}
-                  setlistId={params.id}
-                  onUpdate={handleUpdateSong}
-                  onRemove={handleRemoveSong}
-                  isEditMode={isEditMode}
-                />
-              ))}
-            </div>
+            isEditMode ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+                modifiers={[restrictToVerticalAxis]}
+              >
+                <SortableContext items={songs.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {songs.map((song) => (
+                      <SetlistSongRow
+                        key={song.id}
+                        setlistSong={song}
+                        setlistId={params.id}
+                        onUpdate={handleUpdateSong}
+                        onRemove={handleRemoveSong}
+                        isEditMode={isEditMode}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <div className="space-y-3">
+                {songs.map((song) => (
+                  <SetlistSongRow
+                    key={song.id}
+                    setlistSong={song}
+                    setlistId={params.id}
+                    onUpdate={handleUpdateSong}
+                    onRemove={handleRemoveSong}
+                    isEditMode={isEditMode}
+                  />
+                ))}
+              </div>
+            )
           )
         )}
 
@@ -733,7 +814,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
 
-            {setlist && (
+            {setlist && setlist.setlist_type !== 'all_songs' && setlist.name !== 'All Songs' && (
               <Button
                 variant="ghost"
                 onClick={() => setShowDeleteDialog(true)}
@@ -771,29 +852,16 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        title="Delete Setlist"
-      >
-        <div className="space-y-4">
-          <p>Are you sure you want to delete this setlist? This action cannot be undone.</p>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="ghost"
-              onClick={() => setShowDeleteDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteSetlist}
-            >
-              Delete
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      {setlist && (
+        <ConfirmDeleteSetlistDialog
+          open={showDeleteDialog}
+          setOpen={setShowDeleteDialog}
+          setlistId={setlist.id}
+          setlistName={setlist.name}
+          songCount={totals.songCount}
+          onConfirm={confirmDeleteSetlist}
+        />
+      )}
     </main>
   );
 }

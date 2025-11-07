@@ -54,7 +54,7 @@ export function useBandMembers(
       const fetchedMembers = Array.isArray(payload.members) ? payload.members : [];
 
       setMembers(
-        fetchedMembers.map((member) => ({
+        fetchedMembers.map((member: any) => ({
           id: member.id as string,
           user_id: member.user_id as string,
           first_name: member?.user?.first_name ?? null,

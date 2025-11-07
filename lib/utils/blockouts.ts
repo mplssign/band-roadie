@@ -126,7 +126,7 @@ export function groupBlockoutsIntoRanges(rows: BlockoutRow[]): BlockoutRange[] {
         };
       } else {
         // Check if this date continues the current range
-        const lastDate = currentRange.dates[currentRange.dates.length - 1];
+        const lastDate: string = currentRange.dates[currentRange.dates.length - 1];
 
         // Check if consecutive or overlapping
         if (isNextDay(lastDate, row.date) || row.date === lastDate) {

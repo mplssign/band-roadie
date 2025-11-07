@@ -1,19 +1,43 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Wordmark } from '@/components/branding/Wordmark';
+import { useKeyboardAdjustment } from '@/hooks/useVirtualKeyboard';
 
 const EMAIL_DOMAINS = ['gmail.com', 'yahoo.com', 'icloud.com', 'outlook.com'];
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [isEmailFocused, setIsEmailFocused] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
+  // Get keyboard adjustment styles
+  const keyboardAdjustment = useKeyboardAdjustment(isEmailFocused, 40);
+
+  // Handle email input focus to ensure form stays visible
+  const handleEmailFocus = () => {
+    setIsEmailFocused(true);
+    
+    // Delay scroll to allow keyboard animation to start
+    setTimeout(() => {
+      if (emailInputRef.current) {
+        emailInputRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+      }
+    }, 300);
+  };
+
+  const handleEmailBlur = () => {
+    setIsEmailFocused(false);
+  };
 
   // Check for error parameters from auth callback
   useEffect(() => {
@@ -113,8 +137,8 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-dvh flex flex-col justify-start bg-black px-4 pt-[25vh]">
+      <div className="w-full max-w-md mx-auto" style={keyboardAdjustment}>
         <div className="mb-6 text-center">
           <Wordmark size="xl" className="text-foreground inline-block" />
         </div>
@@ -124,12 +148,15 @@ function LoginForm() {
             Email address
           </label>
           <input
+            ref={emailInputRef}
             id="email"
             type="email"
             inputMode="email"
             autoComplete="email"
             value={email}
             onChange={(e) => handleEmailChange(e.target.value)}
+            onFocus={handleEmailFocus}
+            onBlur={handleEmailBlur}
             placeholder="you@example.com"
             className="w-full rounded-md bg-zinc-800 text-white placeholder-zinc-500 ring-1 ring-zinc-700 focus:outline-none focus:ring-2 focus:ring-rose-600 px-3 py-2 mb-3"
             required
@@ -190,8 +217,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh flex items-center justify-center bg-black">
-        <div className="text-zinc-400">Loading...</div>
+      <div className="min-h-dvh flex flex-col justify-start bg-black pt-[25vh]">
+        <div className="text-zinc-400 text-center">Loading...</div>
       </div>
     }>
       <LoginForm />

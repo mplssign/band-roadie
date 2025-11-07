@@ -1,61 +1,73 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
+import { useToast } from '@/hooks/useToast';
 import { Setlist } from '@/lib/types';
+import { deleteSetlist } from '@/lib/supabase/setlists';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { SwipeToAction } from '@/components/setlists/SwipeToAction';
 import { Plus, Music, Clock, ListMusic } from 'lucide-react';
+import { formatSecondsHuman } from '@/lib/time/duration';
 
-function formatDuration(seconds: number): string {
-  if (seconds === 0) return 'TBD';
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m`;
-  }
-  return `${minutes}m`;
-}
+// Dynamic imports for performance
+const SwipeableContainer = lazy(() => import('@/components/setlists/SwipeableContainer').then(m => ({ default: m.SwipeableContainer })));
+const ConfirmDeleteSetlistDialog = lazy(() => import('@/components/setlists/ConfirmDeleteSetlistDialog').then(m => ({ default: m.ConfirmDeleteSetlistDialog })));
 
 function SetlistCard({ 
   setlist, 
   onClick, 
-  onCopy 
+  onCopy,
+  onDelete 
 }: { 
-  setlist: Setlist & { song_count?: number }; 
+  setlist: Setlist & { song_count?: number; setlist_type?: string }; 
   onClick: () => void;
   onCopy: () => void;
+  onDelete: () => void;
 }) {
+  const [isPressed, setIsPressed] = useState(false);
   const songCount = setlist.song_count ?? setlist.songs?.length ?? 0;
+  const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
   
   return (
-    <SwipeToAction
-      onSwipeAction={onCopy}
-      actionLabel="Copy"
-      className="rounded-lg"
-    >
+    <Suspense fallback={<div className="rounded-lg bg-card p-4 animate-pulse h-20" />}>
+      <SwipeableContainer
+        mode={isAllSongs ? "view" : "edit"}
+        onCopy={isAllSongs ? undefined : onCopy}
+        onDelete={isAllSongs ? undefined : onDelete}
+        onTap={onClick}
+        className="rounded-lg"
+      >
       <Card
-        className="p-4 cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
-        onClick={onClick}
+        className={`p-4 cursor-pointer hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
+          isPressed ? 'bg-gray-900' : ''
+        } ${
+          isAllSongs ? 'border-rose-500 border-2' : ''
+        }`}
+        onPointerDown={() => setIsPressed(true)}
+        onPointerUp={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)}
+        onPointerLeave={() => setIsPressed(false)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
+            setIsPressed(true);
             onClick();
           }
         }}
+        onKeyUp={() => setIsPressed(false)}
         tabIndex={0}
         role="button"
         aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
       >
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold truncate mb-2">{setlist.name}</h3>
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-semibold truncate">{setlist.name}</h3>
+            </div>
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Music className="h-4 w-4" />
@@ -63,39 +75,86 @@ function SetlistCard({
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="h-4 w-4" />
-                <span>{formatDuration((setlist as { total_duration?: number }).total_duration || 0)}</span>
+                <span>{formatSecondsHuman((setlist as { calculated_duration?: number }).calculated_duration || 0)}</span>
               </div>
             </div>
           </div>
           <ListMusic className="h-5 w-5 text-muted-foreground" />
         </div>
       </Card>
-    </SwipeToAction>
+    </SwipeableContainer>
+    </Suspense>
   );
 }
 
 export default function SetlistsPage() {
   const router = useRouter();
   const { currentBand, loading: bandsLoading } = useBands();
+  const { showToast } = useToast();
   const [setlists, setSetlists] = useState<Setlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [setlistToDelete, setSetlistToDelete] = useState<Setlist & { song_count?: number } | null>(null);
 
   const loadSetlists = useCallback(async () => {
-    if (!currentBand?.id) return;
+    if (!currentBand?.id) {
+      console.log('[Setlists] No current band ID, skipping load');
+      return;
+    }
 
+    console.log('[Setlists] Loading setlists for band:', currentBand.id);
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/setlists?band_id=${currentBand.id}`);
+      // Use the working endpoint but also fetch duration data
+      const url = `/api/setlists?band_id=${currentBand.id}`;
+      console.log('[Setlists] Fetching from:', url);
+      
+      const response = await fetch(url, {
+        credentials: 'include',
+      });
+      
+      console.log('[Setlists] Response status:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.log('[Setlists] Response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load setlists');
       }
 
-      setSetlists(data.setlists || []);
+      // Enhance setlists with calculated durations
+      const setlistsWithDurations = await Promise.all(
+        (data.setlists || []).map(async (setlist: any) => {
+          try {
+            // Fetch detailed setlist data for duration calculation
+            const detailResponse = await fetch(`/api/setlists/${setlist.id}?band_id=${currentBand.id}`);
+            if (detailResponse.ok) {
+              const detailData = await detailResponse.json();
+              const songs = detailData.setlist?.songs || [];
+              const calculatedDuration = songs.reduce((total: number, song: any) => {
+                const songDuration = song.duration_seconds || song.songs?.duration_seconds || 0;
+                return total + songDuration;
+              }, 0);
+              return {
+                ...setlist,
+                calculated_duration: calculatedDuration
+              };
+            }
+          } catch (err) {
+            console.warn('Failed to calculate duration for setlist:', setlist.id);
+          }
+          return {
+            ...setlist,
+            calculated_duration: 0
+          };
+        })
+      );
+
+      console.log('[Setlists] Setting setlists:', setlistsWithDurations.length, 'items');
+      setSetlists(setlistsWithDurations);
     } catch (err) {
       console.error('Error loading setlists:', err);
       setError(err instanceof Error ? err.message : 'Failed to load setlists');
@@ -150,8 +209,15 @@ export default function SetlistsPage() {
     router.push(`/setlists/${setlist.id}`);
   };
 
-  const handleCopySetlist = async (setlist: Setlist) => {
+  const handleCopySetlist = async (setlist: Setlist & { song_count?: number; setlist_type?: string }) => {
     if (!currentBand?.id) return;
+
+    // Prevent copying "All Songs"
+    const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
+    if (isAllSongs) {
+      setError('The "All Songs" setlist cannot be copied.');
+      return;
+    }
 
     try {
       const response = await fetch(`/api/setlists/${setlist.id}/copy`, {
@@ -170,6 +236,46 @@ export default function SetlistsPage() {
     } catch (err) {
       console.error('Error copying setlist:', err);
       setError(err instanceof Error ? err.message : 'Failed to copy setlist');
+    }
+  };
+
+  const handleDeleteSetlist = (setlist: Setlist & { song_count?: number; setlist_type?: string }) => {
+    // Prevent deleting "All Songs"
+    const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
+    if (isAllSongs) {
+      setError('The "All Songs" setlist cannot be deleted.');
+      return;
+    }
+    
+    setSetlistToDelete(setlist);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteSetlist = async (setlistId: string) => {
+    if (!currentBand?.id || !setlistToDelete) return;
+
+    const result = await deleteSetlist(setlistId);
+
+    if (result.success) {
+      // Optimistically remove from UI
+      setSetlists(prev => prev.filter(s => s.id !== setlistId));
+      setDeleteDialogOpen(false);
+      setSetlistToDelete(null);
+      showToast('Setlist deleted', 'success');
+    } else {
+      const error = result.error!;
+      console.error('Error deleting setlist:', error);
+      
+      // Show appropriate error message
+      let errorMessage = error.message;
+      if (error.isRLSIssue) {
+        errorMessage = "You don't have permission to delete this setlist";
+      } else if (error.status >= 500) {
+        errorMessage = 'Server error occurred. Please try again.';
+      }
+      
+      showToast(errorMessage, 'error');
+      // Keep dialog open for retry
     }
   };
 
@@ -230,18 +336,67 @@ export default function SetlistsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {setlists.map((setlist) => (
-              <SetlistCard
-                key={setlist.id}
-                setlist={setlist}
-                onClick={() => handleSetlistClick(setlist)}
-                onCopy={() => handleCopySetlist(setlist)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Check if "All Songs" exists and is empty */}
+            {(() => {
+              const allSongsSetlist = setlists.find(s => (s as any).setlist_type === 'all_songs' || s.name === 'All Songs') as (Setlist & { song_count?: number; setlist_type?: string }) | undefined;
+              const allSongsIsEmpty = allSongsSetlist && (allSongsSetlist.song_count || 0) === 0;
+              const hasOtherSetlists = setlists.some(s => (s as any).setlist_type !== 'all_songs' && s.name !== 'All Songs');
+              
+              return allSongsIsEmpty && (
+                <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <ListMusic className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-rose-900 mb-1">
+                        Welcome to your band catalog!
+                      </h3>
+                      <p className="text-sm text-rose-800 mb-3">
+                        We've created an "All Songs" setlist for you. This special setlist will automatically 
+                        include every song you add to any other setlist, giving you a complete catalog of your band's repertoire.
+                      </p>
+                      <div className="text-sm text-rose-800">
+                        <p className="font-medium mb-1">Get started:</p>
+                        <ul className="space-y-1 ml-4">
+                          <li>• Click "All Songs" to add your first songs directly</li>
+                          {!hasOtherSetlists && <li>• Create separate setlists for specific shows or themes</li>}
+                          <li>• Any song added to other setlists will automatically appear in "All Songs"</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {setlists.map((setlist) => (
+                <SetlistCard
+                  key={setlist.id}
+                  setlist={setlist}
+                  onClick={() => handleSetlistClick(setlist)}
+                  onCopy={() => handleCopySetlist(setlist)}
+                  onDelete={() => handleDeleteSetlist(setlist)}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {setlistToDelete && (
+        <ConfirmDeleteSetlistDialog
+          open={deleteDialogOpen}
+          setOpen={setDeleteDialogOpen}
+          setlistId={setlistToDelete.id}
+          setlistName={setlistToDelete.name}
+          songCount={setlistToDelete.song_count ?? setlistToDelete.songs?.length}
+          onConfirm={confirmDeleteSetlist}
+        />
+      )}
     </div>
   );
 }

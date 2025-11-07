@@ -158,7 +158,7 @@ describe('SetlistDetailPage', () => {
 
     // Ensure no summary data appears within song row containers
     const songRows = screen.getAllByTestId(/^song-row-/);
-    songRows.forEach((songRow) => {
+    songRows.forEach((songRow: HTMLElement) => {
       // Summary text should NOT appear within individual song rows
       expect(songRow).not.toHaveTextContent(/\d+ songs/);
       expect(songRow).not.toHaveTextContent(/total/i);

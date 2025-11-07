@@ -46,6 +46,13 @@ export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDot
   const potentialGigs = dayEvents.filter(e => e.type === 'gig' && e.is_potential);
   const blockouts = dayEvents.filter(e => e.type === 'blockout');
 
+  // Combine all events (non-blockout) for line rendering
+  const allEvents = [
+    ...rehearsals.map(e => ({ ...e, eventType: 'rehearsal', color: '#2563EB' })),
+    ...gigs.map(e => ({ ...e, eventType: 'gig', color: '#22c55e' })),
+    ...potentialGigs.map(e => ({ ...e, eventType: 'potential-gig', color: '#ea580c' }))
+  ];
+
   // Process blockouts for range rendering
   const blockoutRanges: Array<{
     isSingleDay: boolean;
@@ -71,80 +78,52 @@ export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDot
     });
   });
 
-  const hasBlockoutRange = blockoutRanges.some(b => !b.isSingleDay);
-  const hasSingleDayBlockout = blockoutRanges.some(b => b.isSingleDay);
+  const hasBlockout = blockouts.length > 0;
+  const eventCount = allEvents.length;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-start pt-1">
       {/* Day number */}
       <span className="text-sm font-medium">{dayNumber}</span>
 
-      {/* Event dots row - positioned at bottom */}
-      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center gap-1">
-        {/* Rehearsal dots (blue #2563EB) */}
-        {rehearsals.map((_, idx) => (
-          <span
-            key={`rehearsal-${idx}`}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#2563EB' }}
-          />
-        ))}
+      {/* Event lines - positioned at bottom, spanning width */}
+      {eventCount > 0 && (
+        <div className="absolute bottom-2 left-0 right-0 flex">
+          {allEvents.map((event, idx) => {
+            const widthPercent = 100 / eventCount;
+            const leftPercent = (idx * 100) / eventCount;
+            
+            return (
+              <div
+                key={`event-line-${idx}`}
+                className="absolute h-1 rounded-sm"
+                style={{
+                  backgroundColor: event.color,
+                  width: `${widthPercent}%`,
+                  left: `${leftPercent}%`,
+                }}
+              />
+            );
+          })}
+        </div>
+      )}
 
-        {/* Gig dots (green #22c55e) */}
-        {gigs.map((_, idx) => (
-          <span
-            key={`gig-${idx}`}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#22c55e' }}
-          />
-        ))}
-
-        {/* Potential gig dots (orange #ea580c) */}
-        {potentialGigs.map((_, idx) => (
-          <span
-            key={`potential-${idx}`}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#ea580c' }}
-          />
-        ))}
-
-        {/* Single-day blockout dots (red #dc2626) - stacked at same position */}
-        {hasSingleDayBlockout && blockoutRanges.filter(b => b.isSingleDay).map((_, idx) => (
-          <span
-            key={`blockout-single-${idx}`}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: '#dc2626' }}
-          />
-        ))}
-      </div>
-
-      {/* Blockout range spans - layered behind date numbers with reduced thickness */}
-      {hasBlockoutRange && (
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 -z-10">
+      {/* Blockout line - positioned below event lines, spanning full width */}
+      {hasBlockout && (
+        <div className="absolute bottom-1 left-0 right-0">
+          {/* Single day blockouts - full width red line */}
+          {blockoutRanges.some(b => b.isSingleDay) && (
+            <div className="w-full h-1 bg-red-600 rounded-sm" />
+          )}
+          
+          {/* Multi-day blockout ranges - all days get full width lines */}
           {blockoutRanges.map((range, idx) => {
             if (range.isSingleDay) return null;
 
             return (
-              <div key={`blockout-range-${idx}`} className="relative w-full h-full">
-                {/* Enhanced connecting pill with improved visual continuity - always visible with reduced transparency */}
-                {range.isStartDay && (
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/2 h-1 bg-red-600 rounded-l-full shadow-sm" />
-                )}
-                
-                {range.isMiddleDay && (
-                  <div className="absolute inset-0 top-1/2 -translate-y-1/2 w-full h-1 bg-red-600 shadow-sm" />
-                )}
-                
-                {range.isEndDay && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1/2 h-1 bg-red-600 rounded-r-full shadow-sm" />
-                )}
-
-                {/* Stronger visual markers for start/end days - always visible with consistent color */}
-                {range.isStartDay && (
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full ring-1 ring-background shadow-md" />
-                )}
-                {range.isEndDay && (
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-red-600 rounded-full ring-1 ring-background shadow-md" />
+              <div key={`blockout-range-${idx}`} className="absolute inset-0">
+                {(range.isStartDay || range.isMiddleDay || range.isEndDay) && (
+                  <div className="absolute inset-0 w-full h-1 bg-red-600 rounded-sm" />
                 )}
               </div>
             );

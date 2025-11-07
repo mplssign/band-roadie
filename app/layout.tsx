@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Providers } from './providers/providers';
 import { OrientationGuard } from '@/components/layout/OrientationGuard';
+import ServiceWorkerUpdater from './(providers)/ServiceWorkerUpdater';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -60,6 +61,7 @@ export default function RootLayout({
         `}</style>
       </head>
       <body className={`${inter.className} min-h-dvh bg-background text-foreground`}>
+        <ServiceWorkerUpdater />
         <OrientationGuard />
         <Providers>
           {children}

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useBands } from '@/contexts/BandsContext';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { TuningBadge } from '@/components/setlists/TuningBadge';
+import { LegacyTuningBadge as TuningBadge } from '@/components/setlists/TuningBadge';
 import { NotesDrawer } from '@/components/songs/NotesDrawer';
 import { ArrowLeft, Music, Edit3, Plus } from 'lucide-react';
 import { TuningType } from '@/lib/types';

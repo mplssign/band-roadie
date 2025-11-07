@@ -119,6 +119,8 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
     loadingRef.current = true;
     setLoading(true);
 
+    console.log('[BandsContext] Fetching bands...');
+
     try {
       // Get user's bands from API with timeout
       const controller = new AbortController();
@@ -131,13 +133,17 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
 
       clearTimeout(timeoutId);
 
+      console.log('[BandsContext] Response status:', response.status, response.statusText);
+
       if (!response.ok) {
+        console.log('[BandsContext] Response not OK, clearing bands');
         setBands([]);
         setCurrentBandState(null);
         return;
       }
 
       const { bands: bandList } = await response.json();
+      console.log('[BandsContext] Received bands:', bandList?.length || 0, 'items');
 
       const list: Band[] = (bandList || []).map((row: { 
         id: string; 
@@ -163,13 +169,16 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
       let restored: Band | null = null;
       try {
         const saved = localStorage.getItem(CURRENT_BAND_KEY);
+        console.log('[BandsContext] Saved band ID from localStorage:', saved);
         if (saved) restored = list.find(b => b.id === saved) || null;
+        console.log('[BandsContext] Restored band:', restored);
         // Band restored or default selected
       } catch {
         // localStorage read failed; ignore
         void 0;
       }
       const resolvedBand = restored ?? list[0] ?? null;
+      console.log('[BandsContext] Final resolved band:', resolvedBand);
       setCurrentBandState(resolvedBand);
 
       try {

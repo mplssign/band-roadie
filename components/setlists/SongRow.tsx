@@ -8,7 +8,7 @@ import { SetlistSong, TuningType } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 // Note: Using custom dropdown instead of select component
 import { BpmInput } from '@/components/setlists/BpmInput';
-import { TuningBadge } from '@/components/setlists/TuningBadge';
+import { LegacyTuningBadge as TuningBadge } from '@/components/setlists/TuningBadge';
 import { useDurationBackfill } from '@/hooks/useDurationBackfill';
 import { GripVertical, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';

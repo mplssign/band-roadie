@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { motion, PanInfo } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { SPRING_CONFIG, DRAG_CONFIG, TOUCH_CONFIG } from '@/lib/motion-config';
 import Image from 'next/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -209,9 +210,10 @@ export function SwipeableSongRow({
 
             {/* Tuning */}
             <TuningBadge 
-              tuning={displayTuning}
-              onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
-              disabled={!isEditMode}
+              value={displayTuning}
+              setlistSongId={setlistSong.id}
+              editMode={isEditMode}
+              onLocalChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
             />
           </div>
         </div>
@@ -234,17 +236,19 @@ export function SwipeableSongRow({
     <>
       <motion.div
         ref={setNodeRef}
-        style={style}
-        drag={!isEditMode ? "x" : false}
-        dragConstraints={{ left: -120, right: 0 }}
-        dragElastic={0.1}
+        style={{
+          ...style,
+          // Ensure minimum touch target size
+          minHeight: TOUCH_CONFIG.minTouchTarget,
+          touchAction: TOUCH_CONFIG.touchAction
+        }}
+        drag={!isEditMode ? DRAG_CONFIG.swipeLeft.drag : false}
+        dragConstraints={DRAG_CONFIG.swipeLeft.dragConstraints}
+        dragElastic={DRAG_CONFIG.swipeLeft.dragElastic}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         dragPropagation={false}
-        whileDrag={{
-          scale: 1.02,
-          boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)"
-        }}
+        whileDrag={DRAG_CONFIG.swipeLeft.whileDrag}
         className={`bg-card border border-border/20 rounded-lg p-4 transition-all relative overflow-hidden ${
           isDragging ? 'shadow-lg border-border/40' : 'hover:shadow-md hover:border-border/30'
         } ${
@@ -261,7 +265,7 @@ export function SwipeableSongRow({
           className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-blue-600/30 flex items-center justify-end pr-6 pointer-events-none rounded-lg"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 0, x: 20 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          transition={SPRING_CONFIG.snappy}
         >
           <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
             <Copy className="h-5 w-5" />
