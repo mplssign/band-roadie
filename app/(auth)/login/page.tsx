@@ -141,7 +141,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col justify-start bg-black px-4 pt-[35vh]">
+    <div className="min-h-dvh flex flex-col justify-start bg-black px-4 pt-[15vh]">
       <div className="w-full max-w-md mx-auto" style={keyboardAdjustment}>
         <div className="mb-6 text-center">
           <Wordmark size="xl" className="text-foreground inline-block" />
@@ -221,7 +221,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh flex flex-col justify-start bg-black pt-[35vh]">
+      <div className="min-h-dvh flex flex-col justify-start bg-black pt-[15vh]">
         <div className="text-zinc-400 text-center">Loading...</div>
       </div>
     }>
