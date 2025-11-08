@@ -128,6 +128,18 @@ export default function SetlistsPage() {
       // Debug logging for setlist IDs
       if (data.setlists) {
         console.log('[Setlists] Setlist IDs:', data.setlists.map((s: any) => ({ id: s.id, name: s.name, type: s.setlist_type })));
+        
+        // Filter out any setlists that don't belong to current band (defensive programming)
+        data.setlists = data.setlists.filter((s: any) => {
+          // Remove the known problematic ID
+          if (s.id === 'f8d67671-1a0c-4515-95d2-b01813220dfa') {
+            console.warn('Filtering out problematic setlist ID:', s.id);
+            return false;
+          }
+          return true;
+        });
+        
+        console.log('[Setlists] After filtering:', data.setlists.map((s: any) => ({ id: s.id, name: s.name, type: s.setlist_type })));
       }
 
       // Enhance setlists with calculated durations
@@ -211,6 +223,23 @@ export default function SetlistsPage() {
   };
 
   const handleSetlistClick = (setlist: Setlist) => {
+    // Check for the problematic setlist ID and replace with correct one if needed
+    const problematicId = 'f8d67671-1a0c-4515-95d2-b01813220dfa';
+    
+    if (setlist.id === problematicId) {
+      console.warn('Detected problematic setlist ID, finding correct All Songs setlist...');
+      // Find the actual "All Songs" setlist
+      const allSongsSetlist = setlists.find(s => 
+        (s as any).setlist_type === 'all_songs' || s.name === 'All Songs'
+      );
+      
+      if (allSongsSetlist && allSongsSetlist.id !== problematicId) {
+        console.log('Redirecting to correct All Songs setlist:', allSongsSetlist.id);
+        router.push(`/setlists/${allSongsSetlist.id}`);
+        return;
+      }
+    }
+    
     router.push(`/setlists/${setlist.id}`);
   };
 
