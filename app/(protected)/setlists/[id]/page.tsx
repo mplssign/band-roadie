@@ -605,12 +605,12 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 placeholder="Setlist name"
               />
             ) : (
-              <div className="flex items-center gap-2">
+              <div>
                 <h1 className="text-2xl font-bold">{setlistName}</h1>
                 {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') && (
-                  <span className="px-2 py-1 text-xs font-medium bg-rose-100 text-rose-700 rounded-full">
-                    All Songs
-                  </span>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    Auto-managed catalog
+                  </div>
                 )}
               </div>
             )}
@@ -637,23 +637,6 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 <Edit className="h-4 w-4" />
                 Edit
               </Button>
-              {setlist.setlist_type !== 'all_songs' && setlist.name !== 'All Songs' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="gap-2 border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              )}
-            </div>
-          )}
-
-          {setlist && !isEditMode && (setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs') && (
-            <div className="text-sm text-muted-foreground">
-              Auto-managed catalog
             </div>
           )}
 
