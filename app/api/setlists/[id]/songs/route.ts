@@ -14,15 +14,32 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 });
     }
 
+    // Debug: Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
     // Get setlist info to check if this is "All Songs" and get band_id
-    const { data: setlistInfo } = await supabase
+    const { data: setlistInfo, error: setlistError } = await supabase
       .from('setlists')
       .select('band_id, setlist_type, name')
       .eq('id', setlistId)
       .single();
 
+    if (setlistError) {
+      console.error('Error querying setlist:', setlistError);
+      return NextResponse.json({ 
+        error: 'Setlist not found', 
+        debug: { setlistId, error: setlistError.message, user_id: user.id }
+      }, { status: 404 });
+    }
+
     if (!setlistInfo) {
-      return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'Setlist not found', 
+        debug: { setlistId, user_id: user.id }
+      }, { status: 404 });
     }
 
     // Get the next position for the song
