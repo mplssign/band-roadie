@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = await createClient();
   const setlistId = params.id;
 
   try {
@@ -14,11 +14,33 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Song ID is required' }, { status: 400 });
     }
 
-    // Debug: Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Create client for user authentication using cookies
+    const authClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value;
+          },
+          set() {
+            // No-op for read-only operations
+          },
+          remove() {
+            // No-op for read-only operations  
+          },
+        },
+      }
+    );
+
+    // Check authentication
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+
+    // Use service role client for database operations
+    const supabase = createClient();
 
     // Get setlist info to check if this is "All Songs" and get band_id
     const { data: setlistInfo, error: setlistError } = await supabase
@@ -213,9 +235,35 @@ async function autoAddToAllSongs(bandId: string, songId: string, songData: {
 }
 
 export async function PUT(request: NextRequest, { params: _params }: { params: { id: string } }) {
-  const supabase = await createClient();
-
   try {
+    // Create client for user authentication using cookies
+    const authClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value;
+          },
+          set() {
+            // No-op for read-only operations
+          },
+          remove() {
+            // No-op for read-only operations  
+          },
+        },
+      }
+    );
+
+    // Check authentication
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Use service role client for database operations
+    const supabase = createClient();
+
     const body = await request.json();
     const { songs } = body; // Array of songs with new positions
 
