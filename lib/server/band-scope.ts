@@ -238,17 +238,35 @@ export async function requireResourceInBand(
 ): Promise<void> {
   const supabase = await createClient();
 
+  console.log('requireResourceInBand check:', { table, resourceId, bandId });
+
   const { data, error } = await supabase
     .from(table)
     .select('band_id')
     .eq('id', resourceId)
     .single();
 
+  console.log('requireResourceInBand result:', { data, error });
+
   if (error || !data) {
+    console.error('Resource not found in requireResourceInBand:', { 
+      table, 
+      resourceId, 
+      bandId, 
+      error: error?.message, 
+      code: error?.code 
+    });
     throw new Error(`Resource not found: ${table}/${resourceId}`);
   }
 
   if (data.band_id !== bandId) {
+    console.error('Resource band mismatch:', { 
+      resourceId, 
+      expectedBandId: bandId, 
+      actualBandId: data.band_id 
+    });
     throw new Error(`Forbidden: Resource ${resourceId} does not belong to band ${bandId}`);
   }
+
+  console.log('requireResourceInBand passed:', { resourceId, bandId });
 }

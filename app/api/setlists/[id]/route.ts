@@ -17,6 +17,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     // Verify user is a member of this band
     await requireBandMembership(bandId);
 
+    // Add debug logging before resource check
+    console.log('Setlist fetch attempt:', { id, bandId });
+
     // Verify this setlist belongs to the band
     await requireResourceInBand('setlists', id, bandId);
 
