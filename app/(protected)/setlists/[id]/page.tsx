@@ -139,12 +139,42 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       setSetlistName(data.setlist.name);
       setOriginalSetlistName(data.setlist.name);
 
-
+      // Validation check: ensure URL matches loaded setlist
+      if (params.id !== data.setlist.id) {
+        console.error('URL/setlist ID mismatch:', { urlId: params.id, setlistId: data.setlist.id });
+        // Redirect to correct URL
+        router.replace(`/setlists/${data.setlist.id}`);
+        return;
+      }
 
       setSongs(data.setlist.setlist_songs || []);
       setOriginalSongs(data.setlist.setlist_songs || []);
     } catch (err) {
       console.error('Error loading setlist:', err);
+      
+      // If this is an "All Songs" setlist that can't be found, try to find the correct one
+      if (err instanceof Error && err.message.includes('not found') && 
+          (params.id.includes('all') || err.message.includes('All Songs'))) {
+        console.log('Attempting to find correct All Songs setlist...');
+        try {
+          // Fetch all setlists to find the correct "All Songs" ID
+          const response = await fetch(`/api/setlists?band_id=${currentBand.id}`);
+          const data = await response.json();
+          if (response.ok && data.setlists) {
+            const allSongsSetlist = data.setlists.find((s: any) => 
+              s.setlist_type === 'all_songs' || s.name === 'All Songs'
+            );
+            if (allSongsSetlist && allSongsSetlist.id !== params.id) {
+              console.log('Found correct All Songs setlist, redirecting:', allSongsSetlist.id);
+              router.replace(`/setlists/${allSongsSetlist.id}`);
+              return;
+            }
+          }
+        } catch (redirectErr) {
+          console.error('Failed to find correct All Songs setlist:', redirectErr);
+        }
+      }
+      
       setError(err instanceof Error ? err.message : 'Failed to load setlist');
     } finally {
       setLoading(false);
@@ -279,6 +309,14 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
     try {
       const setlistId = setlist?.id || params.id;
+      
+      // Defensive check: if setlist ID doesn't match current setlist data, reload
+      if (setlist && setlistId !== setlist.id) {
+        console.warn('Setlist ID mismatch detected, reloading setlist data');
+        await loadSetlist();
+        return; // Exit and let user try again with correct data
+      }
+      
       if (setlistId === 'new') {
         // For new setlists, just add to local state
         const newSetlistSong: SetlistSong = {
