@@ -125,6 +125,11 @@ export default function SetlistsPage() {
         throw new Error(data.error || 'Failed to load setlists');
       }
 
+      // Debug logging for setlist IDs
+      if (data.setlists) {
+        console.log('[Setlists] Setlist IDs:', data.setlists.map((s: any) => ({ id: s.id, name: s.name, type: s.setlist_type })));
+      }
+
       // Enhance setlists with calculated durations
       const setlistsWithDurations = await Promise.all(
         (data.setlists || []).map(async (setlist: any) => {

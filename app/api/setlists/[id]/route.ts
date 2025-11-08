@@ -87,11 +87,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     if (error) {
       console.error('Error fetching setlist:', error);
-      return NextResponse.json({ error: 'Failed to fetch setlist' }, { status: 500 });
+      console.error('Setlist fetch debug:', { id, bandId, error: error.message, code: error.code });
+      return NextResponse.json({ 
+        error: 'Failed to fetch setlist',
+        debug: { id, bandId, error: error.message, code: error.code }
+      }, { status: 500 });
     }
 
     if (!setlist) {
-      return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
+      console.error('Setlist not found:', { id, bandId });
+      return NextResponse.json({ 
+        error: 'Setlist not found',
+        debug: { id, bandId }
+      }, { status: 404 });
     }
 
     // Sort songs by position and add tuning information

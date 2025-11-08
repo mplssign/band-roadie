@@ -51,16 +51,18 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     if (setlistError) {
       console.error('Error querying setlist:', setlistError);
+      console.error('Setlist query debug:', { setlistId, error: setlistError, user_id: user.id });
       return NextResponse.json({ 
         error: 'Setlist not found', 
-        debug: { setlistId, error: setlistError.message, user_id: user.id }
+        debug: { setlistId, error: setlistError.message, user_id: user.id, code: setlistError.code }
       }, { status: 404 });
     }
 
     if (!setlistInfo) {
+      console.error('Setlist not found in database:', { setlistId, user_id: user.id });
       return NextResponse.json({ 
         error: 'Setlist not found', 
-        debug: { setlistId, user_id: user.id }
+        debug: { setlistId, user_id: user.id, message: 'No setlist found with this ID' }
       }, { status: 404 });
     }
 
