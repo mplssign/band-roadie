@@ -135,6 +135,12 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       
       const data = await response.json();
       console.log('SetlistDetail: API response data:', data);
+      console.log('SetlistDetail: Setlist info:', {
+        id: data.setlist?.id,
+        name: data.setlist?.name,
+        band_id: data.setlist?.band_id,
+        setlist_type: data.setlist?.setlist_type
+      });
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load setlist');
@@ -349,7 +355,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           }),
         });
 
+        console.log('Song addition response status:', response.status);
         const data = await response.json();
+        console.log('Song addition response data:', data);
+        
         if (!response.ok) {
           if (data.code === 'DUPLICATE_SONG') {
             setError(`"${song.title}" is already in this setlist`);
