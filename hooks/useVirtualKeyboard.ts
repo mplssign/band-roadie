@@ -85,8 +85,8 @@ export function useKeyboardAdjustment(enabled: boolean = true, offset: number = 
 
   return {
     transform: enabled && isKeyboardOpen 
-      ? `translateY(-${Math.min(keyboardHeight - offset, keyboardHeight * 0.5)}px)`
+      ? `translateY(-${Math.max(keyboardHeight - offset, keyboardHeight * 0.6)}px)`
       : 'none',
-    transition: 'transform 0.3s ease-out',
+    transition: 'transform 0.2s ease-out',
   };
 }

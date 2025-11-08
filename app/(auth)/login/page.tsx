@@ -17,22 +17,26 @@ function LoginForm() {
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  // Get keyboard adjustment styles
-  const keyboardAdjustment = useKeyboardAdjustment(isEmailFocused, 40);
+  // Get keyboard adjustment styles with more aggressive offset for login form
+  const keyboardAdjustment = useKeyboardAdjustment(isEmailFocused, 80);
 
   // Handle email input focus to ensure form stays visible
   const handleEmailFocus = () => {
     setIsEmailFocused(true);
     
-    // Delay scroll to allow keyboard animation to start
+    // Move the form up immediately when focusing on email
     setTimeout(() => {
       if (emailInputRef.current) {
-        emailInputRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
+        // Scroll the entire form into view, ensuring the submit button is visible
+        const formContainer = emailInputRef.current.closest('form');
+        if (formContainer) {
+          formContainer.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+          });
+        }
       }
-    }, 300);
+    }, 100); // Reduced delay for more responsive feel
   };
 
   const handleEmailBlur = () => {
@@ -137,7 +141,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col justify-start bg-black px-4 pt-[25vh]">
+    <div className="min-h-dvh flex flex-col justify-start bg-black px-4 pt-[35vh]">
       <div className="w-full max-w-md mx-auto" style={keyboardAdjustment}>
         <div className="mb-6 text-center">
           <Wordmark size="xl" className="text-foreground inline-block" />
@@ -217,7 +221,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh flex flex-col justify-start bg-black pt-[25vh]">
+      <div className="min-h-dvh flex flex-col justify-start bg-black pt-[35vh]">
         <div className="text-zinc-400 text-center">Loading...</div>
       </div>
     }>
