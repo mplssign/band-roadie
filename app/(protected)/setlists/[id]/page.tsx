@@ -121,15 +121,20 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
   const loadSetlist = useCallback(async () => {
     if (!params.id || params.id === 'new' || !currentBand?.id) {
+      console.log('SetlistDetail: Skipping load - missing params or band');
       return;
     }
 
+    console.log('SetlistDetail: Loading setlist:', { setlistId: params.id, bandId: currentBand.id });
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch(`/api/setlists/${params.id}?band_id=${currentBand.id}`);
+      console.log('SetlistDetail: API response status:', response.status);
+      
       const data = await response.json();
+      console.log('SetlistDetail: API response data:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load setlist');
@@ -192,6 +197,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       setSearchOpen(true); // Focus search by default for new setlists
     } else {
       // Existing setlist - start in view mode
+      console.log('SetlistDetail: Loading setlist with ID:', params.id);
       setIsEditMode(false);
       loadSetlist();
     }
