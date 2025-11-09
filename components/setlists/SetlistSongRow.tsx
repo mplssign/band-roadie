@@ -216,8 +216,6 @@ export const SetlistSongRow = memo(function SetlistSongRow({
         {!isDeleting && (
           <motion.div
             key={setlistSong.id}
-            ref={isEditMode ? setNodeRef : undefined}
-            style={isEditMode ? style : undefined}
             className="border-t border-border/60 first:border-t-0"
             initial={{ opacity: 1, height: 'auto' }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -229,45 +227,63 @@ export const SetlistSongRow = memo(function SetlistSongRow({
             layout
             transition={SPRING_CONFIG.default}
           >
-            <SwipeableContainer
-              mode="edit"
-              onCopy={handleCopy}
-              onDelete={handleDelete}
-              onTap={handleRowClick}
-              className="rounded-lg"
-            >
-              <Card
-                className={`song-card transition-all ${
-                  isEditMode && isDndDragging ? 'border-gray-600' : ''
-                } ${
-                  !isEditMode && setlistSong.songs?.id ? 'cursor-pointer hover:shadow-md hover:border-gray-600' : ''
-                } ${
-                  isPressed ? 'bg-gray-900' : ''
-                }`}
+            {isEditMode ? (
+              // In edit mode, use DnD-kit directly without SwipeableContainer
+              <div
+                ref={setNodeRef}
+                style={style}
+                className="rounded-lg"
               >
-                <div 
-                  className="p-4"
-                  data-pressed={isPressed}
-                  onPointerDown={() => setIsPressed(true)}
-                  onPointerUp={() => setIsPressed(false)}
-                  onPointerCancel={() => setIsPressed(false)}
-                  onPointerLeave={() => setIsPressed(false)}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !isEditMode && setlistSong.songs?.id) {
-                      e.preventDefault();
-                      setIsPressed(true);
-                      handleRowClick();
-                    }
-                  }}
-                  onKeyUp={() => setIsPressed(false)}
-                  role={!isEditMode && setlistSong.songs?.id ? "button" : undefined}
-                  tabIndex={!isEditMode && setlistSong.songs?.id ? 0 : undefined}
-                  aria-label={!isEditMode && setlistSong.songs?.id ? `View notes for ${setlistSong.songs?.title}` : undefined}
+                <Card
+                  className={`song-card transition-all ${
+                    isDndDragging ? 'border-gray-600 shadow-lg z-10' : ''
+                  }`}
                 >
-                  {rowContent}
-                </div>
-              </Card>
-            </SwipeableContainer>
+                  <div className="p-4">
+                    {rowContent}
+                  </div>
+                </Card>
+              </div>
+            ) : (
+              // In view mode, use SwipeableContainer for swipe actions
+              <SwipeableContainer
+                mode="edit"
+                onCopy={handleCopy}
+                onDelete={handleDelete}
+                onTap={handleRowClick}
+                className="rounded-lg"
+              >
+                <Card
+                  className={`song-card transition-all ${
+                    !isEditMode && setlistSong.songs?.id ? 'cursor-pointer hover:shadow-md hover:border-gray-600' : ''
+                  } ${
+                    isPressed ? 'bg-gray-900' : ''
+                  }`}
+                >
+                  <div 
+                    className="p-4"
+                    data-pressed={isPressed}
+                    onPointerDown={() => setIsPressed(true)}
+                    onPointerUp={() => setIsPressed(false)}
+                    onPointerCancel={() => setIsPressed(false)}
+                    onPointerLeave={() => setIsPressed(false)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && !isEditMode && setlistSong.songs?.id) {
+                        e.preventDefault();
+                        setIsPressed(true);
+                        handleRowClick();
+                      }
+                    }}
+                    onKeyUp={() => setIsPressed(false)}
+                    role={!isEditMode && setlistSong.songs?.id ? "button" : undefined}
+                    tabIndex={!isEditMode && setlistSong.songs?.id ? 0 : undefined}
+                    aria-label={!isEditMode && setlistSong.songs?.id ? `View notes for ${setlistSong.songs?.title}` : undefined}
+                  >
+                    {rowContent}
+                  </div>
+                </Card>
+              </SwipeableContainer>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

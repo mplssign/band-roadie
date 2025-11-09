@@ -614,10 +614,13 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
+      const oldSongs = songs;
+      
+      // Optimistically update UI
       setSongs(prev => {
         const oldIndex = prev.findIndex(song => song.id === active.id);
         const newIndex = prev.findIndex(song => song.id === over.id);
@@ -634,6 +637,43 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           position: index + 1,
         }));
       });
+
+      // Save reorder to backend immediately
+      try {
+        const newSongs = arrayMove(oldSongs, 
+          oldSongs.findIndex(song => song.id === active.id),
+          oldSongs.findIndex(song => song.id === over.id)
+        ).map((song, index) => ({
+          ...song,
+          position: index + 1,
+        }));
+
+        const response = await fetch(`/api/setlists/${params.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            songs: newSongs.map(song => ({
+              id: song.id,
+              position: song.position,
+              bpm: song.bpm,
+              tuning: song.tuning,
+              duration_seconds: song.duration_seconds,
+            })),
+            band_id: currentBand?.id,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save reorder');
+        }
+
+        showToast('Song order updated', 'success');
+      } catch (err) {
+        console.error('Error saving reorder:', err);
+        // Revert on error
+        setSongs(oldSongs);
+        showToast('Failed to save song order', 'error');
+      }
     }
   };
 
