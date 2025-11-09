@@ -48,6 +48,7 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
   };
 
   const handleBpmChange = (newBpm: number | undefined) => {
+    console.log('SongRow handleBpmChange:', { songId: setlistSong.id, newBpm, oldBpm: setlistSong.bpm });
     onUpdate(setlistSong.id, { bpm: newBpm });
   };
 

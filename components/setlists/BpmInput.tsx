@@ -37,27 +37,33 @@ export function BpmInput({ value, onChange, className, placeholder = "BPM" }: Bp
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
+    console.log('BpmInput handleChange:', { newValue, oldValue: inputValue });
     setInputValue(newValue);
     
     // Only call onChange if it's a valid number or empty
     if (newValue === '') {
+      console.log('BpmInput: Setting to undefined');
       onChange(undefined);
     } else {
       const numValue = parseInt(newValue);
       if (!isNaN(numValue) && numValue >= 0 && numValue <= 999) {
+        console.log('BpmInput: Setting to', numValue);
         onChange(numValue);
       }
     }
   };
 
   const handleBlur = () => {
+    console.log('BpmInput handleBlur:', { inputValue });
     // Clean up the input value on blur
     const numValue = parseInt(inputValue);
     if (isNaN(numValue)) {
+      console.log('BpmInput blur: Setting to undefined (NaN)');
       setInputValue('');
       onChange(undefined);
     } else {
       const clampedValue = Math.max(0, Math.min(999, numValue));
+      console.log('BpmInput blur: Setting to clamped value:', clampedValue);
       setInputValue(clampedValue.toString());
       onChange(clampedValue);
     }

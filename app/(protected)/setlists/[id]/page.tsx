@@ -533,24 +533,33 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
   const handleUpdateSong = async (songId: string, updates: { bpm?: number; tuning?: TuningType; duration_seconds?: number }) => {
     try {
+      console.log('handleUpdateSong called:', { songId, updates });
       const setlistId = setlist?.id || params.id;
+      console.log('Setlist ID for update:', setlistId);
 
       if (setlistId !== 'new') {
+        console.log('Making API call to update song');
         const response = await fetch(`/api/setlists/${setlistId}/songs/${songId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         });
 
+        console.log('API response status:', response.status);
         if (!response.ok) {
           const data = await response.json();
+          console.error('API error response:', data);
           throw new Error(data.error || 'Failed to update song');
         }
+
+        const responseData = await response.json();
+        console.log('API success response:', responseData);
       }
 
       setSongs(prev => prev.map(song =>
         song.id === songId ? { ...song, ...updates } : song
       ));
+      console.log('Updated songs state with:', updates);
     } catch (err) {
       console.error('Error updating song:', err);
       setError(err instanceof Error ? err.message : 'Failed to update song');
