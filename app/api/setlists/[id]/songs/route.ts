@@ -250,6 +250,8 @@ async function autoAddToAllSongs(bandId: string, songId: string, songData: {
 
 export async function PUT(request: NextRequest, { params: _params }: { params: { id: string } }) {
   try {
+    console.log('[PUT] Starting setlist song update request');
+    
     // Create client for user authentication using cookies
     const authClient = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -272,21 +274,26 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
     // Check authentication
     const { data: { user }, error: authError } = await authClient.auth.getUser();
     if (authError || !user) {
+      console.log('[PUT] Authentication failed:', authError);
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
+    console.log('[PUT] User authenticated:', user.id);
 
     // Use service role client for database operations
     const supabase = createClient();
 
     const body = await request.json();
     const { songs } = body; // Array of songs with new positions
+    console.log('[PUT] Request body songs count:', songs?.length || 0);
 
     if (!songs || !Array.isArray(songs)) {
+      console.log('[PUT] Invalid songs array:', songs);
       return NextResponse.json({ error: 'Songs array is required' }, { status: 400 });
     }
 
     // Get setlist info for band validation (from first song)
     if (songs.length > 0) {
+      console.log('[PUT] Validating band membership for first song:', songs[0].id);
       const { data: setlistSong, error: fetchError } = await supabase
         .from('setlist_songs')
         .select('setlist_id, setlists!inner(band_id)')
@@ -294,16 +301,19 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
         .single();
 
       if (fetchError || !setlistSong) {
-        console.error('Error fetching setlist song:', fetchError);
+        console.error('[PUT] Error fetching setlist song:', fetchError);
         return NextResponse.json({ error: 'Setlist song not found' }, { status: 404 });
       }
 
+      console.log('[PUT] Setlist song data:', setlistSong);
       const bandId = (setlistSong as any).setlists.band_id;
+      console.log('[PUT] Extracted band ID:', bandId);
 
       try {
         await requireBandMembership(bandId);
+        console.log('[PUT] Band membership validated for band:', bandId);
       } catch (error) {
-        console.error('Band membership check failed in PUT:', { user_id: user.id, band_id: bandId, error });
+        console.error('[PUT] Band membership check failed:', { user_id: user.id, band_id: bandId, error });
         return NextResponse.json({ 
           error: 'Setlist not found', 
           debug: { user_id: user.id, band_id: bandId, message: 'User not member of band' }
@@ -312,7 +322,10 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
     }
 
     // Update positions for all songs individually to avoid RLS policy issues with upsert
+    console.log('[PUT] Starting song updates for', songs.length, 'songs');
     const updatePromises = songs.map(async (song, index) => {
+      console.log('[PUT] Updating song:', { id: song.id, position: index + 1, bpm: song.bpm, tuning: song.tuning });
+      
       const { error } = await supabase
         .from('setlist_songs')
         .update({
@@ -324,23 +337,27 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
         .eq('id', song.id);
 
       if (error) {
-        console.error(`Error updating song ${song.id}:`, error);
+        console.error(`[PUT] Error updating song ${song.id}:`, error);
         throw error;
+      } else {
+        console.log(`[PUT] Successfully updated song ${song.id} to position ${index + 1}`);
       }
     });
 
     // Execute all updates
     try {
+      console.log('[PUT] Executing all song updates...');
       await Promise.all(updatePromises);
-      // console.log('Successfully updated all song positions');
+      console.log('[PUT] Successfully updated all song positions');
     } catch (error) {
-      console.error('Error updating song positions:', error);
+      console.error('[PUT] Error updating song positions:', error);
       return NextResponse.json({ error: 'Failed to update song positions' }, { status: 500 });
     }
 
+    console.log('[PUT] All song updates completed successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in update song positions API:', error);
+    console.error('[PUT] Error in update song positions API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
