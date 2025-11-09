@@ -34,7 +34,7 @@ export const tuningMap: Record<TuningType, TuningInfo> = {
   full_step: {
     name: 'Full Step',
     notes: 'D G C F A D',
-    color: 'bg-orange-600 hover:bg-orange-700 border-orange-500',
+    color: 'bg-orange-600 hover:bg-orange-700',
     popularity: 4,
     aliases: ['Full Step Down', 'Full Step', 'D Standard', 'Whole Step', 'Full', 'tone', 'full_step']
   },
