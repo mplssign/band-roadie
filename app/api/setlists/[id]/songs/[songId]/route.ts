@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@/lib/supabase/server';
+import { requireBandMembership } from '@/lib/server/band-scope';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
 export async function DELETE(
@@ -162,6 +164,39 @@ export async function PUT(
   try {
     const body = await request.json();
     const { bpm, tuning, duration_seconds } = body;
+    
+    console.log('PUT song update:', { setlistId, songId, updates: { bpm, tuning, duration_seconds } });
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed in PUT song:', authError);
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Get setlist info to validate band membership
+    const serviceClient = createClient();
+    const { data: setlistInfo, error: setlistError } = await serviceClient
+      .from('setlists')
+      .select('band_id')
+      .eq('id', setlistId)
+      .single();
+
+    if (setlistError || !setlistInfo) {
+      console.error('Error getting setlist info for band validation:', setlistError);
+      return NextResponse.json({ error: 'Setlist not found' }, { status: 404 });
+    }
+
+    // Verify user is a member of the band that owns this setlist
+    try {
+      await requireBandMembership(setlistInfo.band_id);
+    } catch (error) {
+      console.error('Band membership check failed in PUT song:', { setlistId, user_id: user.id, band_id: setlistInfo.band_id, error });
+      return NextResponse.json({ 
+        error: 'Setlist not found', 
+        debug: { setlistId, user_id: user.id, band_id: setlistInfo.band_id, message: 'User not member of band' }
+      }, { status: 404 });
+    }
 
     const { data: setlistSong, error } = await supabase
       .from('setlist_songs')
