@@ -10,6 +10,7 @@ interface SongSearchOverlayProps {
   open: boolean;
   onClose: () => void;
   onSelectSong: (song: MusicSong) => Promise<void>;
+  bandId?: string;
 }
 
 function formatDuration(seconds?: number): string {
@@ -19,9 +20,14 @@ function formatDuration(seconds?: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOverlayProps) {
+export function SongSearchOverlay({ open, onClose, onSelectSong, bandId }: SongSearchOverlayProps) {
   const [query, setQuery] = useState('');
   const [songs, setSongs] = useState<MusicSong[]>([]);
+  const [searchMetadata, setSearchMetadata] = useState<{
+    allSongsCount: number;
+    existingCount: number;
+    newCount: number;
+  }>({ allSongsCount: 0, existingCount: 0, newCount: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -30,6 +36,7 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
     if (open) {
       setQuery('');
       setSongs([]);
+      setSearchMetadata({ allSongsCount: 0, existingCount: 0, newCount: 0 });
       setError(null);
     }
   }, [open]);
@@ -44,7 +51,12 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
     setError(null);
 
     try {
-      const response = await fetch(`/api/songs?q=${encodeURIComponent(searchQuery)}`);
+      const searchParams = new URLSearchParams({
+        q: searchQuery,
+        ...(bandId && { band_id: bandId })
+      });
+      
+      const response = await fetch(`/api/songs?${searchParams.toString()}`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -52,6 +64,7 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
       }
 
       setSongs(data.songs || []);
+      setSearchMetadata(data.metadata || { allSongsCount: 0, existingCount: 0, newCount: 0 });
     } catch (err) {
       console.error('Error searching songs:', err);
       setError(err instanceof Error ? err.message : 'Failed to search songs');
@@ -59,7 +72,7 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bandId]);
 
   // Search-as-you-type with short debounce
   useEffect(() => {
@@ -173,48 +186,101 @@ export function SongSearchOverlay({ open, onClose, onSelectSong }: SongSearchOve
                   {songs.length} song{songs.length === 1 ? '' : 's'} found
                 </div>
                 <div className="overflow-y-auto p-2 space-y-1" style={{ height: 'calc(100% - 48px)' }}>
-                  {songs.map((song, index) => (
-                  <div
-                    key={song.id || `${song.title}-${song.artist}-${index}`}
-                    onClick={() => handleSelectSong(song)}
-                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
-                  >
-                    {/* Album artwork */}
-                    {song.album_artwork ? (
-                      <Image 
-                        src={song.album_artwork} 
-                        alt={`${song.title} album artwork`}
-                        width={40}
-                        height={40}
-                        className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        onError={() => {
-                          // Handle error by hiding the image
-                        }}
-                      />
-                    ) : (
-                      <Music className="h-10 w-10 text-muted-foreground flex-shrink-0" />
-                    )}
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{song.title}</div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {song.artist}
-                        {song.is_live && <span className="ml-2 text-xs">[Live]</span>}
+                  {/* All Songs Section */}
+                  {searchMetadata.allSongsCount > 0 && (
+                    <>
+                      <div className="px-2 py-2 text-sm font-semibold text-foreground bg-accent/30 rounded">
+                        All Songs
+                      </div>
+                      {songs.slice(0, searchMetadata.allSongsCount).map((song, index) => (
+                        <div
+                          key={song.id || `${song.title}-${song.artist}-${index}`}
+                          onClick={() => handleSelectSong(song)}
+                          className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
+                        >
+                          {/* Album artwork */}
+                          {song.album_artwork ? (
+                            <Image 
+                              src={song.album_artwork} 
+                              alt={`${song.title} album artwork`}
+                              width={40}
+                              height={40}
+                              className="w-10 h-10 rounded object-cover flex-shrink-0"
+                              onError={() => {
+                                // Handle error by hiding the image
+                              }}
+                            />
+                          ) : (
+                            <Music className="h-10 w-10 text-muted-foreground flex-shrink-0" />
+                          )}
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{song.title}</div>
+                            <div className="text-sm text-muted-foreground truncate">
+                              {song.artist}
+                              {song.is_live && <span className="ml-2 text-xs">[Live]</span>}
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                            {song.duration_seconds && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(song.duration_seconds)}
+                              </div>
+                            )}
+                            {song.bpm && (
+                              <div>{song.bpm} BPM</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Other Results Section */}
+                  {songs.slice(searchMetadata.allSongsCount).map((song, index) => (
+                    <div
+                      key={song.id || `${song.title}-${song.artist}-${index + searchMetadata.allSongsCount}`}
+                      onClick={() => handleSelectSong(song)}
+                      className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent hover:text-accent-foreground rounded-sm"
+                    >
+                      {/* Album artwork */}
+                      {song.album_artwork ? (
+                        <Image 
+                          src={song.album_artwork} 
+                          alt={`${song.title} album artwork`}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded object-cover flex-shrink-0"
+                          onError={() => {
+                            // Handle error by hiding the image
+                          }}
+                        />
+                      ) : (
+                        <Music className="h-10 w-10 text-muted-foreground flex-shrink-0" />
+                      )}
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{song.title}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {song.artist}
+                          {song.is_live && <span className="ml-2 text-xs">[Live]</span>}
+                        </div>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
+                        {song.duration_seconds && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatDuration(song.duration_seconds)}
+                          </div>
+                        )}
+                        {song.bpm && (
+                          <div>{song.bpm} BPM</div>
+                        )}
                       </div>
                     </div>
-                    
-                    <div className="flex flex-col items-end gap-1 text-xs text-muted-foreground">
-                      {song.duration_seconds && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDuration(song.duration_seconds)}
-                        </div>
-                      )}
-                      {song.bpm && (
-                        <div>{song.bpm} BPM</div>
-                      )}
-                    </div>
-                  </div>
                   ))}
                 </div>
               </>

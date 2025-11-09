@@ -887,6 +887,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelectSong={handleAddSong}
+        bandId={currentBand?.id}
       />
 
       {/* Provider Import Drawer */}

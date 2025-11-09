@@ -1064,6 +1064,7 @@ function sortiTunesResults(results: iTunesTrack[], query: string): iTunesTrack[]
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
+  const bandId = searchParams.get('band_id');
 
   if (!query) {
     return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 });
@@ -1072,6 +1073,50 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient();
 
   try {
+    let allSongResults: any[] = [];
+    
+    // First, search "All Songs" setlist if bandId is provided
+    if (bandId) {
+      console.log('Searching All Songs setlist for band:', bandId);
+      const { data: allSongsSetlist } = await supabase
+        .from('setlists')
+        .select('id')
+        .eq('band_id', bandId)
+        .eq('name', 'All Songs')
+        .single();
+
+      if (allSongsSetlist) {
+        console.log('Found All Songs setlist:', allSongsSetlist.id);
+        const { data: allSongsData, error: allSongsError } = await supabase
+          .from('setlist_songs')
+          .select(`
+            songs (
+              id,
+              title,
+              artist,
+              bpm,
+              tuning,
+              duration_seconds,
+              album_artwork,
+              is_live,
+              band_id
+            )
+          `)
+          .eq('setlist_id', allSongsSetlist.id)
+          .not('songs', 'is', null);
+
+        if (!allSongsError && allSongsData) {
+          // Filter and search within All Songs
+          const filteredAllSongs = allSongsData
+            .map((item: any) => item.songs)
+            .filter((song: any) => song && song.title && song.title.toLowerCase().includes(query.toLowerCase()))
+            .slice(0, 10); // Limit to 10 results
+          
+          allSongResults = filteredAllSongs;
+          console.log(`Found ${filteredAllSongs.length} songs in All Songs setlist matching query`);
+        }
+      }
+    }
     // First, search existing songs in our database (only search song titles)
     // First, search existing songs in our database (only search song titles)
     const { data: existingSongs, error: dbError } = await supabase
@@ -1145,25 +1190,36 @@ export async function GET(request: NextRequest) {
       sortedResults.slice(0, 10).map((track) => normalizeSongData(track)),
     );
 
-    // Filter out songs that already exist in our database
-    const existingTitleArtistPairs = new Set(
-      updatedExistingSongs.map(
+    // Filter out songs that already exist in our database or All Songs setlist
+    const allExistingTitleArtistPairs = new Set([
+      ...updatedExistingSongs.map(
         (song) => `${song.title.toLowerCase()}_${song.artist.toLowerCase()}`,
       ),
-    );
+      ...allSongResults.map(
+        (song: any) => `${song.title.toLowerCase()}_${song.artist.toLowerCase()}`,
+      ),
+    ]);
 
     const newSongs = normalizedResults.filter(
       (song) =>
-        !existingTitleArtistPairs.has(`${song.title.toLowerCase()}_${song.artist.toLowerCase()}`),
+        !allExistingTitleArtistPairs.has(`${song.title.toLowerCase()}_${song.artist.toLowerCase()}`),
     );
 
-    // Combine existing songs (now with BPM data) and new search results
+    // Combine All Songs results first, then existing songs, then new search results
     const allResults = [
-      ...updatedExistingSongs,
-      ...newSongs.slice(0, 10 - updatedExistingSongs.length), // Limit total results to 10
+      ...allSongResults, // All Songs setlist results first
+      ...updatedExistingSongs, // Then regular database songs
+      ...newSongs.slice(0, Math.max(0, 10 - allSongResults.length - updatedExistingSongs.length)), // Then new songs, limiting total to 10
     ];
 
-    return NextResponse.json({ songs: allResults });
+    return NextResponse.json({ 
+      songs: allResults,
+      metadata: {
+        allSongsCount: allSongResults.length,
+        existingCount: updatedExistingSongs.length,
+        newCount: newSongs.slice(0, Math.max(0, 10 - allSongResults.length - updatedExistingSongs.length)).length
+      }
+    });
   } catch (error) {
     console.error('Error in song search API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
