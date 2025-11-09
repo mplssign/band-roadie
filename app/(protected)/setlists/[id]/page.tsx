@@ -16,11 +16,12 @@ import { SetlistImportRow } from '@/components/setlists/SetlistImportRow';
 import { ConfirmDeleteSetlistDialog } from '@/components/setlists/ConfirmDeleteSetlistDialog';
 import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
-import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown } from 'lucide-react';
 import { capitalizeWords } from '@/lib/utils/formatters';
 
 // Import types from main types file
 import type { TuningType } from '@/lib/types';
+import { getTuningInfo } from '@/lib/utils/tuning';
 
 // Dynamic imports for performance optimization
 const SongSearchOverlay = lazy(() => import('@/components/setlists/OptimizedSongSearchOverlay'));
@@ -98,6 +99,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [providerImportOpen, setProviderImportOpen] = useState<'apple' | 'spotify' | 'amazon' | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
+  const [tuningGroupMode, setTuningGroupMode] = useState<'none' | 'ascending' | 'descending'>('none');
 
   // Calculate totals from current songs
   const totals = {
@@ -272,6 +274,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         await loadSetlist();
         // Exit edit mode after successful save
         setIsEditMode(false);
+        setTuningGroupMode('none');
       }
     } catch (err) {
       console.error('Error saving setlist:', err);
@@ -677,6 +680,52 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   };
 
+  const handleGroupByTuning = () => {
+    // Cycle through grouping modes: none -> ascending -> descending -> none
+    const nextMode = tuningGroupMode === 'none' ? 'ascending' 
+                   : tuningGroupMode === 'ascending' ? 'descending' 
+                   : 'none';
+    
+    setTuningGroupMode(nextMode);
+
+    if (nextMode === 'none') {
+      // Reset to original order
+      setSongs(prev => [...prev].sort((a, b) => a.position - b.position));
+      return;
+    }
+
+    // Group songs by tuning based on popularity
+    setSongs(prev => {
+      const sorted = [...prev].sort((a, b) => {
+        const tuningA = a.tuning || a.songs?.tuning || 'standard';
+        const tuningB = b.tuning || b.songs?.tuning || 'standard';
+        
+        const popularityA = getTuningInfo(tuningA as TuningType).popularity;
+        const popularityB = getTuningInfo(tuningB as TuningType).popularity;
+        
+        // Sort by tuning popularity (ascending = most popular first, descending = least popular first)
+        if (nextMode === 'ascending') {
+          if (popularityA !== popularityB) {
+            return popularityA - popularityB; // Lower popularity number = more popular = comes first
+          }
+        } else {
+          if (popularityA !== popularityB) {
+            return popularityB - popularityA; // Higher popularity number = less popular = comes first
+          }
+        }
+        
+        // If same tuning, maintain relative order by position
+        return a.position - b.position;
+      });
+
+      // Update positions to reflect new order
+      return sorted.map((song, index) => ({
+        ...song,
+        position: index + 1,
+      }));
+    });
+  };
+
   if (loading) {
     return (
       <main className="bg-background text-foreground">
@@ -752,20 +801,40 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           )}
 
           {isEditMode && setlist && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setIsEditMode(false);
-                // Reset to original values if canceling
-                setSetlistName(originalSetlistName);
-                setSongs([...originalSongs]);
-              }}
-              className="gap-2"
-            >
-              <X className="h-4 w-4" />
-              Cancel
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsEditMode(false);
+                  // Reset to original values if canceling
+                  setSetlistName(originalSetlistName);
+                  setSongs([...originalSongs]);
+                  setTuningGroupMode('none');
+                }}
+                className="gap-2"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </Button>
+              
+              {/* Group by Tuning button - only for regular setlists */}
+              {setlist?.setlist_type !== 'all_songs' && setlist?.name !== 'All Songs' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGroupByTuning}
+                  className="gap-2 justify-start"
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                  <span>
+                    Group by Tuning
+                    {tuningGroupMode === 'ascending' && ' (Standard first)'}
+                    {tuningGroupMode === 'descending' && ' (Half Step first)'}
+                  </span>
+                </Button>
+              )}
+            </div>
           )}
         </div>
 
