@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
+import { requireBandMembership } from '@/lib/server/band-scope';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -63,6 +64,17 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ 
         error: 'Setlist not found', 
         debug: { setlistId, user_id: user.id, message: 'No setlist found with this ID' }
+      }, { status: 404 });
+    }
+
+    // Verify user is a member of the band that owns this setlist
+    try {
+      await requireBandMembership(setlistInfo.band_id);
+    } catch (error) {
+      console.error('Band membership check failed:', { setlistId, user_id: user.id, band_id: setlistInfo.band_id, error });
+      return NextResponse.json({ 
+        error: 'Setlist not found', 
+        debug: { setlistId, user_id: user.id, band_id: setlistInfo.band_id, message: 'User not member of band' }
       }, { status: 404 });
     }
 
@@ -271,6 +283,27 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
 
     if (!songs || !Array.isArray(songs)) {
       return NextResponse.json({ error: 'Songs array is required' }, { status: 400 });
+    }
+
+    // Get setlist info for band validation (from first song)
+    if (songs.length > 0) {
+      const { data: setlistSong } = await supabase
+        .from('setlist_songs')
+        .select('setlist_id, setlists!inner(band_id)')
+        .eq('id', songs[0].id)
+        .single();
+
+      if (setlistSong?.setlists && Array.isArray(setlistSong.setlists) && setlistSong.setlists[0]?.band_id) {
+        try {
+          await requireBandMembership(setlistSong.setlists[0].band_id);
+        } catch (error) {
+          console.error('Band membership check failed in PUT:', { user_id: user.id, band_id: setlistSong.setlists[0].band_id, error });
+          return NextResponse.json({ 
+            error: 'Setlist not found', 
+            debug: { user_id: user.id, band_id: setlistSong.setlists[0].band_id, message: 'User not member of band' }
+          }, { status: 404 });
+        }
+      }
     }
 
     // Update positions for all songs individually to avoid RLS policy issues with upsert
