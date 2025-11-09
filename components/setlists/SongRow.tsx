@@ -52,6 +52,11 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
     onUpdate(setlistSong.id, { bpm: newBpm });
   };
 
+  const handleTuningChange = (newTuning: TuningType) => {
+    console.log('SongRow handleTuningChange:', { songId: setlistSong.id, newTuning, oldTuning: setlistSong.tuning });
+    onUpdate(setlistSong.id, { tuning: newTuning });
+  };
+
   const handleSongClick = () => {
     if (!isEditMode && setlistSong.songs?.id) {
       router.push(`/songs/${setlistSong.songs.id}`);
@@ -175,7 +180,7 @@ export function SongRow({ setlistSong, onUpdate, onRemove, isEditMode = false }:
               {/* Tuning */}
               <TuningBadge 
                 tuning={displayTuning}
-                onChange={isEditMode ? (newTuning) => onUpdate(setlistSong.id, { tuning: newTuning }) : undefined}
+                onChange={isEditMode ? handleTuningChange : undefined}
                 disabled={!isEditMode}
               />
             </div>

@@ -92,14 +92,64 @@ interface LegacyTuningBadgeProps {
 // Legacy component for backward compatibility (uses custom dropdown)
 export function LegacyTuningBadge({ 
   tuning, 
+  onChange,
+  disabled = false,
   className = ''
 }: LegacyTuningBadgeProps) {
+  console.log('LegacyTuningBadge render:', { tuning, hasOnChange: !!onChange, disabled });
+
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTuning = e.target.value as TuningType;
+    console.log('LegacyTuningBadge handleChange:', { oldTuning: tuning, newTuning });
+    onChange?.(newTuning);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   // Static badge when disabled (non-edit mode)
+  if (disabled || !onChange) {
+    return (
+      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+        <span className="text-foreground">
+          {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
+        </span>
+      </span>
+    );
+  }
+
+  // Interactive badge in edit mode
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
-      <span className="text-foreground">
+    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+      {/* Visible badge text */}
+      <span className="pointer-events-none select-none text-foreground">
         {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
       </span>
+
+      {/* Native select overlay */}
+      <select
+        aria-label="Guitar tuning"
+        value={tuning}
+        onChange={handleChange}
+        onPointerDown={handlePointerDown}
+        onClick={handleClick}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        style={{ 
+          WebkitAppearance: 'menulist', 
+          appearance: 'menulist' 
+        } as React.CSSProperties}
+      >
+        {TUNING_OPTIONS.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     </span>
   );
 }
