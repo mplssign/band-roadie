@@ -51,7 +51,7 @@ export function TuningBadge({
   };
 
   return (
-    <span className={`relative inline-flex items-center rounded-full ${value === 'full_step' ? '' : 'border'} px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
+    <span className={`relative inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
       {/* Visible badge text */}
       <span className="pointer-events-none select-none">
         {TUNING_OPTIONS.find(o => o.value === value)?.label ?? 'Standard'}
@@ -117,7 +117,7 @@ export function LegacyTuningBadge({
   // Static badge when disabled (non-edit mode)
   if (disabled || !onChange) {
     return (
-      <span className={`inline-flex items-center rounded-full ${tuning === 'full_step' ? '' : 'border'} px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
+      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
         <span>
           {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
         </span>
@@ -127,7 +127,7 @@ export function LegacyTuningBadge({
 
   // Interactive badge in edit mode
   return (
-    <span className={`relative inline-flex items-center rounded-full ${tuning === 'full_step' ? '' : 'border'} px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
+    <span className={`relative inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
       {/* Visible badge text */}
       <span className="pointer-events-none select-none">
         {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}

@@ -13,21 +13,21 @@ export const tuningMap: Record<TuningType, TuningInfo> = {
   standard: {
     name: 'Standard',
     notes: 'E A D G B E',
-    color: 'bg-blue-600 hover:bg-blue-700 border-blue-500',
+    color: 'bg-blue-600 hover:bg-blue-700',
     popularity: 1,
     aliases: ['Standard', 'Standard Tuning', 'E', 'EADGBE', 'std', 'standard']
   },
   half_step: {
     name: 'Half Step',
     notes: 'Eb Ab Db Gb Bb Eb',
-    color: 'bg-purple-600 hover:bg-purple-700 border-purple-500',
+    color: 'bg-purple-600 hover:bg-purple-700',
     popularity: 2,
     aliases: ['Half Step Down', 'Half Step', 'Eb Standard', 'Eb', 'Half', '1/2 Step', 'semitone', 'half_step']
   },
   drop_d: {
     name: 'Drop D',
     notes: 'D A D G B E',
-    color: 'bg-green-600 hover:bg-green-700 border-green-500',
+    color: 'bg-green-600 hover:bg-green-700',
     popularity: 3,
     aliases: ['Drop D', 'DADGBE', 'drop d', 'drop_d']
   },
@@ -41,42 +41,42 @@ export const tuningMap: Record<TuningType, TuningInfo> = {
   drop_c: {
     name: 'Drop C',
     notes: 'C G C F A D',
-    color: 'bg-red-600 hover:bg-red-700 border-red-500',
+    color: 'bg-red-600 hover:bg-red-700',
     popularity: 5,
     aliases: ['Drop C', 'CGCFAD', 'drop c', 'drop_c']
   },
   drop_b: {
     name: 'Drop B',
     notes: 'B F# B E G# C#',
-    color: 'bg-pink-600 hover:bg-pink-700 border-pink-500',
+    color: 'bg-pink-600 hover:bg-pink-700',
     popularity: 6,
     aliases: ['Drop B', 'BF#BEG#C#', 'drop b', 'drop_b']
   },
   dadgad: {
     name: 'DADGAD',
     notes: 'D A D G A D',
-    color: 'bg-indigo-600 hover:bg-indigo-700 border-indigo-500',
+    color: 'bg-indigo-600 hover:bg-indigo-700',
     popularity: 7,
     aliases: ['DADGAD', 'dadgad', 'Celtic Tuning']
   },
   open_g: {
     name: 'Open G',
     notes: 'D G D G B D',
-    color: 'bg-teal-600 hover:bg-teal-700 border-teal-500',
+    color: 'bg-teal-600 hover:bg-teal-700',
     popularity: 8,
     aliases: ['Open G', 'DGDGBD', 'open g', 'open_g']
   },
   open_d: {
     name: 'Open D',
     notes: 'D A D F# A D',
-    color: 'bg-cyan-600 hover:bg-cyan-700 border-cyan-500',
+    color: 'bg-cyan-600 hover:bg-cyan-700',
     popularity: 9,
     aliases: ['Open D', 'DADF#AD', 'open d', 'open_d']
   },
   open_e: {
     name: 'Open E',
     notes: 'E B E G# B E',
-    color: 'bg-amber-600 hover:bg-amber-700 border-amber-500',
+    color: 'bg-amber-600 hover:bg-amber-700',
     popularity: 10,
     aliases: ['Open E', 'EBEG#BE', 'open e', 'open_e']
   }

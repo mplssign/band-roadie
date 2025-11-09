@@ -694,23 +694,38 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       return;
     }
 
-    // Group songs by tuning based on popularity
+    // Define logical tuning order for guitarists
+    const tuningOrder: Record<string, number> = {
+      // Most practical order: Standard → Drop D → Half Step → Full Step → other drops → open tunings
+      'standard': 1,
+      'drop_d': 2,
+      'half_step': 3,
+      'full_step': 4,
+      'drop_c': 5,
+      'drop_b': 6,
+      'dadgad': 7,
+      'open_g': 8,
+      'open_d': 9,
+      'open_e': 10,
+    };
+
+    // Group songs by tuning based on logical order
     setSongs(prev => {
       const sorted = [...prev].sort((a, b) => {
         const tuningA = a.tuning || a.songs?.tuning || 'standard';
         const tuningB = b.tuning || b.songs?.tuning || 'standard';
         
-        const popularityA = getTuningInfo(tuningA as TuningType).popularity;
-        const popularityB = getTuningInfo(tuningB as TuningType).popularity;
+        const orderA = tuningOrder[tuningA] || 99; // Unknown tunings go to end
+        const orderB = tuningOrder[tuningB] || 99;
         
-        // Sort by tuning popularity (ascending = most popular first, descending = least popular first)
+        // Sort by tuning order (ascending = standard first, descending = open tunings first)
         if (nextMode === 'ascending') {
-          if (popularityA !== popularityB) {
-            return popularityA - popularityB; // Lower popularity number = more popular = comes first
+          if (orderA !== orderB) {
+            return orderA - orderB; // Lower order = comes first
           }
         } else {
-          if (popularityA !== popularityB) {
-            return popularityB - popularityA; // Higher popularity number = less popular = comes first
+          if (orderA !== orderB) {
+            return orderB - orderA; // Higher order = comes first (reversed)
           }
         }
         
@@ -829,8 +844,8 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                   <ArrowUpDown className="h-4 w-4" />
                   <span>
                     Group by Tuning
-                    {tuningGroupMode === 'ascending' && ' (Standard first)'}
-                    {tuningGroupMode === 'descending' && ' (Half Step first)'}
+                    {tuningGroupMode === 'ascending' && ' (Standard → Drop D)'}
+                    {tuningGroupMode === 'descending' && ' (Open E → Drop D)'}
                   </span>
                 </Button>
               )}

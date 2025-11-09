@@ -287,22 +287,27 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
 
     // Get setlist info for band validation (from first song)
     if (songs.length > 0) {
-      const { data: setlistSong } = await supabase
+      const { data: setlistSong, error: fetchError } = await supabase
         .from('setlist_songs')
         .select('setlist_id, setlists!inner(band_id)')
         .eq('id', songs[0].id)
         .single();
 
-      if (setlistSong?.setlists && Array.isArray(setlistSong.setlists) && setlistSong.setlists[0]?.band_id) {
-        try {
-          await requireBandMembership(setlistSong.setlists[0].band_id);
-        } catch (error) {
-          console.error('Band membership check failed in PUT:', { user_id: user.id, band_id: setlistSong.setlists[0].band_id, error });
-          return NextResponse.json({ 
-            error: 'Setlist not found', 
-            debug: { user_id: user.id, band_id: setlistSong.setlists[0].band_id, message: 'User not member of band' }
-          }, { status: 404 });
-        }
+      if (fetchError || !setlistSong) {
+        console.error('Error fetching setlist song:', fetchError);
+        return NextResponse.json({ error: 'Setlist song not found' }, { status: 404 });
+      }
+
+      const bandId = (setlistSong as any).setlists.band_id;
+
+      try {
+        await requireBandMembership(bandId);
+      } catch (error) {
+        console.error('Band membership check failed in PUT:', { user_id: user.id, band_id: bandId, error });
+        return NextResponse.json({ 
+          error: 'Setlist not found', 
+          debug: { user_id: user.id, band_id: bandId, message: 'User not member of band' }
+        }, { status: 404 });
       }
     }
 
