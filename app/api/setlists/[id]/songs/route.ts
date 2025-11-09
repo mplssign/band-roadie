@@ -46,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     // Get setlist info to check if this is "All Songs" and get band_id
     const { data: setlistInfo, error: setlistError } = await supabase
       .from('setlists')
-      .select('band_id, setlist_type, name')
+      .select('band_id, name')
       .eq('id', setlistId)
       .single();
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     // If this isn't the "All Songs" setlist, auto-add to "All Songs"
     // Use both setlist_type and name for backward compatibility
-    const isAllSongs = setlistInfo.setlist_type === 'all_songs' || setlistInfo.name === 'All Songs';
+    const isAllSongs = setlistInfo.name === 'All Songs';
     if (!isAllSongs) {
       await autoAddToAllSongs(setlistInfo.band_id, song_id, {
         bpm,
