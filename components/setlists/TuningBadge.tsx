@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { TuningType, TUNING_OPTIONS } from '@/lib/types';
-import { getTuningInfo } from '@/lib/utils/tuning';
+import { getTuningInfo, getTuningColor } from '@/lib/utils/tuning';
 import { updateSetlistSongTuning } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
 
@@ -22,6 +22,7 @@ export function TuningBadge({
   className = '' 
 }: TuningBadgeProps) {
   const { showToast } = useToast();
+  const tuningInfo = getTuningInfo(value);
 
   const handleChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nextTuning = e.target.value as TuningType;
@@ -50,9 +51,9 @@ export function TuningBadge({
   };
 
   return (
-    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
       {/* Visible badge text */}
-      <span className="pointer-events-none select-none text-foreground">
+      <span className="pointer-events-none select-none">
         {TUNING_OPTIONS.find(o => o.value === value)?.label ?? 'Standard'}
       </span>
 
@@ -97,6 +98,7 @@ export function LegacyTuningBadge({
   className = ''
 }: LegacyTuningBadgeProps) {
   console.log('LegacyTuningBadge render:', { tuning, hasOnChange: !!onChange, disabled });
+  const tuningInfo = getTuningInfo(tuning);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTuning = e.target.value as TuningType;
@@ -115,8 +117,8 @@ export function LegacyTuningBadge({
   // Static badge when disabled (non-edit mode)
   if (disabled || !onChange) {
     return (
-      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
-        <span className="text-foreground">
+      <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
+        <span>
           {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
         </span>
       </span>
@@ -125,9 +127,9 @@ export function LegacyTuningBadge({
 
   // Interactive badge in edit mode
   return (
-    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium bg-muted/60 ${className}`}>
+    <span className={`relative inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium text-white ${tuningInfo.color} ${className}`}>
       {/* Visible badge text */}
-      <span className="pointer-events-none select-none text-foreground">
+      <span className="pointer-events-none select-none">
         {TUNING_OPTIONS.find(o => o.value === tuning)?.label ?? 'Standard'}
       </span>
 
