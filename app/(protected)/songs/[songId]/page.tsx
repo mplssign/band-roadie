@@ -203,7 +203,7 @@ export default function SongDetailPage({ params }: SongDetailPageProps) {
               </div>
             )}
 
-            {/* Song Info */}
+            {/* Song Info - Left side (title and artist) */}
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl font-bold mb-2 leading-tight">
                 {song.title}
@@ -217,26 +217,26 @@ export default function SongDetailPage({ params }: SongDetailPageProps) {
                   {song.artist}
                 </p>
               )}
+            </div>
 
-              {/* Song Metadata */}
-              <div className="flex flex-wrap items-center gap-3">
-                {song.bpm && (
-                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                    {song.bpm} BPM
-                  </div>
-                )}
-                
-                <TuningBadge 
-                  tuning={song.tuning || 'standard'} 
-                  disabled={true}
-                />
-                
-                {song.duration_seconds && (
-                  <div className="bg-background/80 text-foreground border border-border/30 px-3 py-1 rounded-full text-sm font-medium">
-                    {formatDuration(song.duration_seconds)}
-                  </div>
-                )}
-              </div>
+            {/* Song Metadata - Right side with right justification */}
+            <div className="flex-shrink-0 flex flex-col items-end gap-3">
+              {song.bpm && (
+                <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
+                  {song.bpm} BPM
+                </div>
+              )}
+              
+              <TuningBadge 
+                tuning={song.tuning || 'standard'} 
+                disabled={true}
+              />
+              
+              {song.duration_seconds && (
+                <div className="bg-background/80 text-foreground border border-border/30 px-3 py-1 rounded-full text-sm font-medium">
+                  {formatDuration(song.duration_seconds)}
+                </div>
+              )}
             </div>
           </div>
         </div>

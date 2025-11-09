@@ -30,28 +30,45 @@ export function SwipeToActionDual({
   const [isDragging, setIsDragging] = useState(false);
   const [actionTriggered, setActionTriggered] = useState<'left' | 'right' | null>(null);
   const startX = useRef(0);
+  const startY = useRef(0);
   const currentX = useRef(0);
+  const currentY = useRef(0);
   const elementRef = useRef<HTMLDivElement>(null);
+  const hasMoved = useRef(false);
 
   // Viewport-based thresholds
   const vw = typeof window !== 'undefined' ? window.innerWidth : 375;
   const PEEK = 0.12 * vw;
   const TARGET = 0.25 * vw;
   const HARD = 0.6 * vw;
-  const TAP_THRESHOLD = 10; // pixels - movements smaller than this are considered taps
+  const TAP_THRESHOLD = 25; // pixels - increased for better scroll discrimination
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
     currentX.current = startX.current;
+    currentY.current = startY.current;
     setIsDragging(true);
     setActionTriggered(null);
+    hasMoved.current = false;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging) return;
 
     currentX.current = e.touches[0].clientX;
+    currentY.current = e.touches[0].clientY;
     const deltaX = currentX.current - startX.current;
+    const deltaY = currentY.current - startY.current;
+    
+    // Check if this looks more like vertical scrolling than horizontal swiping
+    if (!hasMoved.current && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+      // This looks like vertical scrolling, don't intercept
+      setIsDragging(false);
+      return;
+    }
+    
+    hasMoved.current = true;
     
     // Clamp based on mode
     const maxDrag = mode === 'view' ? PEEK : HARD;
@@ -63,15 +80,18 @@ export function SwipeToActionDual({
     if (!isDragging) return;
 
     const deltaX = currentX.current - startX.current;
+    const deltaY = currentY.current - startY.current;
     const threshold = mode === 'view' ? PEEK : TARGET;
     
-    // Check if this is a tap (small movement)
-    if (Math.abs(deltaX) < TAP_THRESHOLD && onTap) {
-      // This is a tap
-      setDragOffset(0);
-      setIsDragging(false);
-      onTap();
-      return;
+    // Check if this is a tap (small movement and no significant scroll intent)
+    if (!hasMoved.current || (Math.abs(deltaX) < TAP_THRESHOLD && Math.abs(deltaY) < TAP_THRESHOLD)) {
+      if (onTap) {
+        // This is a tap
+        setDragOffset(0);
+        setIsDragging(false);
+        onTap();
+        return;
+      }
     }
     
     if (deltaX <= -threshold && onSwipeLeft && mode === 'edit') {
@@ -105,15 +125,30 @@ export function SwipeToActionDual({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     startX.current = e.clientX;
+    startY.current = e.clientY;
     currentX.current = startX.current;
+    currentY.current = startY.current;
     setIsDragging(true);
     setActionTriggered(null);
+    hasMoved.current = false;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
       
       currentX.current = e.clientX;
+      currentY.current = e.clientY;
       const deltaX = currentX.current - startX.current;
+      const deltaY = currentY.current - startY.current;
+      
+      // Check if this looks more like vertical scrolling
+      if (!hasMoved.current && Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+        setIsDragging(false);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        return;
+      }
+      
+      hasMoved.current = true;
       
       // Clamp based on mode
       const maxDrag = mode === 'view' ? PEEK : HARD;
@@ -125,17 +160,20 @@ export function SwipeToActionDual({
       if (!isDragging) return;
 
       const deltaX = currentX.current - startX.current;
+      const deltaY = currentY.current - startY.current;
       const threshold = mode === 'view' ? PEEK : TARGET;
       
-      // Check if this is a tap (small movement)
-      if (Math.abs(deltaX) < TAP_THRESHOLD && onTap) {
-        // This is a tap
-        setDragOffset(0);
-        setIsDragging(false);
-        onTap();
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-        return;
+      // Check if this is a tap (small movement and no scroll intent)
+      if (!hasMoved.current || (Math.abs(deltaX) < TAP_THRESHOLD && Math.abs(deltaY) < TAP_THRESHOLD)) {
+        if (onTap) {
+          // This is a tap
+          setDragOffset(0);
+          setIsDragging(false);
+          onTap();
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          return;
+        }
       }
       
       if (deltaX <= -threshold && onSwipeLeft && mode === 'edit') {

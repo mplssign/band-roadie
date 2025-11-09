@@ -43,9 +43,9 @@ function SetlistCard({
       >
       <Card
         className={`p-4 cursor-pointer hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
-          isPressed ? 'bg-gray-900' : ''
+          isPressed ? (isAllSongs ? 'bg-rose-950' : 'bg-gray-900') : ''
         } ${
-          isAllSongs ? 'border-rose-500 border-2' : ''
+          isAllSongs ? 'bg-rose-50 border-rose-200 border-2 dark:bg-rose-950/20 dark:border-rose-500' : ''
         }`}
         onPointerDown={() => setIsPressed(true)}
         onPointerUp={() => setIsPressed(false)}
@@ -63,23 +63,28 @@ function SetlistCard({
         role="button"
         aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
       >
-        <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-lg font-semibold truncate">{setlist.name}</h3>
+              <h3 className={`text-lg font-semibold truncate ${
+                isAllSongs ? 'text-rose-900 dark:text-rose-400' : ''
+              }`}>{setlist.name}</h3>
             </div>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <div className={`flex items-center gap-4 text-sm ${
+              isAllSongs ? 'text-rose-700 dark:text-rose-300' : 'text-muted-foreground'
+            }`}>
               <div className="flex items-center gap-1">
                 <Music className="h-4 w-4" />
                 <span>{songCount} songs</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4" />
-                <span>{formatSecondsHuman((setlist as { calculated_duration?: number }).calculated_duration || 0)}</span>
-              </div>
+              {(setlist as any).total_duration && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{formatSecondsHuman((setlist as any).total_duration)}</span>
+                </div>
+              )}
             </div>
           </div>
-          <ListMusic className="h-5 w-5 text-muted-foreground" />
         </div>
       </Card>
     </SwipeableContainer>
