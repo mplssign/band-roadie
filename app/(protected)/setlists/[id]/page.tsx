@@ -358,6 +358,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         console.log('Song addition response status:', response.status);
         const data = await response.json();
         console.log('Song addition response data:', data);
+        if (data.debug) {
+          console.log('Song addition debug details:', JSON.stringify(data.debug, null, 2));
+        }
         
         if (!response.ok) {
           if (data.code === 'DUPLICATE_SONG') {
@@ -431,7 +434,13 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
             }),
           });
 
+          console.log('Bulk song addition response status:', response.status);
           const data = await response.json();
+          console.log('Bulk song addition response data:', data);
+          if (data.debug) {
+            console.log('Bulk song addition debug details:', JSON.stringify(data.debug, null, 2));
+          }
+          
           if (!response.ok) {
             if (data.code !== 'DUPLICATE_SONG') {
               console.error(`Failed to add song to setlist: ${songToAdd.title}`, data.error);
