@@ -257,15 +257,38 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
       // Update song positions if there are songs
       if (songs.length > 0) {
+        console.log('[Frontend] Sending songs to API:', songs);
+        console.log('[Frontend] Songs count:', songs.length);
+        console.log('[Frontend] First song structure:', songs[0]);
+        
+        // First try debug endpoint to see what's happening
+        try {
+          const debugResponse = await fetch(`/api/setlists/${setlistId}/songs/debug`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ songs }),
+          });
+          
+          const debugData = await debugResponse.json();
+          console.log('[Frontend] Debug response:', debugData);
+        } catch (debugError) {
+          console.log('[Frontend] Debug endpoint error:', debugError);
+        }
+        
         const updateSongsResponse = await fetch(`/api/setlists/${setlistId}/songs`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ songs }),
         });
 
+        console.log('[Frontend] PUT response status:', updateSongsResponse.status);
+        
         if (!updateSongsResponse.ok) {
           const errorData = await updateSongsResponse.json();
+          console.log('[Frontend] PUT response error:', errorData);
           throw new Error(errorData.error || 'Failed to update song positions');
+        } else {
+          console.log('[Frontend] PUT response success');
         }
       }
 
