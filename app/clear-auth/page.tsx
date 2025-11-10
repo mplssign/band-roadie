@@ -1,3 +1,5 @@
+'use client';
+
 export default function ClearAuthPage() {
   const clearAuth = () => {
     // Clear all auth-related cookies and localStorage
