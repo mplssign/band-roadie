@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { requireBandMembership } from '@/lib/server/band-scope';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -69,15 +68,26 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     // Verify user is a member of the band that owns this setlist
-    try {
-      await requireBandMembership(setlistInfo.band_id);
-    } catch (error) {
-      console.error('Band membership check failed:', { setlistId, user_id: user.id, band_id: setlistInfo.band_id, error });
+    console.log('[POST] About to check band membership for:', { user_id: user.id, band_id: setlistInfo.band_id });
+    
+    const { data: membership, error: membershipError } = await supabase
+      .from('band_members')
+      .select('id, is_active')
+      .eq('band_id', setlistInfo.band_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    console.log('[POST] Band membership query result:', { membership, membershipError });
+
+    if (membershipError || !membership) {
+      console.log('[POST] User is not a member of band:', { user_id: user.id, band_id: setlistInfo.band_id });
       return NextResponse.json({ 
         error: 'Setlist not found', 
-        debug: { setlistId, user_id: user.id, band_id: setlistInfo.band_id, message: 'User not member of band' }
+        debug: { user_id: user.id, band_id: setlistInfo.band_id, message: 'User not member of band' }
       }, { status: 404 });
     }
+
+    console.log('[POST] Band membership validated for band:', setlistInfo.band_id);
 
     // Get the next position for the song
     const { data: lastSong } = await supabase
