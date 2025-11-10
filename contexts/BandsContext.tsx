@@ -114,12 +114,13 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
     }
   }, [bands, currentBand, clearBandState]);
 
-  const fetchBands = useCallback(async () => {
-    if (loadingRef.current) return;
+  const fetchBands = useCallback(async (retryCount = 0) => {
+    const maxRetries = 3;
+    if (loadingRef.current && retryCount === 0) return;
     loadingRef.current = true;
     setLoading(true);
 
-    console.log('[BandsContext] Fetching bands...');
+    console.log('[BandsContext] Fetching bands...', retryCount > 0 ? `(retry ${retryCount})` : '');
 
     try {
       // Get user's bands from API with timeout
@@ -136,6 +137,14 @@ export function BandsProvider({ children }: { children: React.ReactNode }) {
       console.log('[BandsContext] Response status:', response.status, response.statusText);
 
       if (!response.ok) {
+        // If unauthorized and we have retries left, wait and retry
+        if (response.status === 401 && retryCount < maxRetries) {
+          console.log('[BandsContext] Got 401, retrying in 1 second...');
+          loadingRef.current = false; // Allow retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return fetchBands(retryCount + 1);
+        }
+        
         console.log('[BandsContext] Response not OK, clearing bands');
         setBands([]);
         setCurrentBandState(null);

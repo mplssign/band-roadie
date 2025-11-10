@@ -57,9 +57,27 @@ export async function POST(req: Request): Promise<NextResponse<CreateBandRespons
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   try {
     const cookieStore = await cookies();
-    const accessToken = cookieStore.get('sb-access-token')?.value;
+    let accessToken = cookieStore.get('sb-access-token')?.value;
+
+    // Fallback to standard Supabase cookies if custom token not found
+    if (!accessToken) {
+      const supabaseSession = cookieStore.get('sb-127.0.0.1-auth-token')?.value || 
+                              cookieStore.get('sb-localhost-auth-token')?.value ||
+                              cookieStore.get('sb-bandroadie.com-auth-token')?.value;
+      
+      if (supabaseSession) {
+        try {
+          const session = JSON.parse(supabaseSession);
+          accessToken = session?.access_token;
+          console.log('[api/bands] Using fallback session cookie for access token');
+        } catch (e) {
+          console.warn('[api/bands] Failed to parse session cookie:', e);
+        }
+      }
+    }
 
     if (!accessToken) {
+      console.log('[api/bands] No access token found in cookies');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
