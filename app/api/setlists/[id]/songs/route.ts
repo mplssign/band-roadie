@@ -358,7 +358,25 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
       try {
         console.log('[PUT] About to check band membership for:', { user_id: authenticatedUser.id, band_id: bandId });
-        await requireBandMembership(bandId);
+        
+        // Use the same authentication approach as the main endpoint instead of requireBandMembership
+        const { data: membership, error: membershipError } = await supabase
+          .from('band_members')
+          .select('id, is_active')
+          .eq('band_id', bandId)
+          .eq('user_id', authenticatedUser.id)
+          .maybeSingle();
+
+        console.log('[PUT] Band membership query result:', { membership, membershipError });
+
+        if (membershipError || !membership) {
+          console.log('[PUT] User is not a member of band:', { user_id: authenticatedUser.id, band_id: bandId });
+          return NextResponse.json({ 
+            error: 'Setlist not found', 
+            debug: { user_id: authenticatedUser.id, band_id: bandId, message: 'User not member of band' }
+          }, { status: 404 });
+        }
+
         console.log('[PUT] Band membership validated for band:', bandId);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
