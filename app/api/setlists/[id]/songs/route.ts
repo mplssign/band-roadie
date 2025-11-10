@@ -249,9 +249,11 @@ async function autoAddToAllSongs(bandId: string, songId: string, songData: {
   }
 }
 
-export async function PUT(request: NextRequest, { params: _params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const setlistId = params.id;
+  
   try {
-    console.log('[PUT] Starting setlist song update request');
+    console.log('[PUT] Starting setlist song update request for setlist:', setlistId);
     
     // Create client for user authentication using cookies
     const authClient = createServerClient(
