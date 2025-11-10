@@ -866,9 +866,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 >
                   <ArrowUpDown className="h-4 w-4" />
                   <span>
-                    Group by Tuning
-                    {tuningGroupMode === 'ascending' && ' (Standard → Drop D)'}
-                    {tuningGroupMode === 'descending' && ' (Open E → Drop D)'}
+                    {tuningGroupMode === 'none' && 'Group by Tuning'}
+                    {tuningGroupMode === 'ascending' && 'Group by Tuning (Standard →)'}
+                    {tuningGroupMode === 'descending' && 'Group by Tuning (Half Step →)'}
                   </span>
                 </Button>
               )}

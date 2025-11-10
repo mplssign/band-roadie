@@ -369,21 +369,49 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       try {
         console.log('[PUT] About to check band membership for:', { user_id: authenticatedUser.id, band_id: bandId });
         
-        // Use the same authentication approach as the main endpoint instead of requireBandMembership
+        // First, let's see what memberships exist for this user
+        const { data: allMemberships, error: allMembershipsError } = await supabase
+          .from('band_members')
+          .select('id, band_id, user_id, is_active')
+          .eq('user_id', authenticatedUser.id);
+        
+        console.log('[PUT] All user memberships:', { allMemberships, allMembershipsError });
+        
+        // Now check specific band membership
         const { data: membership, error: membershipError } = await supabase
           .from('band_members')
-          .select('id, is_active')
+          .select('id, is_active, band_id, user_id')
           .eq('band_id', bandId)
           .eq('user_id', authenticatedUser.id)
           .maybeSingle();
 
-        console.log('[PUT] Band membership query result:', { membership, membershipError });
+        console.log('[PUT] Specific band membership query result:', { membership, membershipError, bandId, userId: authenticatedUser.id });
 
-        if (membershipError || !membership) {
-          console.log('[PUT] User is not a member of band:', { user_id: authenticatedUser.id, band_id: bandId });
+        if (membershipError) {
+          console.error('[PUT] Band membership query error:', membershipError);
           return NextResponse.json({ 
             error: 'Setlist not found', 
-            debug: { user_id: authenticatedUser.id, band_id: bandId, message: 'User not member of band' }
+            debug: { 
+              user_id: authenticatedUser.id, 
+              band_id: bandId, 
+              message: 'Band membership query failed',
+              error: membershipError.message,
+              code: membershipError.code
+            }
+          }, { status: 404 });
+        }
+
+        if (!membership) {
+          console.log('[PUT] User is not a member of band:', { user_id: authenticatedUser.id, band_id: bandId });
+          console.log('[PUT] Available memberships:', allMemberships);
+          return NextResponse.json({ 
+            error: 'Setlist not found', 
+            debug: { 
+              user_id: authenticatedUser.id, 
+              band_id: bandId, 
+              message: 'User not member of band',
+              availableMemberships: allMemberships
+            }
           }, { status: 404 });
         }
 
