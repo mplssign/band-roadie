@@ -254,6 +254,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   
   try {
     console.log('[PUT] Starting setlist song update request for setlist:', setlistId);
+    console.log('[PUT] Environment check:', {
+      hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      hasSupabaseAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      hasSupabaseServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
     
     // Create client for user authentication using cookies
     const authClient = createServerClient(
@@ -352,13 +357,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       console.log('[PUT] Extracted band ID:', bandId);
 
       try {
+        console.log('[PUT] About to check band membership for:', { user_id: authenticatedUser.id, band_id: bandId });
         await requireBandMembership(bandId);
         console.log('[PUT] Band membership validated for band:', bandId);
       } catch (error) {
-        console.error('[PUT] Band membership check failed:', { user_id: authenticatedUser.id, band_id: bandId, error });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+        console.error('[PUT] Band membership check failed:', { user_id: authenticatedUser.id, band_id: bandId, error: errorMessage, stack: errorStack });
         return NextResponse.json({ 
           error: 'Setlist not found', 
-          debug: { user_id: authenticatedUser.id, band_id: bandId, message: 'User not member of band' }
+          debug: { user_id: authenticatedUser.id, band_id: bandId, message: 'User not member of band', errorDetail: errorMessage }
         }, { status: 404 });
       }
     }
