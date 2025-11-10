@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { requireBandMembership } from '@/lib/server/band-scope';
 import { getTuningInfo } from '@/lib/utils/tuning';
 
@@ -272,12 +273,51 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
     );
 
     // Check authentication
+    let authenticatedUser: any = null;
     const { data: { user }, error: authError } = await authClient.auth.getUser();
     if (authError || !user) {
       console.log('[PUT] Authentication failed:', authError);
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      
+      // Try fallback authentication method like in bands API
+      const cookieStore = await cookies();
+      let fallbackAccessToken = cookieStore.get('sb-access-token')?.value;
+
+      // Check for standard Supabase cookies as fallback
+      if (!fallbackAccessToken) {
+        const supabaseSession = cookieStore.get('sb-127.0.0.1-auth-token')?.value || 
+                                cookieStore.get('sb-localhost-auth-token')?.value ||
+                                cookieStore.get('sb-bandroadie.com-auth-token')?.value;
+        
+        if (supabaseSession) {
+          try {
+            const session = JSON.parse(supabaseSession);
+            fallbackAccessToken = session?.access_token;
+            console.log('[PUT] Using fallback session cookie for access token');
+          } catch (e) {
+            console.warn('[PUT] Failed to parse session cookie:', e);
+          }
+        }
+      }
+
+      if (fallbackAccessToken) {
+        // Try to get user with fallback token
+        const supabaseFallback = createClient();
+        const { data: { user: fallbackUser }, error: fallbackError } = await supabaseFallback.auth.getUser(fallbackAccessToken);
+        
+        if (fallbackError || !fallbackUser) {
+          console.log('[PUT] Fallback authentication also failed:', fallbackError);
+          return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        }
+        
+        console.log('[PUT] Fallback user authenticated:', fallbackUser.id);
+        authenticatedUser = fallbackUser;
+      } else {
+        return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      }
+    } else {
+      console.log('[PUT] User authenticated:', user.id);
+      authenticatedUser = user;
     }
-    console.log('[PUT] User authenticated:', user.id);
 
     // Use service role client for database operations
     const supabase = createClient();
@@ -313,10 +353,10 @@ export async function PUT(request: NextRequest, { params: _params }: { params: {
         await requireBandMembership(bandId);
         console.log('[PUT] Band membership validated for band:', bandId);
       } catch (error) {
-        console.error('[PUT] Band membership check failed:', { user_id: user.id, band_id: bandId, error });
+        console.error('[PUT] Band membership check failed:', { user_id: authenticatedUser.id, band_id: bandId, error });
         return NextResponse.json({ 
           error: 'Setlist not found', 
-          debug: { user_id: user.id, band_id: bandId, message: 'User not member of band' }
+          debug: { user_id: authenticatedUser.id, band_id: bandId, message: 'User not member of band' }
         }, { status: 404 });
       }
     }
