@@ -100,6 +100,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const [providerImportOpen, setProviderImportOpen] = useState<'apple' | 'spotify' | 'amazon' | null>(null);
   const [bulkPasteOpen, setBulkPasteOpen] = useState(false);
   const [tuningGroupMode, setTuningGroupMode] = useState<'none' | 'ascending' | 'descending'>('none');
+  const [isProcessingGroupBy, setIsProcessingGroupBy] = useState(false);
 
   // Calculate totals from current songs
   const totals = {
@@ -703,7 +704,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   };
 
-  const handleGroupByTuning = () => {
+  const handleGroupByTuning = useCallback(async () => {
+    setIsProcessingGroupBy(true);
+    
     // Cycle through grouping modes: none -> ascending -> descending -> none
     const nextMode = tuningGroupMode === 'none' ? 'ascending' 
                    : tuningGroupMode === 'ascending' ? 'descending' 
@@ -714,6 +717,8 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     if (nextMode === 'none') {
       // Reset to original order
       setSongs(prev => [...prev].sort((a, b) => a.position - b.position));
+      // Use a small timeout to ensure state update completes
+      setTimeout(() => setIsProcessingGroupBy(false), 50);
       return;
     }
 
@@ -762,7 +767,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         position: index + 1,
       }));
     });
-  };
+    
+    // Use a small timeout to ensure state update completes
+    setTimeout(() => setIsProcessingGroupBy(false), 50);
+  }, [tuningGroupMode]);
 
   if (loading) {
     return (
@@ -862,13 +870,15 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleGroupByTuning}
+                  disabled={isProcessingGroupBy}
                   className="gap-2 justify-start"
                 >
                   <ArrowUpDown className="h-4 w-4" />
                   <span>
-                    {tuningGroupMode === 'none' && 'Group by Tuning'}
-                    {tuningGroupMode === 'ascending' && 'Group by Tuning (Standard →)'}
-                    {tuningGroupMode === 'descending' && 'Group by Tuning (Half Step →)'}
+                    {isProcessingGroupBy ? 'Processing...' : 
+                     tuningGroupMode === 'none' ? 'Group by Tuning' :
+                     tuningGroupMode === 'ascending' ? 'Group by Tuning (Standard →)' :
+                     'Group by Tuning (Half Step →)'}
                   </span>
                 </Button>
               )}
@@ -1007,12 +1017,12 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           <div className="flex flex-col gap-3 max-w-4xl mx-auto">
             <Button
               onClick={handleSaveSetlist}
-              disabled={saving || !setlistName.trim() || !hasChanges()}
+              disabled={saving || isProcessingGroupBy || !setlistName.trim() || !hasChanges()}
               className="w-full"
               size="lg"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? 'Saving...' : isProcessingGroupBy ? 'Processing...' : 'Save Changes'}
             </Button>
 
             {setlist && setlist.setlist_type !== 'all_songs' && setlist.name !== 'All Songs' && (
