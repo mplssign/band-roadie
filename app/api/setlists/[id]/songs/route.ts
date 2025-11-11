@@ -445,9 +445,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // Update positions for all songs individually to avoid RLS policy issues with upsert
-    console.log('[PUT] Starting song updates for', songs.length, 'songs');
-    const updatePromises = songs.map(async (song, index) => {
+    // Update positions for all songs sequentially to avoid unique constraint violations
+    console.log('[PUT] Starting sequential song updates for', songs.length, 'songs');
+    
+    for (let index = 0; index < songs.length; index++) {
+      const song = songs[index];
       try {
         console.log('[PUT] Updating song:', { id: song.id, position: index + 1, bpm: song.bpm, tuning: song.tuning });
         
@@ -469,26 +471,18 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
       } catch (updateError) {
         console.error(`[PUT] Exception updating song ${song.id}:`, updateError);
-        throw updateError;
+        const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error during song update';
+        return NextResponse.json({ 
+          error: 'Failed to update song positions',
+          details: errorMessage,
+          debug: { 
+            songCount: songs.length,
+            failedSongId: song.id,
+            failedPosition: index + 1,
+            error: errorMessage
+          }
+        }, { status: 500 });
       }
-    });
-
-    // Execute all updates
-    try {
-      console.log('[PUT] Executing all song updates...');
-      await Promise.all(updatePromises);
-      console.log('[PUT] Successfully updated all song positions');
-    } catch (error) {
-      console.error('[PUT] Error updating song positions:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error during song update';
-      return NextResponse.json({ 
-        error: 'Failed to update song positions',
-        details: errorMessage,
-        debug: { 
-          songCount: songs.length,
-          error: errorMessage
-        }
-      }, { status: 500 });
     }
 
     console.log('[PUT] All song updates completed successfully');
