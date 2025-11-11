@@ -445,18 +445,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     }
 
-    // Update positions for all songs sequentially to avoid unique constraint violations
-    console.log('[PUT] Starting sequential song updates for', songs.length, 'songs');
+    // Two-phase update to completely eliminate constraint violations
+    console.log('[PUT] Starting two-phase song updates for', songs.length, 'songs');
+    
+    // Phase 1: Assign temporary unique positions (starting from a high number)
+    const tempPositionOffset = 10000;
+    console.log('[PUT] Phase 1: Assigning temporary positions');
     
     for (let index = 0; index < songs.length; index++) {
       const song = songs[index];
       try {
-        console.log('[PUT] Updating song:', { id: song.id, position: index + 1, bpm: song.bpm, tuning: song.tuning });
+        const tempPosition = tempPositionOffset + index;
+        console.log('[PUT] Phase 1 - Updating song:', { id: song.id, tempPosition });
         
         const { error } = await supabase
           .from('setlist_songs')
           .update({
-            position: index + 1,
+            position: tempPosition,
             bpm: song.bpm,
             tuning: song.tuning || 'standard',
             duration_seconds: song.duration_seconds,
@@ -464,21 +469,61 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           .eq('id', song.id);
 
         if (error) {
-          console.error(`[PUT] Error updating song ${song.id}:`, error);
-          throw new Error(`Failed to update song ${song.id}: ${error.message}`);
+          console.error(`[PUT] Phase 1 Error updating song ${song.id}:`, error);
+          throw new Error(`Failed to update song ${song.id} in Phase 1: ${error.message}`);
         } else {
-          console.log(`[PUT] Successfully updated song ${song.id} to position ${index + 1}`);
+          console.log(`[PUT] Phase 1 Successfully updated song ${song.id} to temp position ${tempPosition}`);
         }
       } catch (updateError) {
-        console.error(`[PUT] Exception updating song ${song.id}:`, updateError);
-        const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error during song update';
+        console.error(`[PUT] Phase 1 Exception updating song ${song.id}:`, updateError);
+        const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error during Phase 1 song update';
         return NextResponse.json({ 
           error: 'Failed to update song positions',
-          details: errorMessage,
+          details: `Phase 1: ${errorMessage}`,
           debug: { 
             songCount: songs.length,
             failedSongId: song.id,
-            failedPosition: index + 1,
+            failedTempPosition: tempPositionOffset + index,
+            phase: 'temporary_positions',
+            error: errorMessage
+          }
+        }, { status: 500 });
+      }
+    }
+    
+    // Phase 2: Assign final positions
+    console.log('[PUT] Phase 2: Assigning final positions');
+    
+    for (let index = 0; index < songs.length; index++) {
+      const song = songs[index];
+      try {
+        const finalPosition = index + 1;
+        console.log('[PUT] Phase 2 - Updating song:', { id: song.id, finalPosition });
+        
+        const { error } = await supabase
+          .from('setlist_songs')
+          .update({
+            position: finalPosition
+          })
+          .eq('id', song.id);
+
+        if (error) {
+          console.error(`[PUT] Phase 2 Error updating song ${song.id}:`, error);
+          throw new Error(`Failed to update song ${song.id} in Phase 2: ${error.message}`);
+        } else {
+          console.log(`[PUT] Phase 2 Successfully updated song ${song.id} to final position ${finalPosition}`);
+        }
+      } catch (updateError) {
+        console.error(`[PUT] Phase 2 Exception updating song ${song.id}:`, updateError);
+        const errorMessage = updateError instanceof Error ? updateError.message : 'Unknown error during Phase 2 song update';
+        return NextResponse.json({ 
+          error: 'Failed to update song positions',
+          details: `Phase 2: ${errorMessage}`,
+          debug: { 
+            songCount: songs.length,
+            failedSongId: song.id,
+            failedFinalPosition: index + 1,
+            phase: 'final_positions',
             error: errorMessage
           }
         }, { status: 500 });
