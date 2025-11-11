@@ -11,6 +11,8 @@ interface CalendarEventForDots {
   blockout?: {
     startDate: string;
     endDate: string;
+    color?: string;
+    name?: string;
   };
 }
 
@@ -53,31 +55,6 @@ export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDot
     ...potentialGigs.map(e => ({ ...e, eventType: 'potential-gig', color: '#ea580c' }))
   ];
 
-  // Process blockouts for range rendering
-  const blockoutRanges: Array<{
-    isSingleDay: boolean;
-    isStartDay: boolean;
-    isEndDay: boolean;
-    isMiddleDay: boolean;
-  }> = [];
-
-  blockouts.forEach(blockout => {
-    if (!blockout.blockout) return;
-
-    const { startDate, endDate } = blockout.blockout;
-    const isSingleDay = isSameDay(startDate, endDate);
-    const isStartDay = dateKey === startDate;
-    const isEndDay = dateKey === endDate;
-    const isMiddleDay = !isStartDay && !isEndDay && dateKey > startDate && dateKey < endDate;
-
-    blockoutRanges.push({
-      isSingleDay,
-      isStartDay,
-      isEndDay,
-      isMiddleDay,
-    });
-  });
-
   const hasBlockout = blockouts.length > 0;
   const eventCount = allEvents.length;
 
@@ -108,24 +85,39 @@ export function DayDots({ date, displayMonth: _displayMonth, eventsMap }: DayDot
         </div>
       )}
 
-      {/* Blockout line - positioned below event lines, spanning full width */}
+      {/* Blockout lines - positioned below event lines, stacked for multiple people */}
       {hasBlockout && (
         <div className="absolute bottom-1 left-0 right-0">
-          {/* Single day blockouts - full width red line */}
-          {blockoutRanges.some(b => b.isSingleDay) && (
-            <div className="w-full h-1 bg-red-600 rounded-sm" />
-          )}
-          
-          {/* Multi-day blockout ranges - all days get full width lines */}
-          {blockoutRanges.map((range, idx) => {
-            if (range.isSingleDay) return null;
+          {blockouts.map((blockout, idx) => {
+            if (!blockout.blockout) return null;
+
+            const { startDate, endDate } = blockout.blockout;
+            const isSingleDay = isSameDay(startDate, endDate);
+            const isStartDay = dateKey === startDate;
+            const isEndDay = dateKey === endDate;
+            const isMiddleDay = !isStartDay && !isEndDay && dateKey > startDate && dateKey < endDate;
+            
+            // Show blockout if it's a single day or any part of multi-day range
+            const shouldShowBlockout = isSingleDay || isStartDay || isMiddleDay || isEndDay;
+            
+            if (!shouldShowBlockout) return null;
+
+            // Get color from blockout data, fallback to red
+            const blockoutColor = blockout.blockout.color || '#dc2626';
+            
+            // Stack multiple blockout lines vertically
+            const lineHeight = 2; // 0.5rem = 2px
+            const topOffset = idx * lineHeight;
 
             return (
-              <div key={`blockout-range-${idx}`} className="absolute inset-0">
-                {(range.isStartDay || range.isMiddleDay || range.isEndDay) && (
-                  <div className="absolute inset-0 w-full h-1 bg-red-600 rounded-sm" />
-                )}
-              </div>
+              <div 
+                key={`blockout-${blockout.id || idx}`}
+                className="absolute w-full h-0.5 rounded-sm"
+                style={{
+                  backgroundColor: blockoutColor,
+                  top: `${topOffset}px`,
+                }}
+              />
             );
           })}
         </div>
