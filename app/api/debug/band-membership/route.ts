@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
     console.log('[DEBUG] Checking all memberships for user:', authenticatedUser.id);
     const { data: allMemberships, error: allMembershipsError } = await supabase
       .from('band_members')
-      .select('id, band_id, user_id, is_active, bands(id, name)')
+      .select('id, band_id, user_id, bands(id, name)')
       .eq('user_id', authenticatedUser.id);
     
     console.log('[DEBUG] All memberships result:', { allMemberships, allMembershipsError });
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
     // Check specific Toxic Crayon membership
     const { data: toxicMembership, error: toxicError } = await supabase
       .from('band_members')
-      .select('id, band_id, user_id, is_active')
+      .select('id, band_id, user_id')
       .eq('band_id', toxicCrayonBandId)
       .eq('user_id', authenticatedUser.id)
       .maybeSingle();

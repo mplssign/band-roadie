@@ -72,18 +72,36 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     const { data: membership, error: membershipError } = await supabase
       .from('band_members')
-      .select('id, is_active')
+      .select('id, band_id, user_id')
       .eq('band_id', setlistInfo.band_id)
       .eq('user_id', user.id)
       .maybeSingle();
 
     console.log('[POST] Band membership query result:', { membership, membershipError });
 
-    if (membershipError || !membership) {
+    if (membershipError) {
+      console.error('[POST] Band membership query error:', membershipError);
+      return NextResponse.json({ 
+        error: 'Setlist not found', 
+        debug: { 
+          user_id: user.id, 
+          band_id: setlistInfo.band_id, 
+          message: 'Band membership query failed',
+          error: membershipError.message,
+          code: membershipError.code
+        }
+      }, { status: 404 });
+    }
+
+    if (!membership) {
       console.log('[POST] User is not a member of band:', { user_id: user.id, band_id: setlistInfo.band_id });
       return NextResponse.json({ 
         error: 'Setlist not found', 
-        debug: { user_id: user.id, band_id: setlistInfo.band_id, message: 'User not member of band' }
+        debug: { 
+          user_id: user.id, 
+          band_id: setlistInfo.band_id, 
+          message: 'User not member of band'
+        }
       }, { status: 404 });
     }
 
@@ -372,7 +390,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         // First, let's see what memberships exist for this user
         const { data: allMemberships, error: allMembershipsError } = await supabase
           .from('band_members')
-          .select('id, band_id, user_id, is_active')
+          .select('id, band_id, user_id')
           .eq('user_id', authenticatedUser.id);
         
         console.log('[PUT] All user memberships:', { allMemberships, allMembershipsError });
@@ -380,7 +398,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         // Now check specific band membership
         const { data: membership, error: membershipError } = await supabase
           .from('band_members')
-          .select('id, is_active, band_id, user_id')
+          .select('id, band_id, user_id')
           .eq('band_id', bandId)
           .eq('user_id', authenticatedUser.id)
           .maybeSingle();
