@@ -448,23 +448,28 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Update positions for all songs individually to avoid RLS policy issues with upsert
     console.log('[PUT] Starting song updates for', songs.length, 'songs');
     const updatePromises = songs.map(async (song, index) => {
-      console.log('[PUT] Updating song:', { id: song.id, position: index + 1, bpm: song.bpm, tuning: song.tuning });
-      
-      const { error } = await supabase
-        .from('setlist_songs')
-        .update({
-          position: index + 1,
-          bpm: song.bpm,
-          tuning: song.tuning || 'standard',
-          duration_seconds: song.duration_seconds,
-        })
-        .eq('id', song.id);
+      try {
+        console.log('[PUT] Updating song:', { id: song.id, position: index + 1, bpm: song.bpm, tuning: song.tuning });
+        
+        const { error } = await supabase
+          .from('setlist_songs')
+          .update({
+            position: index + 1,
+            bpm: song.bpm,
+            tuning: song.tuning || 'standard',
+            duration_seconds: song.duration_seconds,
+          })
+          .eq('id', song.id);
 
-      if (error) {
-        console.error(`[PUT] Error updating song ${song.id}:`, error);
-        throw error;
-      } else {
-        console.log(`[PUT] Successfully updated song ${song.id} to position ${index + 1}`);
+        if (error) {
+          console.error(`[PUT] Error updating song ${song.id}:`, error);
+          throw new Error(`Failed to update song ${song.id}: ${error.message}`);
+        } else {
+          console.log(`[PUT] Successfully updated song ${song.id} to position ${index + 1}`);
+        }
+      } catch (updateError) {
+        console.error(`[PUT] Exception updating song ${song.id}:`, updateError);
+        throw updateError;
       }
     });
 
@@ -475,7 +480,15 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       console.log('[PUT] Successfully updated all song positions');
     } catch (error) {
       console.error('[PUT] Error updating song positions:', error);
-      return NextResponse.json({ error: 'Failed to update song positions' }, { status: 500 });
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error during song update';
+      return NextResponse.json({ 
+        error: 'Failed to update song positions',
+        details: errorMessage,
+        debug: { 
+          songCount: songs.length,
+          error: errorMessage
+        }
+      }, { status: 500 });
     }
 
     console.log('[PUT] All song updates completed successfully');
