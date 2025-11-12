@@ -781,7 +781,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       name: setlist.name,
       songs: songs.map(song => ({
         title: song.songs?.title || 'Unknown Song',
-        artist: song.songs?.artist || 'Unknown Artist',
+        artist: song.songs?.artist || undefined, // Use undefined instead of "Unknown Artist" for blank lines
         tuning: song.tuning || song.songs?.tuning,
         durationSec: song.duration_seconds || song.songs?.duration_seconds,
         bpm: song.bpm || song.songs?.bpm

@@ -116,7 +116,9 @@ interface ShareSetlist {
  * Setlist: <name>
  * Songs: <count> • Total Duration: <HH:MM:SS or MM:SS>
  * 
- * **<Song Name>** — <Artist/Band> • Tuning: <tuning or "n/a"> • <MM:SS> • <BPM> BPM
+ * <Song Title>
+ * <Artist/Band>
+ * Tuning: <tuning or "standard"> • <MM:SS> • <BPM> BPM
  */
 export function buildShareText(setlist: ShareSetlist): string {
   const songCount = setlist.songs.length;
@@ -127,21 +129,32 @@ export function buildShareText(setlist: ShareSetlist): string {
   }, 0);
   
   // Build header
-  const header = [
+  const headerLines = [
     `Setlist: ${setlist.name}`,
     `Songs: ${songCount} • Total Duration: ${formatDuration(totalDuration)}`,
-    '' // blank line
+    '', // blank line
+    '' // second blank line as specified
   ];
   
-  // Build song lines
-  const songLines = setlist.songs.map(song => {
-    const artist = song.artist || 'Unknown Artist';
-    const tuning = song.tuning || 'n/a';
-    const duration = song.durationSec ? formatDuration(song.durationSec) : '?:??';
+  // Build song blocks
+  const songBlocks = setlist.songs.map(song => {
+    const tuning = song.tuning || 'standard';
+    const duration = song.durationSec ? formatDuration(song.durationSec) : '0:00';
     const bpm = song.bpm ? `${song.bpm} BPM` : '— BPM';
     
-    return `**${song.title}** — ${artist} • Tuning: ${tuning} • ${duration} • ${bpm}`;
+    // Song block: title, artist (or blank line), tuning line
+    const lines = [
+      song.title,
+      song.artist || '', // artist line or blank
+      `Tuning: ${tuning} • ${duration} • ${bpm}`
+    ];
+    
+    return lines.join('\n');
   });
   
-  return [...header, ...songLines].join('\n');
+  // Join everything with blank lines between song blocks
+  const result = headerLines.join('\n') + songBlocks.join('\n\n');
+  
+  // Trim trailing spaces and remove any extra blank lines at the end
+  return result.replace(/\s+$/, '');
 }
