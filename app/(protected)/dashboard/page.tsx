@@ -69,7 +69,6 @@ const sectionTitle = "text-xl md:text-2xl font-semibold tracking-tight text-fore
 
 export default function DashboardPage() {
   const router = useRouter();
-  const supabase = createClient();
   const { currentBand, bands, loading: bandsLoading } = useBands();
 
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
@@ -154,6 +153,7 @@ export default function DashboardPage() {
     if (!currentBand?.id) return;
     try {
       setLoading(true);
+      const supabase = createClient();
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
@@ -245,7 +245,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentBand?.id, supabase]);
+  }, [currentBand?.id]);
 
   // Handler to open edit rehearsal drawer
   const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
