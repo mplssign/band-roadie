@@ -182,14 +182,37 @@
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
-}
 
-.pwa-install-prompt {
-  @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
-}
+  .pwa-install-prompt {
+    @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
+  }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  .animate-gradient-border {
+    position: relative;
+    padding: 2px;
+    border-radius: 0.75rem;
+    background: conic-gradient(from 0deg, #dc2626, #7c3aed, #2563eb, #dc2626);
+    animation: gradient-spin var(--grad-speed, 3s) linear infinite;
+  }
+
+  .animate-gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: #18181b;
+    border-radius: calc(0.75rem - 2px);
+    z-index: 1;
+  }
+
+  .animate-gradient-border > * {
+    position: relative;
+    z-index: 2;
+    background: transparent;
+  }
 }
 
 @keyframes gradient-spin {
@@ -199,29 +222,6 @@
   100% {
     transform: rotate(360deg);
   }
-}
-
-.animate-gradient-border {
-  position: relative;
-  padding: 2px;
-  border-radius: 0.75rem;
-  background: conic-gradient(from 0deg, #dc2626, #7c3aed, #2563eb, #dc2626);
-  animation: gradient-spin var(--grad-speed, 3s) linear infinite;
-}
-
-.animate-gradient-border::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  background: #18181b;
-  border-radius: calc(0.75rem - 2px);
-  z-index: 1;
-}
-
-.animate-gradient-border > * {
-  position: relative;
-  z-index: 2;
-  background: transparent;
 }
 
 /* Rose-Violet animated gradient border variant */

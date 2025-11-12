@@ -899,9 +899,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
           </Button>
         </div>
 
-        {/* Page Title */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex-1 min-w-0">
+        {/* Page Header - 3-line layout */}
+        <div className="mb-6 space-y-3">
+          {/* Line 1: Setlist Title */}
+          <div>
             {isEditMode && setlist?.setlist_type !== 'all_songs' && setlist?.name !== 'All Songs' ? (
               <Input
                 value={setlistName}
@@ -911,7 +912,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               />
             ) : (
               <div>
-                <h1 className="text-2xl font-bold">{setlistName}</h1>
+                <h1 className="text-2xl font-bold truncate">{setlistName}</h1>
                 {(setlist?.setlist_type === 'all_songs' || setlist?.name === 'All Songs') && (
                   <div className="text-sm text-muted-foreground mt-1">
                     Auto-managed catalog
@@ -919,27 +920,23 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 )}
               </div>
             )}
-            
-            {/* Totals Display - directly under title */}
-            <div className="flex items-center gap-4 mt-2 text-lg text-muted-foreground font-medium">
-              <div className="flex items-center gap-1">
-                <span>{totals.songCount} songs</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span>{formatDurationSummary(totals.totalDuration)}</span>
-              </div>
-            </div>
           </div>
 
+          {/* Line 2: Meta - Songs and Duration */}
+          <div className="text-muted-foreground">
+            <span>Songs: {totals.songCount} • Total Duration: {formatSecondsHuman(totals.totalDuration)}</span>
+          </div>
+
+          {/* Line 3: Action Buttons */}
           {setlist && !isEditMode && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleShare}
-                className="gap-2"
+                className="gap-2 border-rose-500 text-rose-500 hover:bg-background/80 focus:bg-background/80 active:bg-background/90"
                 disabled={loading}
-                aria-label="Share setlist"
+                aria-label="Share setlist as text"
                 title="Share"
               >
                 <Share className="h-4 w-4" />
@@ -949,7 +946,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleExportToMusicService}
-                className="gap-2"
+                className="gap-2 border-rose-500 text-rose-500 hover:bg-background/80 focus:bg-background/80 active:bg-background/90"
                 disabled={loading}
                 aria-label="Export setlist to music service"
                 title="Export to Music Service"
@@ -962,7 +959,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditMode(true)}
-                className="gap-2"
+                className="gap-2 border-rose-500 text-rose-500 hover:bg-background/80 focus:bg-background/80 active:bg-background/90"
+                aria-label="Edit setlist"
+                title="Edit"
               >
                 <Edit className="h-4 w-4" />
                 Edit
@@ -970,8 +969,9 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
             </div>
           )}
 
+          {/* Edit Mode Controls */}
           {isEditMode && setlist && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-4">
               <Button
                 variant="ghost"
                 size="sm"

@@ -133,8 +133,8 @@ describe('SetlistDetailPage', () => {
     });
 
     // Check that summary information appears in the header
-    expect(screen.getByText('2 songs')).toBeInTheDocument();
-    expect(screen.getByText('7m')).toBeInTheDocument(); // 420 seconds = 7 minutes
+    expect(screen.getByText(/Songs: 2 • Total Duration:/)).toBeInTheDocument();
+    expect(screen.getByText(/7:00/)).toBeInTheDocument(); // 420 seconds = 7:00
 
     // Check that song list items exist
     await waitFor(() => {
@@ -150,19 +150,18 @@ describe('SetlistDetailPage', () => {
 
     // CRITICAL TEST: Ensure NO duplicate summary information appears anywhere else
     // The summary should only appear once in the header
-    const songCountElements = screen.getAllByText(/\d+ songs?/);
+    const songCountElements = screen.getAllByText(/Songs: \d+/);
     expect(songCountElements).toHaveLength(1); // Only one instance should exist
 
-    const durationElements = screen.getAllByText(/\d+m/);
+    const durationElements = screen.getAllByText(/Total Duration:/);
     expect(durationElements).toHaveLength(1); // Only one duration display should exist
 
     // Ensure no summary data appears within song row containers
     const songRows = screen.getAllByTestId(/^song-row-/);
     songRows.forEach((songRow: HTMLElement) => {
       // Summary text should NOT appear within individual song rows
-      expect(songRow).not.toHaveTextContent(/\d+ songs/);
-      expect(songRow).not.toHaveTextContent(/total/i);
-      expect(songRow).not.toHaveTextContent(/duration/i);
+      expect(songRow).not.toHaveTextContent(/Songs: \d+/);
+      expect(songRow).not.toHaveTextContent(/Total Duration:/);
     });
   });
 
@@ -175,7 +174,7 @@ describe('SetlistDetailPage', () => {
     });
 
     // Verify summary appears once in view mode
-    const songCountElements = screen.getAllByText('2 songs');
+    const songCountElements = screen.getAllByText(/Songs: 2/);
     expect(songCountElements).toHaveLength(1);
 
     // Note: In a real test, we would click the Edit button and verify
@@ -206,14 +205,14 @@ describe('SetlistDetailPage', () => {
     });
 
     // Should show zero counts in header only
-    expect(screen.getByText('0 songs')).toBeInTheDocument();
-    expect(screen.getByText('TBD')).toBeInTheDocument(); // Zero duration shows as "TBD"
+    expect(screen.getByText(/Songs: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/0:00/)).toBeInTheDocument(); // Zero duration shows as "0:00"
 
     // Verify only one instance of each summary element
-    const songCountElements = screen.getAllByText('0 songs');
+    const songCountElements = screen.getAllByText(/Songs: 0/);
     expect(songCountElements).toHaveLength(1);
 
-    const durationElements = screen.getAllByText('TBD');
+    const durationElements = screen.getAllByText(/0:00/);
     expect(durationElements).toHaveLength(1);
   });
 
