@@ -23,7 +23,7 @@ function SetlistCard({
   onCopy,
   onDelete 
 }: { 
-  setlist: Setlist & { song_count?: number; setlist_type?: string }; 
+  setlist: Setlist & { song_count?: number; setlist_type?: string; calculated_duration?: number }; 
   onClick: () => void;
   onCopy: () => void;
   onDelete: () => void;
@@ -68,10 +68,10 @@ function SetlistCard({
                 <Music className="h-4 w-4" />
                 <span>{songCount} songs</span>
               </div>
-              {(setlist as any).total_duration && (
+              {((setlist as any).calculated_duration || (setlist as any).total_duration) && (
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>{formatSecondsHuman((setlist as any).total_duration)}</span>
+                  <span>{formatSecondsHuman((setlist as any).calculated_duration || (setlist as any).total_duration)}</span>
                 </div>
               )}
             </div>
@@ -87,11 +87,11 @@ export default function SetlistsPage() {
   const router = useRouter();
   const { currentBand, loading: bandsLoading } = useBands();
   const { showToast } = useToast();
-  const [setlists, setSetlists] = useState<Setlist[]>([]);
+  const [setlists, setSetlists] = useState<(Setlist & { song_count?: number; setlist_type?: string; calculated_duration?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [setlistToDelete, setSetlistToDelete] = useState<Setlist & { song_count?: number } | null>(null);
+  const [setlistToDelete, setSetlistToDelete] = useState<Setlist & { song_count?: number; calculated_duration?: number } | null>(null);
 
   const loadSetlists = useCallback(async () => {
     if (!currentBand?.id) {
