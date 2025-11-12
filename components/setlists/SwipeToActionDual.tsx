@@ -83,12 +83,13 @@ export function SwipeToActionDual({
     const deltaY = currentY.current - startY.current;
     const threshold = mode === 'view' ? PEEK : TARGET;
     
+    setIsDragging(false); // Reset dragging state immediately
+    
     // Check if this is a tap (small movement and no significant scroll intent)
     if (!hasMoved.current || (Math.abs(deltaX) < TAP_THRESHOLD && Math.abs(deltaY) < TAP_THRESHOLD)) {
       if (onTap) {
         // This is a tap
         setDragOffset(0);
-        setIsDragging(false);
         onTap();
         return;
       }
@@ -103,7 +104,6 @@ export function SwipeToActionDual({
       setTimeout(() => {
         setDragOffset(0);
         setActionTriggered(null);
-        setIsDragging(false);
       }, 1500);
     } else if (deltaX >= threshold && onSwipeRight && mode === 'edit') {
       // Right swipe - Copy action
@@ -114,12 +114,10 @@ export function SwipeToActionDual({
       setTimeout(() => {
         setDragOffset(0);
         setActionTriggered(null);
-        setIsDragging(false);
       }, 1500);
     } else {
       // Snap back
       setDragOffset(0);
-      setIsDragging(false);
     }
   };
 
@@ -163,12 +161,13 @@ export function SwipeToActionDual({
       const deltaY = currentY.current - startY.current;
       const threshold = mode === 'view' ? PEEK : TARGET;
       
+      setIsDragging(false); // Reset dragging state immediately
+      
       // Check if this is a tap (small movement and no scroll intent)
       if (!hasMoved.current || (Math.abs(deltaX) < TAP_THRESHOLD && Math.abs(deltaY) < TAP_THRESHOLD)) {
         if (onTap) {
           // This is a tap
           setDragOffset(0);
-          setIsDragging(false);
           onTap();
           document.removeEventListener('mousemove', handleMouseMove);
           document.removeEventListener('mouseup', handleMouseUp);
@@ -183,7 +182,6 @@ export function SwipeToActionDual({
         setTimeout(() => {
           setDragOffset(0);
           setActionTriggered(null);
-          setIsDragging(false);
         }, 1500);
       } else if (deltaX >= threshold && onSwipeRight && mode === 'edit') {
         setActionTriggered('right');
@@ -192,11 +190,9 @@ export function SwipeToActionDual({
         setTimeout(() => {
           setDragOffset(0);
           setActionTriggered(null);
-          setIsDragging(false);
         }, 1500);
       } else {
         setDragOffset(0);
-        setIsDragging(false);
       }
 
       document.removeEventListener('mousemove', handleMouseMove);

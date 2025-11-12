@@ -28,7 +28,6 @@ function SetlistCard({
   onCopy: () => void;
   onDelete: () => void;
 }) {
-  const [isPressed, setIsPressed] = useState(false);
   const songCount = setlist.song_count ?? setlist.songs?.length ?? 0;
   const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
   
@@ -43,22 +42,14 @@ function SetlistCard({
       >
       <Card
         className={`p-4 cursor-pointer hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 ${
-          isPressed ? (isAllSongs ? 'bg-rose-950' : 'bg-gray-900') : ''
-        } ${
           isAllSongs ? 'bg-rose-50 border-rose-200 border-2 dark:bg-rose-950/20 dark:border-rose-500' : ''
         }`}
-        onPointerDown={() => setIsPressed(true)}
-        onPointerUp={() => setIsPressed(false)}
-        onPointerCancel={() => setIsPressed(false)}
-        onPointerLeave={() => setIsPressed(false)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setIsPressed(true);
             onClick();
           }
         }}
-        onKeyUp={() => setIsPressed(false)}
         tabIndex={0}
         role="button"
         aria-label={`Open setlist ${setlist.name} with ${songCount} songs`}
