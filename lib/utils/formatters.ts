@@ -72,3 +72,76 @@ export function formatTimeRange(start: string | Date, end: string | Date): strin
   if (!start || !end) return 'Time TBD';
   return `${formatTime(start)} – ${formatTime(end)}`;
 }
+
+/**
+ * Format duration in seconds to HH:MM:SS or MM:SS format
+ * Returns H:MM:SS if >= 1 hour else MM:SS
+ */
+export function formatDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  
+  if (seconds === 0) {
+    return '0:00';
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (hours > 0) {
+    // H:MM:SS format (no leading zero on hours)
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  } else {
+    // MM:SS format (no leading zero on minutes)
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  }
+}
+
+interface ShareSong {
+  title: string;
+  artist?: string;
+  tuning?: string;
+  durationSec?: number;
+  bpm?: number;
+}
+
+interface ShareSetlist {
+  name: string;
+  songs: ShareSong[];
+}
+
+/**
+ * Build formatted text for sharing a setlist
+ * Format:
+ * Setlist: <name>
+ * Songs: <count> • Total Duration: <HH:MM:SS or MM:SS>
+ * 
+ * **<Song Name>** — <Artist/Band> • Tuning: <tuning or "n/a"> • <MM:SS> • <BPM> BPM
+ */
+export function buildShareText(setlist: ShareSetlist): string {
+  const songCount = setlist.songs.length;
+  
+  // Calculate total duration from songs that have durationSec
+  const totalDuration = setlist.songs.reduce((sum, song) => {
+    return sum + (song.durationSec || 0);
+  }, 0);
+  
+  // Build header
+  const header = [
+    `Setlist: ${setlist.name}`,
+    `Songs: ${songCount} • Total Duration: ${formatDuration(totalDuration)}`,
+    '' // blank line
+  ];
+  
+  // Build song lines
+  const songLines = setlist.songs.map(song => {
+    const artist = song.artist || 'Unknown Artist';
+    const tuning = song.tuning || 'n/a';
+    const duration = song.durationSec ? formatDuration(song.durationSec) : '?:??';
+    const bpm = song.bpm ? `${song.bpm} BPM` : '— BPM';
+    
+    return `**${song.title}** — ${artist} • Tuning: ${tuning} • ${duration} • ${bpm}`;
+  });
+  
+  return [...header, ...songLines].join('\n');
+}

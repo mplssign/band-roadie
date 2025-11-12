@@ -16,8 +16,9 @@ import { SetlistImportRow } from '@/components/setlists/SetlistImportRow';
 import { ConfirmDeleteSetlistDialog } from '@/components/setlists/ConfirmDeleteSetlistDialog';
 import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
-import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown } from 'lucide-react';
-import { capitalizeWords } from '@/lib/utils/formatters';
+import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share2 } from 'lucide-react';
+import { capitalizeWords, buildShareText } from '@/lib/utils/formatters';
+import { formatSecondsHuman } from '@/lib/time/duration';
 
 // Import types from main types file
 import type { TuningType } from '@/lib/types';
@@ -70,7 +71,7 @@ interface SetlistDetailPageProps {
   params: { id: string };
 }
 
-function formatDuration(seconds: number): string {
+function formatDurationSummary(seconds: number): string {
   if (seconds === 0) return 'TBD';
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -772,6 +773,47 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     setTimeout(() => setIsProcessingGroupBy(false), 50);
   }, [tuningGroupMode]);
 
+  const handleShare = useCallback(async () => {
+    if (!setlist) return;
+    
+    // Prepare share data
+    const shareData = {
+      name: setlist.name,
+      songs: songs.map(song => ({
+        title: song.songs?.title || 'Unknown Song',
+        artist: song.songs?.artist || 'Unknown Artist',
+        tuning: song.tuning || song.songs?.tuning,
+        durationSec: song.duration_seconds || song.songs?.duration_seconds,
+        bpm: song.bpm || song.songs?.bpm
+      }))
+    };
+    
+    const shareText = buildShareText(shareData);
+    
+    // Try native share API first
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: setlist.name,
+          text: shareText
+        });
+        return;
+      } catch (err) {
+        // User cancelled or share failed, fall back to clipboard
+        console.log('Share cancelled or failed:', err);
+      }
+    }
+    
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast('Setlist copied to clipboard', 'success');
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+      showToast('Failed to share setlist', 'error');
+    }
+  }, [setlist, songs, showToast]);
+
   if (loading) {
     return (
       <main className="bg-background text-foreground">
@@ -827,13 +869,25 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 <span>{totals.songCount} songs</span>
               </div>
               <div className="flex items-center gap-1">
-                <span>{formatDuration(totals.totalDuration)}</span>
+                <span>{formatDurationSummary(totals.totalDuration)}</span>
               </div>
             </div>
           </div>
 
           {setlist && !isEditMode && (
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="gap-2"
+                disabled={loading}
+                aria-label="Share setlist"
+                title="Share"
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
