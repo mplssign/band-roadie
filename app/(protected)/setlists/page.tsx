@@ -13,6 +13,21 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Plus, Music, Clock, ListMusic } from 'lucide-react';
 import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
 
+// Format duration for setlist cards - rounded to nearest minute
+function formatDurationSummary(seconds: number): string {
+  if (seconds === 0) return 'TBD';
+  
+  // Round to nearest minute
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
+  }
+  return `${totalMinutes}m`;
+}
+
 // Dynamic imports for performance
 const SwipeableContainer = lazy(() => import('@/components/setlists/SwipeableContainer').then(m => ({ default: m.SwipeableContainer })));
 const ConfirmDeleteSetlistDialog = lazy(() => import('@/components/setlists/ConfirmDeleteSetlistDialog').then(m => ({ default: m.ConfirmDeleteSetlistDialog })));
@@ -64,14 +79,12 @@ function SetlistCard({
             <div className={`flex items-center gap-4 text-sm ${
               isAllSongs ? 'text-rose-700 dark:text-rose-300' : 'text-muted-foreground'
             }`}>
-              <div className="flex items-center gap-1">
-                <Music className="h-4 w-4" />
-                <span>{songCount} songs</span>
-              </div>
-              {((setlist as any).calculated_duration || (setlist as any).total_duration) && (
+              {((setlist as any).calculated_duration || (setlist as any).total_duration) ? (
+                <span>{songCount} Songs • {formatDurationSummary((setlist as any).calculated_duration || (setlist as any).total_duration)}</span>
+              ) : (
                 <div className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" />
-                  <span>{formatSecondsHuman((setlist as any).calculated_duration || (setlist as any).total_duration)}</span>
+                  <Music className="h-4 w-4" />
+                  <span>{songCount} songs</span>
                 </div>
               )}
             </div>

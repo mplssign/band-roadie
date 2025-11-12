@@ -73,14 +73,16 @@ interface SetlistDetailPageProps {
 
 function formatDurationSummary(seconds: number): string {
   if (seconds === 0) return 'TBD';
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
+  
+  // Round to nearest minute
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
 
   if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m`;
+    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
   }
-  return `${minutes}m`;
+  return `${totalMinutes}m`;
 }
 
 export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
@@ -924,7 +926,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
 
           {/* Line 2: Meta - Songs and Duration */}
           <div className="text-muted-foreground">
-            <span>Songs: {totals.songCount} • Total Duration: {formatSecondsHuman(totals.totalDuration)}</span>
+            <span>{totals.songCount} Songs • {formatDurationSummary(totals.totalDuration)}</span>
           </div>
 
           {/* Line 3: Action Buttons */}
