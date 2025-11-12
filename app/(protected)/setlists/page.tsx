@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Plus, Music, Clock, ListMusic } from 'lucide-react';
-import { formatSecondsHuman } from '@/lib/time/duration';
+import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
 
 // Dynamic imports for performance
 const SwipeableContainer = lazy(() => import('@/components/setlists/SwipeableContainer').then(m => ({ default: m.SwipeableContainer })));
@@ -147,10 +147,17 @@ export default function SetlistsPage() {
             if (detailResponse.ok) {
               const detailData = await detailResponse.json();
               const songs = detailData.setlist?.songs || [];
-              const calculatedDuration = songs.reduce((total: number, song: any) => {
-                const songDuration = song.duration_seconds || song.songs?.duration_seconds || 0;
-                return total + songDuration;
-              }, 0);
+              
+              // Use proper duration calculation logic
+              const calculatedDuration = calculateSetlistTotal(songs.map((song: any) => ({
+                id: song.id,
+                duration_seconds: song.duration_seconds,
+                duration_text: null, // No duration_text field in current schema
+                songs: song.songs ? {
+                  duration_seconds: song.songs.duration_seconds
+                } : null
+              })));
+              
               return {
                 ...setlist,
                 calculated_duration: calculatedDuration

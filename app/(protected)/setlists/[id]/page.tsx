@@ -18,7 +18,7 @@ import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
 import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share } from 'lucide-react';
 import { capitalizeWords, buildShareText } from '@/lib/utils/formatters';
-import { formatSecondsHuman } from '@/lib/time/duration';
+import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
 
 // Import types from main types file
 import type { TuningType } from '@/lib/types';
@@ -103,13 +103,17 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const [tuningGroupMode, setTuningGroupMode] = useState<'none' | 'ascending' | 'descending'>('none');
   const [isProcessingGroupBy, setIsProcessingGroupBy] = useState(false);
 
-  // Calculate totals from current songs
+  // Calculate totals from current songs using proper calculation logic
   const totals = {
     songCount: songs.length,
-    totalDuration: songs.reduce((sum, song) => {
-      const duration = song.duration_seconds ?? song.songs?.duration_seconds ?? 0;
-      return sum + duration;
-    }, 0)
+    totalDuration: calculateSetlistTotal(songs.map(song => ({
+      id: song.id,
+      duration_seconds: song.duration_seconds,
+      duration_text: null, // No duration_text field in current schema
+      songs: song.songs ? {
+        duration_seconds: song.songs.duration_seconds
+      } : null
+    })))
   };
 
   const sensors = useSensors(
