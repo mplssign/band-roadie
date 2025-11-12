@@ -216,4 +216,105 @@ describe('SetlistDetailPage', () => {
     const durationElements = screen.getAllByText('TBD');
     expect(durationElements).toHaveLength(1);
   });
+
+  it('should show export to music service button and handle click', async () => {
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useBands as jest.Mock).mockReturnValue({
+      currentBand: mockBand,
+      loading: false,
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => mockSetlistData,
+    });
+
+    // Mock window.open
+    const mockWindowOpen = jest.fn().mockReturnValue(true); // Simulate successful open
+    Object.defineProperty(window, 'open', {
+      writable: true,
+      value: mockWindowOpen,
+    });
+
+    // Mock gtag for analytics
+    (window as any).gtag = jest.fn();
+
+    // Mock navigator.onLine as true (online)
+    Object.defineProperty(navigator, 'onLine', {
+      writable: true,
+      value: true,
+    });
+
+    render(<SetlistDetailPage params={{ id: 'setlist-456' }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Setlist')).toBeInTheDocument();
+    });
+
+    // Find the export button
+    const exportButton = screen.getByRole('button', { name: /export setlist to music service/i });
+    expect(exportButton).toBeInTheDocument();
+    expect(exportButton).toHaveTextContent('Export to Music Service');
+    expect(exportButton).toHaveAttribute('tabIndex', '0'); // Verify keyboard accessibility
+
+    // Click the export button
+    exportButton.click();
+
+    // Verify external link was opened
+    expect(mockWindowOpen).toHaveBeenCalledWith(
+      'https://www.tunemymusic.com/transfer',
+      '_blank',
+      'noopener,noreferrer'
+    );
+
+    // Verify analytics tracking
+    expect((window as any).gtag).toHaveBeenCalledWith('event', 'setlist_export_music_service_clicked', {
+      setlistId: 'setlist-456',
+      songCount: 2,
+    });
+  });
+
+  it('should handle offline state when exporting to music service', async () => {
+    (useRouter as jest.Mock).mockReturnValue(mockRouter);
+    (useBands as jest.Mock).mockReturnValue({
+      currentBand: mockBand,
+      loading: false,
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => mockSetlistData,
+    });
+
+    // Mock navigator.onLine as false (offline)
+    Object.defineProperty(navigator, 'onLine', {
+      writable: true,
+      value: false,
+    });
+
+    // Mock gtag for analytics
+    (window as any).gtag = jest.fn();
+
+    // Mock showToast
+    const mockShowToast = jest.fn();
+    require('@/hooks/useToast').useToast = () => ({ showToast: mockShowToast });
+
+    render(<SetlistDetailPage params={{ id: 'setlist-456' }} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Setlist')).toBeInTheDocument();
+    });
+
+    const exportButton = screen.getByRole('button', { name: /export setlist to music service/i });
+    exportButton.click();
+
+    // Verify offline error handling
+    expect(mockShowToast).toHaveBeenCalledWith('No connection. Try again.', 'error');
+    
+    // Verify analytics tracking for offline state
+    expect((window as any).gtag).toHaveBeenCalledWith('event', 'external_link_open_failed', {
+      url: 'https://www.tunemymusic.com/transfer',
+      error: 'offline'
+    });
+  });
 });

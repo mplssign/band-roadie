@@ -16,7 +16,7 @@ import { SetlistImportRow } from '@/components/setlists/SetlistImportRow';
 import { ConfirmDeleteSetlistDialog } from '@/components/setlists/ConfirmDeleteSetlistDialog';
 import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
-import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share } from 'lucide-react';
+import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share, ExternalLink } from 'lucide-react';
 import { capitalizeWords, buildShareText } from '@/lib/utils/formatters';
 import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
 
@@ -818,6 +818,59 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
     }
   }, [setlist, songs, showToast]);
 
+  const handleExportToMusicService = useCallback(async () => {
+    if (!setlist) return;
+    
+    const exportUrl = 'https://www.tunemymusic.com/transfer';
+    
+    try {
+      // Check for offline state
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+      if (isOffline) {
+        showToast('No connection. Try again.', 'error');
+        
+        // Analytics tracking for offline
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'external_link_open_failed', {
+            url: exportUrl,
+            error: 'offline'
+          });
+        }
+        return;
+      }
+      
+      // Analytics tracking for successful click
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'setlist_export_music_service_clicked', {
+          setlistId: setlist.id,
+          songCount: totals.songCount
+        });
+      }
+      
+      // Open external URL in system browser
+      if (typeof window !== 'undefined') {
+        const opened = window.open(exportUrl, '_blank', 'noopener,noreferrer');
+        
+        // Check if popup was blocked
+        if (!opened) {
+          throw new Error('Popup blocked or external linking not allowed');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to open music service export:', err);
+      
+      // Analytics tracking for failure
+      if (typeof window !== 'undefined' && (window as any).gtag) {
+        (window as any).gtag('event', 'external_link_open_failed', {
+          url: exportUrl,
+          error: err instanceof Error ? err.message : 'Unknown error'
+        });
+      }
+      
+      showToast('Failed to open music service', 'error');
+    }
+  }, [setlist, totals.songCount, showToast]);
+
   if (loading) {
     return (
       <main className="bg-background text-foreground">
@@ -891,6 +944,19 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
               >
                 <Share className="h-4 w-4" />
                 Share
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportToMusicService}
+                className="gap-2"
+                disabled={loading}
+                aria-label="Export setlist to music service"
+                title="Export to Music Service"
+                tabIndex={0}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Export to Music Service
               </Button>
               <Button
                 variant="outline"
