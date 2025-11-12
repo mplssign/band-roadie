@@ -16,7 +16,7 @@ import { SetlistImportRow } from '@/components/setlists/SetlistImportRow';
 import { ConfirmDeleteSetlistDialog } from '@/components/setlists/ConfirmDeleteSetlistDialog';
 import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
-import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share2 } from 'lucide-react';
+import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share } from 'lucide-react';
 import { capitalizeWords, buildShareText } from '@/lib/utils/formatters';
 import { formatSecondsHuman } from '@/lib/time/duration';
 
@@ -885,7 +885,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 aria-label="Share setlist"
                 title="Share"
               >
-                <Share2 className="h-4 w-4" />
+                <Share className="h-4 w-4" />
                 Share
               </Button>
               <Button
