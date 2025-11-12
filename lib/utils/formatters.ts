@@ -128,13 +128,12 @@ export function buildShareText(setlist: ShareSetlist): string {
     return sum + (song.durationSec || 0);
   }, 0);
   
-  // Build header
-  const headerLines = [
-    `Setlist: ${setlist.name}`,
-    `Songs: ${songCount} • Total Duration: ${formatDuration(totalDuration)}`,
-    '', // blank line
-    '' // second blank line as specified
-  ];
+  // Build header with two blank lines after
+  const header = `Setlist: ${setlist.name}
+Songs: ${songCount} • Total Duration: ${formatDuration(totalDuration)}
+
+
+`;
   
   // Build song blocks
   const songBlocks = setlist.songs.map(song => {
@@ -153,7 +152,7 @@ export function buildShareText(setlist: ShareSetlist): string {
   });
   
   // Join everything with blank lines between song blocks
-  const result = headerLines.join('\n') + songBlocks.join('\n\n');
+  const result = header + songBlocks.join('\n\n');
   
   // Trim trailing spaces and remove any extra blank lines at the end
   return result.replace(/\s+$/, '');
