@@ -156,9 +156,8 @@
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
   }
-}
 
-@layer utilities {
+  /* Scrollbar utilities */
   .no-scrollbar, 
   .scrollbar-hide,
   *[style*="scrollbar-width: none"] {
@@ -175,14 +174,7 @@
     background: transparent !important;
   }
 
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .safe-top {
-    padding-top: env(safe-area-inset-top);
-  }
-
+  /* PWA install prompt */
   .pwa-install-prompt {
     @apply fixed bottom-20 left-4 right-4 z-50 bg-card p-4 rounded-lg shadow-lg;
   }
