@@ -8,7 +8,6 @@ import { Plus, CalendarDays, MapPin } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
 import { createClient } from '@/lib/supabase/client';
-import { Card } from '@/components/ui/Card';
 import { GradientBorderButton } from '@/components/ui/gradient-border-button';
 import type { EventPayload } from '@/app/(protected)/calendar/AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/time';
@@ -74,6 +73,7 @@ export default function DashboardPage() {
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
   const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentDataBandId, setCurrentDataBandId] = useState<string | null>(null);
 
   // Unified drawer state for add/edit
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -151,6 +151,10 @@ export default function DashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     if (!currentBand?.id) return;
+    
+    const bandId = currentBand.id;
+    console.log('[Dashboard] Loading data for band:', bandId);
+    
     try {
       setLoading(true);
       const supabase = createClient();
@@ -161,10 +165,16 @@ export default function DashboardPage() {
       const { data: rehearsals } = await supabase
         .from('rehearsals')
         .select('*')
-        .eq('band_id', currentBand.id)
+        .eq('band_id', bandId)
         .gte('date', todayStr)
         .order('date', { ascending: true })
         .limit(1);
+
+      // Defensive check: ensure we're still on the same band
+      if (currentBand?.id !== bandId) {
+        console.warn('[Dashboard] Band changed during rehearsal fetch, discarding results');
+        return;
+      }
 
       if (rehearsals && rehearsals.length) {
         const r = rehearsals[0];
@@ -176,12 +186,18 @@ export default function DashboardPage() {
             .from('setlists')
             .select('name')
             .eq('id', r.setlist_id)
-            .eq('band_id', currentBand.id)
+            .eq('band_id', bandId)
             .single();
           setlist_name = setlist?.name;
         }
+
+        // Final defensive check before setting state
+        if (currentBand?.id !== bandId) {
+          console.warn('[Dashboard] Band changed during setlist fetch, discarding results');
+          return;
+        }
         
-        setNextRehearsal({
+        const rehearsalData = {
           id: r.id,
           date: formatDateForDisplay(r.date),
           time: formatTimeRange(r.start_time, undefined, r.date),
@@ -191,57 +207,90 @@ export default function DashboardPage() {
           raw_date: r.date,
           setlist_id: r.setlist_id,
           setlist_name
-        });
+        };
+        
+        console.log('[Dashboard] Setting rehearsal for band:', bandId, rehearsalData.date);
+        setNextRehearsal(rehearsalData);
+        setCurrentDataBandId(bandId);
       } else {
+        console.log('[Dashboard] No rehearsals found for band:', bandId);
         setNextRehearsal(null);
+        setCurrentDataBandId(bandId);
       }
 
-      // Fetch upcoming gigs
+            // Fetch upcoming gigs
       const { data: gigs, error: gigsError } = await supabase
         .from('gigs')
-        .select('*')
-        .eq('band_id', currentBand.id)
+        .select(`
+          *,
+          setlists (
+            id,
+            name
+          )
+        `)
+        .eq('band_id', bandId)
         .gte('date', todayStr)
         .order('date', { ascending: true })
-        .limit(10);
+        .limit(5);
+
+      // Defensive check before processing gigs
+      if (currentBand?.id !== bandId) {
+        console.warn('[Dashboard] Band changed during gigs fetch, discarding results');
+        return;
+      }
 
       if (gigsError) {
         console.error('Error fetching gigs:', gigsError);
-      }
+        setUpcomingGigs([]);
+      } else {
+        const gigsWithSetlists = (
+          await Promise.all(
+            (gigs || []).map(async (g: any) => {
+              // Get setlist name if gig has a setlist
+              let setlist_name = undefined;
+              if (g.setlist_id) {
+                const { data: setlist } = await supabase
+                  .from('setlists')
+                  .select('name')
+                  .eq('id', g.setlist_id)
+                  .eq('band_id', bandId)
+                  .single();
+                setlist_name = setlist?.name;
+              }
 
-      if (gigs && gigs.length) {
-        // Fetch setlist names separately if needed
-        const gigsWithSetlists = await Promise.all(
-          gigs.map(async (g) => {
-            let setlist_name = undefined;
-            if (g.setlist_id) {
-              const { data: setlist } = await supabase
-                .from('setlists')
-                .select('name')
-                .eq('id', g.setlist_id)
-                .eq('band_id', currentBand.id)
-                .single();
-              setlist_name = setlist?.name;
-            }
-
-            return {
-              id: g.id,
-              name: g.name,
-              date: g.date,
-              start_time: g.start_time,
-              end_time: g.end_time,
-              location: g.location,
-              is_potential: g.is_potential,
-              setlist_id: g.setlist_id,
-              setlist_name
-            };
-          })
+              return {
+                id: g.id,
+                name: g.name,
+                date: formatDateForDisplay(g.date),
+                time: g.start_time ? formatTimeRange(g.start_time, g.end_time, g.date) : 'TBD',
+                location: g.venue || g.location || 'TBD',
+                venue: g.venue,
+                start_time: g.start_time,
+                end_time: g.end_time,
+                is_potential: g.is_potential,
+                setlist_id: g.setlist_id,
+                setlist_name
+              };
+            })
+          )
         );
 
+        // Final defensive check before setting gigs state
+        if (currentBand?.id !== bandId) {
+          console.warn('[Dashboard] Band changed during gigs processing, discarding results');
+          return;
+        }
+
+        console.log('[Dashboard] Setting gigs for band:', bandId, gigsWithSetlists.length, 'gigs');
         setUpcomingGigs(gigsWithSetlists);
-      } else {
-        setUpcomingGigs([]);
+        setCurrentDataBandId(bandId);
       }
+    } catch (error) {
+      console.error('[Dashboard] Error loading data:', error);
+      // On error, clear data to prevent showing stale info
+      setNextRehearsal(null);
+      setUpcomingGigs([]);
+      setCurrentDataBandId(null);
     } finally {
       setLoading(false);
     }
@@ -313,16 +362,20 @@ export default function DashboardPage() {
   // React to band changes: close drawers and refetch data
   useBandChange({
     onBandChange: () => {
+      console.log('[Dashboard] Band changed, clearing state and refetching data');
+      
       // Close any open drawers
       setDrawerOpen(false);
       setEditEvent(undefined);
       setDrawerMode('add');
 
-      // Clear stale state
+      // Clear stale state immediately and synchronously
       setNextRehearsal(null);
       setUpcomingGigs([]);
+      setCurrentDataBandId(null);
 
-      // Refetch data for new band
+      // Refetch data for new band (if available)
+      // Note: useEffect will also trigger, but this ensures immediate state clearing
       if (currentBand?.id) {
         loadDashboardData();
       }
@@ -383,8 +436,10 @@ export default function DashboardPage() {
   }
 
   // Find the first potential gig
-  const potentialGig = upcomingGigs.find(g => g.is_potential);
-  const confirmedGigs = upcomingGigs.filter(g => !g.is_potential);
+  // Only show data that matches current band to prevent data bleed
+  const safeUpcomingGigs = currentDataBandId === currentBand?.id ? upcomingGigs : [];
+  const potentialGig = safeUpcomingGigs.find(g => g.is_potential);
+  const confirmedGigs = safeUpcomingGigs.filter(g => !g.is_potential);
 
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
@@ -442,7 +497,7 @@ export default function DashboardPage() {
         )}
 
         {/* Next Rehearsal */}
-        {nextRehearsal ? (
+        {nextRehearsal && currentDataBandId === currentBand?.id ? (
           <div
             role="button"
             tabIndex={0}
@@ -503,7 +558,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        ) : (
+        ) : currentDataBandId === currentBand?.id ? (
           <section className="rounded-2xl overflow-hidden bg-zinc-900">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-white mb-3">No Rehearsal Scheduled</h2>
@@ -519,7 +574,7 @@ export default function DashboardPage() {
               </button>
             </div>
           </section>
-        )}
+        ) : null}
 
         {/* Upcoming Gigs */}
         <section>
@@ -592,12 +647,24 @@ export default function DashboardPage() {
             <div className="text-center text-zinc-500 text-sm py-4">
               No confirmed gigs scheduled yet.
             </div>
-          ) : (
-            <Card className="flex flex-col items-center justify-center gap-2 rounded-xl border border-rose-500 bg-zinc-900/50 p-8 text-center">
-              <CalendarDays className="h-6 w-6 text-zinc-600" aria-hidden="true" />
-              <p className="text-sm text-zinc-500">No upcoming gigs.</p>
-            </Card>
-          )}
+          ) : currentDataBandId === currentBand?.id ? (
+            <section className="rounded-2xl overflow-hidden bg-zinc-900">
+              <div className="p-6">
+                <h2 className="text-xl font-semibold text-white mb-3">No upcoming gigs.</h2>
+                <p className="text-white/80 text-sm mb-5">
+                  The spotlight awaits — time to book that next show and light up the stage!
+                </p>
+                <button
+                  onClick={() => openAddEvent('gig')}
+                  className="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-medium px-5 py-2.5 rounded-lg transition-colors backdrop-blur-sm border border-white/30"
+                  aria-label="Create gig"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Gig
+                </button>
+              </div>
+            </section>
+          ) : null}
         </section>
 
         {/* Quick Actions */}
