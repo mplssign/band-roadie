@@ -11,22 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/Card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Plus, Music, Clock, ListMusic } from 'lucide-react';
-import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
-
-// Format duration for setlist cards - rounded to nearest minute
-function formatDurationSummary(seconds: number): string {
-  if (seconds === 0) return 'TBD';
-  
-  // Round to nearest minute
-  const totalMinutes = Math.round(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
-  }
-  return `${totalMinutes}m`;
-}
+import { formatSecondsHuman, calculateSetlistTotal, formatDurationSummary } from '@/lib/time/duration';
 
 // Dynamic imports for performance
 const SwipeableContainer = lazy(() => import('@/components/setlists/SwipeableContainer').then(m => ({ default: m.SwipeableContainer })));
@@ -159,7 +144,7 @@ export default function SetlistsPage() {
             const detailResponse = await fetch(`/api/setlists/${setlist.id}?band_id=${currentBand.id}`);
             if (detailResponse.ok) {
               const detailData = await detailResponse.json();
-              const songs = detailData.setlist?.songs || [];
+              const songs = detailData.setlist?.setlist_songs || [];
               
               // Use proper duration calculation logic
               const calculatedDuration = calculateSetlistTotal(songs.map((song: any) => ({

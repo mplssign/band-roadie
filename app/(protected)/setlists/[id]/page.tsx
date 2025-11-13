@@ -18,7 +18,7 @@ import { deleteSetlistSong, deleteSetlist } from '@/lib/supabase/setlists';
 import { useToast } from '@/hooks/useToast';
 import { ArrowLeft, Search, Save, Plus, Edit, X, Trash2, ArrowUpDown, Share, ExternalLink } from 'lucide-react';
 import { capitalizeWords, buildShareText } from '@/lib/utils/formatters';
-import { formatSecondsHuman, calculateSetlistTotal } from '@/lib/time/duration';
+import { formatSecondsHuman, calculateSetlistTotal, formatDurationSummary } from '@/lib/time/duration';
 
 // Import types from main types file
 import type { TuningType } from '@/lib/types';
@@ -69,20 +69,6 @@ interface MusicSong {
 
 interface SetlistDetailPageProps {
   params: { id: string };
-}
-
-function formatDurationSummary(seconds: number): string {
-  if (seconds === 0) return 'TBD';
-  
-  // Round to nearest minute
-  const totalMinutes = Math.round(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
-  }
-  return `${totalMinutes}m`;
 }
 
 export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
@@ -823,6 +809,11 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
   const handleExportToMusicService = useCallback(async () => {
     if (!setlist) return;
     
+    // Check if setlist is empty
+    if (totals.songCount === 0) {
+      return; // Button should be disabled, but safety check
+    }
+    
     const exportUrl = 'https://www.tunemymusic.com/transfer';
     
     try {
@@ -841,6 +832,32 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         return;
       }
       
+      // Generate clipboard text in format: "Title — Artist/Band" per line
+      const exportText = songs.map(song => {
+        const title = song.songs?.title || 'Unknown Song';
+        const artist = song.songs?.artist || 'Unknown Artist';
+        return `${title} — ${artist}`;
+      }).join('\n');
+      
+      // Copy to clipboard first
+      try {
+        await navigator.clipboard.writeText(exportText);
+        showToast('Setlist copied to clipboard.', 'success');
+      } catch (clipboardErr) {
+        console.error('Failed to copy to clipboard:', clipboardErr);
+        
+        // Analytics tracking for clipboard failure
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'clipboard_copy_failed', {
+            setlistId: setlist.id,
+            error: clipboardErr instanceof Error ? clipboardErr.message : 'Unknown error'
+          });
+        }
+        
+        showToast('Failed to copy setlist to clipboard', 'error');
+        return; // Don't open URL if clipboard failed
+      }
+      
       // Analytics tracking for successful click
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'setlist_export_music_service_clicked', {
@@ -849,7 +866,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
         });
       }
       
-      // Open external URL in system browser
+      // Open external URL in system browser after successful copy
       if (typeof window !== 'undefined') {
         const opened = window.open(exportUrl, '_blank', 'noopener,noreferrer');
         
@@ -871,7 +888,7 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
       
       showToast('Failed to open music service', 'error');
     }
-  }, [setlist, totals.songCount, showToast]);
+  }, [setlist, totals.songCount, songs, showToast]);
 
   if (loading) {
     return (
@@ -948,10 +965,10 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 variant="outline"
                 size="sm"
                 onClick={handleExportToMusicService}
-                className="gap-2 border-rose-500 text-rose-500 hover:bg-background/80 focus:bg-background/80 active:bg-background/90"
-                disabled={loading}
+                className="gap-2 border-rose-500 text-rose-500 hover:bg-background/80 focus:bg-background/80 active:bg-background/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || totals.songCount === 0}
                 aria-label="Export setlist to music service"
-                title="Export to Music Service"
+                title={totals.songCount === 0 ? "Add songs to export this setlist" : "Export to Music Service"}
                 tabIndex={0}
               >
                 <ExternalLink className="h-4 w-4" />
@@ -968,6 +985,13 @@ export default function SetlistDetailPage({ params }: SetlistDetailPageProps) {
                 <Edit className="h-4 w-4" />
                 Edit
               </Button>
+            </div>
+          )}
+
+          {/* Empty setlist hint for export */}
+          {setlist && !isEditMode && totals.songCount === 0 && (
+            <div className="text-sm text-muted-foreground italic mt-2">
+              Add songs to export this setlist.
             </div>
           )}
 

@@ -67,8 +67,11 @@ export function useBandChange(options: UseBandChangeOptions = {}) {
   useEffect(() => {
     // Also track via currentBand prop changes (belt and suspenders)
     if (currentBand?.id && currentBand.id !== previousBandIdRef.current) {
+      const oldBandId = previousBandIdRef.current;
       previousBandIdRef.current = currentBand.id;
+      
       if (onBandChange && mountedRef.current) {
+        console.log('[useBandChange] Band changed from', oldBandId, 'to', currentBand.id);
         onBandChange();
       }
     }

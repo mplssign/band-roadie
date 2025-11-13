@@ -155,3 +155,28 @@ export function calculateSetlistTotal(songs: SetlistSongDuration[]): number {
 
   return totalSeconds;
 }
+
+/**
+ * Format seconds into a concise summary for UI display
+ * Rounds to nearest minute for brevity
+ * Returns "TBD" for zero duration
+ * 
+ * Examples:
+ * - 0 -> "TBD"
+ * - 65 -> "1m" 
+ * - 3723 -> "1h 02m"
+ * - 7265 -> "2h 01m"
+ */
+export function formatDurationSummary(seconds: number): string {
+  if (seconds === 0) return 'TBD';
+  
+  // Round to nearest minute
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
+  }
+  return `${totalMinutes}m`;
+}

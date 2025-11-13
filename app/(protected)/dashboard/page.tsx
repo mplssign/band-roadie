@@ -40,6 +40,9 @@ interface Gig {
   is_potential?: boolean;
   setlist_id?: string;
   setlist_name?: string;
+  yesCount?: number;
+  noCount?: number;
+  notRespondedCount?: number;
 }
 
 function formatDateForDisplay(dateString: string): string {
@@ -258,6 +261,41 @@ export default function DashboardPage() {
                 setlist_name = setlist?.name;
               }
 
+              // Get response counts for potential gigs
+              let yesCount = 0;
+              let noCount = 0; 
+              let notRespondedCount = 0;
+              
+              if (g.is_potential) {
+                // Get all band members (active only)
+                const { data: allMembers } = await supabase
+                  .from('band_members')
+                  .select('id, user_id')
+                  .eq('band_id', bandId)
+                  .eq('is_active', true);
+
+                // Get gig member responses
+                const { data: responses } = await supabase
+                  .from('gig_member_responses')
+                  .select('band_member_id, response')
+                  .eq('gig_id', g.id);
+
+                // Get optional members for this gig
+                const { data: optionalMembers } = await supabase
+                  .from('gig_optional_members')
+                  .select('band_member_id')
+                  .eq('gig_id', g.id);
+
+                const optionalMemberIds = new Set((optionalMembers || []).map(om => om.band_member_id));
+                const requiredMembers = (allMembers || []).filter(m => !optionalMemberIds.has(m.id));
+                const responsesMap = new Map((responses || []).map(r => [r.band_member_id, r.response]));
+
+                // Count responses for required members only
+                yesCount = requiredMembers.filter(m => responsesMap.get(m.id) === 'yes').length;
+                noCount = requiredMembers.filter(m => responsesMap.get(m.id) === 'no').length;
+                notRespondedCount = requiredMembers.filter(m => !responsesMap.has(m.id)).length;
+              }
+
               return {
                 id: g.id,
                 name: g.name,
@@ -269,7 +307,10 @@ export default function DashboardPage() {
                 end_time: g.end_time,
                 is_potential: g.is_potential,
                 setlist_id: g.setlist_id,
-                setlist_name
+                setlist_name,
+                yesCount,
+                noCount,
+                notRespondedCount
               };
             })
           )
@@ -446,7 +487,11 @@ export default function DashboardPage() {
       <div className="px-6 max-w-5xl mx-auto space-y-6">
         {/* Potential Gig */}
         {potentialGig && (
-          <section className="rounded-2xl overflow-hidden bg-gradient-gig">
+          <button
+            onClick={() => openEditGig(potentialGig)}
+            className="w-full text-left rounded-2xl overflow-hidden bg-gradient-gig hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+            aria-label={`Edit potential gig: ${potentialGig.name}`}
+          >
             <div className="p-6">
               {/* Header Row: Label on left, Date on right (bottom-aligned) */}
               <div className="flex items-end justify-between mb-3">
@@ -460,7 +505,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Content Row: Venue/Location on left, Time/Buttons on right */}
+              {/* Content Row: Venue/Location on left, Time/Counts on right */}
               <div className="flex items-start justify-between gap-6">
                 {/* Left side: Venue and Location */}
                 <div className="flex-1">
@@ -468,7 +513,7 @@ export default function DashboardPage() {
                   <div className="text-white/90">{potentialGig.location}</div>
                 </div>
 
-                {/* Right side: Time and Buttons (stacked, right-aligned) */}
+                {/* Right side: Time and Counts (stacked, right-aligned) */}
                 <div className="flex flex-col items-end gap-3">
                   {/* Time (bottom-aligned to first line of title) */}
                   {potentialGig.start_time && potentialGig.end_time && (
@@ -481,19 +526,27 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* Response buttons (bottom-aligned to location) */}
-                  <div className="flex items-center gap-3">
-                    <button className="px-4 py-2.5 bg-white text-black rounded-lg font-semibold hover:bg-white/90 transition-colors">
-                      Yes (1)
-                    </button>
-                    <button className="px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-lg font-semibold border border-white/30 hover:bg-white/30 transition-colors">
-                      No (1)
-                    </button>
+                  {/* Response Counts Pill */}
+                  <div 
+                    className="px-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/30 rounded-full"
+                    aria-label={
+                      loading 
+                        ? "Loading responses..."
+                        : `Responses: Yes ${potentialGig.yesCount || 0}, No ${potentialGig.noCount || 0}, Not responded ${potentialGig.notRespondedCount || 0}`
+                    }
+                  >
+                    <span className="text-white font-medium text-sm">
+                      {loading ? (
+                        "Yes (—) • No (—) • Not Responded (—)"
+                      ) : (
+                        `Yes (${potentialGig.yesCount || 0}) • No (${potentialGig.noCount || 0}) • Not Responded (${potentialGig.notRespondedCount || 0})`
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
-          </section>
+          </button>
         )}
 
         {/* Next Rehearsal */}

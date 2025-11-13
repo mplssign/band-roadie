@@ -2,20 +2,7 @@
  * Test suite for duration formatting consistency across setlist card and detail views
  */
 
-// Mock formatDurationSummary function (same as in both components)
-function formatDurationSummary(seconds: number): string {
-  if (seconds === 0) return 'TBD';
-  
-  // Round to nearest minute
-  const totalMinutes = Math.round(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes.toString().padStart(2, '0')}m`;
-  }
-  return `${totalMinutes}m`;
-}
+import { formatDurationSummary } from '@/lib/time/duration';
 
 describe('Duration Formatting', () => {
   it('should format short durations in minutes', () => {
