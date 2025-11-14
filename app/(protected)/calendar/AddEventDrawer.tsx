@@ -5,7 +5,7 @@ import { useBands } from '@/contexts/BandsContext';
 import { useToast } from '@/hooks/useToast';
 import { useBandMembers } from '@/hooks/useBandMembers';
 import type { GigMemberResponse } from '@/lib/types';
-import { PotentialGigMembersSection } from '@/components/calendar/PotentialGigMembersSection';
+import { buildMemberLabelMap, summarizeGigResponses } from '@/lib/utils/potential-gigs';
 
 import {
   SheetWithClose as Sheet,
@@ -389,6 +389,30 @@ export default function AddEventDrawer({
     );
   }, []);
 
+  // Helper function to build member labels with disambiguation
+  const buildMemberLabels = useMemo(() => {
+    const memberInfos = bandMembers.map((member) => ({
+      id: member.id,
+      first_name: member.first_name ?? null,
+      last_name: member.last_name ?? null,
+    }));
+    
+    return buildMemberLabelMap(memberInfos, memberResponses, optionalMemberIds);
+  }, [bandMembers, memberResponses, optionalMemberIds]);
+
+  // Helper function to get response summary for edit mode
+  const getResponseSummary = useMemo(() => {
+    if (mode !== 'edit') return null;
+    
+    const memberInfos = bandMembers.map((member) => ({
+      id: member.id,
+      first_name: member.first_name ?? null,
+      last_name: member.last_name ?? null,
+    }));
+    
+    return summarizeGigResponses(memberInfos, optionalMemberIds, memberResponses);
+  }, [mode, bandMembers, optionalMemberIds, memberResponses]);
+
   const handleDelete = async () => {
     if (mode !== 'edit' || !eventId) return;
 
@@ -623,14 +647,123 @@ export default function AddEventDrawer({
                   className="w-full"
                 />
 
-                <div className="flex items-center justify-between rounded-lg border border-border p-3 w-full min-w-0">
-                  <div className="space-y-1 flex-1 min-w-0 pr-3">
-                    <div className="font-medium">Potential Gig</div>
-                    <div className="text-sm text-muted-foreground">
-                      Requires member confirmation before it&apos;s confirmed
+                <div className="space-y-4 rounded-lg border border-border p-3 w-full min-w-0">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1 flex-1 min-w-0 pr-3">
+                      <div className="font-medium">Potential Gig</div>
+                      <div className="text-sm text-muted-foreground">
+                        Requires member confirmation before it&apos;s confirmed
+                      </div>
                     </div>
+                    <Switch 
+                      checked={isPotentialGig} 
+                      onCheckedChange={(checked) => {
+                        setIsPotentialGig(checked);
+                        if (!checked) {
+                          // Clear optional members when turning off potential gig
+                          setOptionalMemberIds([]);
+                        }
+                      }} 
+                    />
                   </div>
-                  <Switch checked={isPotentialGig} onCheckedChange={setIsPotentialGig} />
+
+                  {isPotentialGig && (
+                    <div className="space-y-4 pt-3 border-t border-border">
+                      <div className="text-sm text-muted-foreground">
+                        Unselect members who are optional for this gig.
+                      </div>
+
+                      {membersLoading ? (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-4 gap-2">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                              <div
+                                key={i}
+                                className="h-8 bg-muted/40 rounded-lg animate-pulse"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ) : membersError ? (
+                        <div className="text-sm text-destructive">
+                          Unable to load band members. Please try again.
+                        </div>
+                      ) : bandMembers.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">
+                          No members found
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {/* Member selection grid */}
+                          <div className="grid grid-cols-4 gap-2">
+                            {bandMembers.map((member) => {
+                              const isRequired = !optionalMemberIds.includes(member.id);
+                              const memberFirstName = member.first_name || 'Unknown';
+
+                              return (
+                                <Button
+                                  key={member.id}
+                                  type="button"
+                                  size="sm"
+                                  variant={isRequired ? 'secondary' : 'outline'}
+                                  onClick={() => handleToggleOptionalMember(member.id)}
+                                  className={`
+                                    h-8 px-3 text-xs truncate transition-all
+                                    ${isRequired
+                                      ? 'bg-rose-600 text-white hover:bg-rose-700 border-rose-600'
+                                      : 'border-dashed border-muted-foreground hover:border-muted-foreground/80'
+                                    }
+                                  `}
+                                  title={memberFirstName}
+                                  aria-pressed={isRequired}
+                                >
+                                  {memberFirstName}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Response summary for edit mode */}
+                          {mode === 'edit' && getResponseSummary && (
+                            <div className="space-y-2">
+                              {/* YES responses */}
+                              <div className="text-sm">
+                                <span className="font-medium text-green-600">YES:</span>
+                                <span className="ml-2 text-foreground">
+                                  {getResponseSummary.yes.length > 0 
+                                    ? getResponseSummary.yes.map(member => member.label).join(', ')
+                                    : 'None'
+                                  }
+                                </span>
+                              </div>
+
+                              {/* NO responses */}
+                              <div className="text-sm">
+                                <span className="font-medium text-red-600">NO:</span>
+                                <span className="ml-2 text-foreground">
+                                  {getResponseSummary.no.length > 0 
+                                    ? getResponseSummary.no.map(member => member.label).join(', ')
+                                    : 'None'
+                                  }
+                                </span>
+                              </div>
+
+                              {/* NOT RESPONDED */}
+                              <div className="text-sm">
+                                <span className="font-medium text-yellow-600">NOT RESPONDED:</span>
+                                <span className="ml-2 text-foreground">
+                                  {getResponseSummary.notResponded.length > 0 
+                                    ? getResponseSummary.notResponded.map(member => member.label).join(', ')
+                                    : 'None'
+                                  }
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -764,18 +897,6 @@ export default function AddEventDrawer({
                   ))}
                 </div>
               </div>
-            )}
-
-            {eventType === 'gig' && isPotentialGig && (
-              <PotentialGigMembersSection
-                members={bandMembers}
-                optionalMemberIds={optionalMemberIds}
-                memberResponses={memberResponses}
-                onToggle={handleToggleOptionalMember}
-                loading={membersLoading}
-                error={membersError}
-                mode={mode}
-              />
             )}
 
             {eventType === 'rehearsal' && (

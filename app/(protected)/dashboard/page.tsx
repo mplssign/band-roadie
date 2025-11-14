@@ -49,7 +49,14 @@ function formatDateForDisplay(dateString: string): string {
   if (!dateString) return '';
   const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function formatDateForPotentialGig(dateString: string): string {
+  if (!dateString) return '';
+  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatDateWithYear(dateString: string): string {
@@ -428,6 +435,33 @@ export default function DashboardPage() {
     else if (!bandsLoading) setLoading(false);
   }, [bandsLoading, currentBand?.id, loadDashboardData]);
 
+  // Skeleton for Potential Gig card
+  const PotentialGigSkeleton = () => (
+    <section>
+      <div className="w-full rounded-2xl overflow-hidden bg-gradient-gig">
+        <div className="p-6">
+          {/* Header Row skeleton */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="h-5 bg-white/20 rounded w-28 animate-pulse"></div>
+            </div>
+            <div className="text-right space-y-1">
+              <div className="h-4 bg-white/20 rounded w-24 animate-pulse"></div>
+              <div className="h-4 bg-white/20 rounded w-28 animate-pulse"></div>
+            </div>
+          </div>
+          {/* Title block skeleton */}
+          <div className="mb-4 space-y-2">
+            <div className="h-6 bg-white/20 rounded w-3/4 animate-pulse"></div>
+            <div className="h-5 bg-white/20 rounded w-1/2 animate-pulse"></div>
+          </div>
+          {/* Response summary skeleton */}
+          <div className="h-4 bg-white/20 rounded w-2/3 animate-pulse"></div>
+        </div>
+      </div>
+    </section>
+  );
+
   // Skeleton for Next Rehearsal card
   const NextRehearsalSkeleton = () => (
     <section>
@@ -454,6 +488,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-black text-white pb-28">
         <div className="px-4 pt-4 space-y-6">
+          <PotentialGigSkeleton />
           <NextRehearsalSkeleton />
           <div className="text-center text-zinc-400 text-sm py-8">
             Loading dashboard...
@@ -476,77 +511,114 @@ export default function DashboardPage() {
     );
   }
 
-  // Find the first potential gig
+  // Find potential gigs and confirmed gigs
   // Only show data that matches current band to prevent data bleed
   const safeUpcomingGigs = currentDataBandId === currentBand?.id ? upcomingGigs : [];
-  const potentialGig = safeUpcomingGigs.find(g => g.is_potential);
+  const potentialGigs = safeUpcomingGigs.filter(g => g.is_potential);
   const confirmedGigs = safeUpcomingGigs.filter(g => !g.is_potential);
 
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
       <div className="px-6 max-w-5xl mx-auto space-y-6">
-        {/* Potential Gig */}
-        {potentialGig && (
-          <button
-            onClick={() => openEditGig(potentialGig)}
-            className="w-full text-left rounded-2xl overflow-hidden bg-gradient-gig hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            aria-label={`Edit potential gig: ${potentialGig.name}`}
-          >
-            <div className="p-6">
-              {/* Header Row: Label on left, Date on right (bottom-aligned) */}
-              <div className="flex items-end justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white/60"></div>
-                  <h2 className="text-base font-medium text-white/90">Potential Gig</h2>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-white/80" />
-                  <span className="text-white font-medium">{formatDateForDisplay(potentialGig.date)}</span>
-                </div>
-              </div>
-
-              {/* Content Row: Venue/Location on left, Time/Counts on right */}
-              <div className="flex items-start justify-between gap-6">
-                {/* Left side: Venue and Location */}
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold text-white mb-1">{potentialGig.name}</h3>
-                  <div className="text-white/90">{potentialGig.location}</div>
-                </div>
-
-                {/* Right side: Time and Counts (stacked, right-aligned) */}
-                <div className="flex flex-col items-end gap-3">
-                  {/* Time (bottom-aligned to first line of title) */}
-                  {potentialGig.start_time && potentialGig.end_time && (
-                    <div className="flex items-center gap-2">
-                      <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                        <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
-                      </svg>
-                      <span className="text-white font-medium">{formatTimeRange(potentialGig.start_time, potentialGig.end_time, potentialGig.date)}</span>
+        {/* Potential Gigs */}
+        {potentialGigs.length > 0 && (
+          <section>
+            {potentialGigs.length === 1 ? (
+              /* Single potential gig - full width */
+              <div className="w-full">
+                <button
+                  onClick={() => openEditGig(potentialGigs[0])}
+                  className="w-full text-left rounded-2xl overflow-hidden bg-gradient-gig hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  aria-label={`Potential Gig, ${potentialGigs[0].name}, ${formatDateForPotentialGig(potentialGigs[0].date)}, ${potentialGigs[0].start_time && potentialGigs[0].end_time ? formatTimeRange(potentialGigs[0].start_time, potentialGigs[0].end_time, potentialGigs[0].date) : 'TBD'}, Yes ${potentialGigs[0].yesCount || 0}, No ${potentialGigs[0].noCount || 0}, Not Responded ${potentialGigs[0].notRespondedCount || 0}`}
+                >
+                  <div className="p-6">
+                    {/* Header Row: ⚠️ Label on left, Date/Time on right */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">⚠️</span>
+                        <span className="text-base font-semibold text-white">Potential Gig</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 mb-1">
+                          <CalendarDays className="w-4 h-4 text-white/80" />
+                          <span className="text-sm font-medium text-white">{formatDateForPotentialGig(potentialGigs[0].date)}</span>
+                        </div>
+                        {potentialGigs[0].start_time && potentialGigs[0].end_time && (
+                          <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                              <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
+                            </svg>
+                            <span className="text-sm font-medium text-white">{formatTimeRange(potentialGigs[0].start_time, potentialGigs[0].end_time, potentialGigs[0].date)}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
 
-                  {/* Response Counts Pill */}
-                  <div 
-                    className="px-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/30 rounded-full"
-                    aria-label={
-                      loading 
-                        ? "Loading responses..."
-                        : `Responses: Yes ${potentialGig.yesCount || 0}, No ${potentialGig.noCount || 0}, Not responded ${potentialGig.notRespondedCount || 0}`
-                    }
-                  >
-                    <span className="text-white font-medium text-sm">
-                      {loading ? (
-                        "Yes (—) • No (—) • Not Responded (—)"
-                      ) : (
-                        `Yes (${potentialGig.yesCount || 0}) • No (${potentialGig.noCount || 0}) • Not Responded (${potentialGig.notRespondedCount || 0})`
-                      )}
-                    </span>
+                    {/* Title Block: Event title (2 lines max) and location */}
+                    <div className="mb-4">
+                      <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">{potentialGigs[0].name}</h3>
+                      <div className="text-white/90 text-base truncate">{potentialGigs[0].location}</div>
+                    </div>
+
+                    {/* Bottom Section: Response Summary */}
+                    <div className="text-sm text-white/90 truncate">
+                      Yes ({potentialGigs[0].yesCount || 0}) • No ({potentialGigs[0].noCount || 0}) • Not Responded ({potentialGigs[0].notRespondedCount || 0})
+                    </div>
                   </div>
-                </div>
+                </button>
               </div>
-            </div>
-          </button>
+            ) : (
+              /* Multiple potential gigs - horizontal scroll */
+              <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {potentialGigs.map((gig) => (
+                  <div key={gig.id} className="flex-shrink-0 snap-start" style={{ width: '320px' }}>
+                    <button
+                      onClick={() => openEditGig(gig)}
+                      className="w-full text-left rounded-2xl overflow-hidden bg-gradient-gig hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                      aria-label={`Potential Gig, ${gig.name}, ${formatDateForPotentialGig(gig.date)}, ${gig.start_time && gig.end_time ? formatTimeRange(gig.start_time, gig.end_time, gig.date) : 'TBD'}, Yes ${gig.yesCount || 0}, No ${gig.noCount || 0}, Not Responded ${gig.notRespondedCount || 0}`}
+                    >
+                      <div className="p-6">
+                        {/* Header Row: ⚠️ Label on left, Date/Time on right */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">⚠️</span>
+                            <span className="text-base font-semibold text-white">Potential Gig</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="flex items-center gap-2 mb-1">
+                              <CalendarDays className="w-4 h-4 text-white/80" />
+                              <span className="text-sm font-medium text-white">{formatDateForPotentialGig(gig.date)}</span>
+                            </div>
+                            {gig.start_time && gig.end_time && (
+                              <div className="flex items-center gap-2">
+                                <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                  <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
+                                </svg>
+                                <span className="text-sm font-medium text-white">{formatTimeRange(gig.start_time, gig.end_time, gig.date)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Title Block: Event title (2 lines max) and location */}
+                        <div className="mb-4">
+                          <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">{gig.name}</h3>
+                          <div className="text-white/90 text-base truncate">{gig.location}</div>
+                        </div>
+
+                        {/* Bottom Section: Response Summary */}
+                        <div className="text-sm text-white/90 truncate">
+                          Yes ({gig.yesCount || 0}) • No ({gig.noCount || 0}) • Not Responded ({gig.notRespondedCount || 0})
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
 
         {/* Next Rehearsal */}
@@ -696,7 +768,7 @@ export default function DashboardPage() {
                 );
               })}
             </div>
-          ) : potentialGig ? (
+          ) : potentialGigs.length > 0 ? (
             <div className="text-center text-zinc-500 text-sm py-4">
               No confirmed gigs scheduled yet.
             </div>

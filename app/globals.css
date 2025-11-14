@@ -96,7 +96,7 @@
   }
 
   body {
-    @apply bg-background text-foreground dark;
+    @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
     /* Prevent rubber-band scroll on iOS */
     overscroll-behavior: none;
@@ -155,6 +155,15 @@
     min-height: 100dvh;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Text truncation utilities */
+  .line-clamp-2 {
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   /* Scrollbar utilities */
