@@ -513,7 +513,8 @@ export default function DashboardPage() {
 
   // Find potential gigs and confirmed gigs
   // Only show data that matches current band to prevent data bleed
-  const safeUpcomingGigs = currentDataBandId === currentBand?.id ? upcomingGigs : [];
+  // Allow showing data if currentDataBandId is null (initial state) but currentBand exists
+  const safeUpcomingGigs = (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? upcomingGigs : [];
   const potentialGigs = safeUpcomingGigs.filter(g => g.is_potential);
   const confirmedGigs = safeUpcomingGigs.filter(g => !g.is_potential);
 
@@ -622,7 +623,7 @@ export default function DashboardPage() {
         )}
 
         {/* Next Rehearsal */}
-        {nextRehearsal && currentDataBandId === currentBand?.id ? (
+        {nextRehearsal && (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? (
           <div
             role="button"
             tabIndex={0}
@@ -683,7 +684,7 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        ) : currentDataBandId === currentBand?.id ? (
+        ) : (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? (
           <section className="rounded-2xl overflow-hidden bg-zinc-900">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-white mb-3">No Rehearsal Scheduled</h2>
@@ -772,7 +773,7 @@ export default function DashboardPage() {
             <div className="text-center text-zinc-500 text-sm py-4">
               No confirmed gigs scheduled yet.
             </div>
-          ) : currentDataBandId === currentBand?.id ? (
+          ) : currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id) ? (
             <section className="rounded-2xl overflow-hidden bg-zinc-900">
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-white mb-3">No upcoming gigs.</h2>
