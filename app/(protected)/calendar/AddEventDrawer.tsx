@@ -647,7 +647,11 @@ export default function AddEventDrawer({
                   className="w-full"
                 />
 
-                <div className="space-y-4 rounded-lg border border-border p-3 w-full min-w-0">
+                <div className={`space-y-4 rounded-lg border p-3 w-full min-w-0 transition-colors duration-200 ${
+                  isPotentialGig 
+                    ? 'border-rose-500 bg-rose-50/10 dark:bg-rose-950/20' 
+                    : 'border-border'
+                }`}>
                   <div className="flex items-center justify-between">
                     <div className="space-y-1 flex-1 min-w-0 pr-3">
                       <div className="font-medium">Potential Gig</div>
