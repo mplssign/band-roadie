@@ -228,7 +228,8 @@ export default function DashboardPage() {
         setCurrentDataBandId(bandId);
       }
 
-            // Fetch upcoming gigs
+      // Fetch upcoming gigs
+      console.log('[Dashboard] Fetching gigs for band:', bandId, 'from date:', todayStr);
       const { data: gigs, error: gigsError } = await supabase
         .from('gigs')
         .select(`
@@ -242,6 +243,11 @@ export default function DashboardPage() {
         .gte('date', todayStr)
         .order('date', { ascending: true })
         .limit(5);
+
+      console.log('[Dashboard] Raw gigs data:', gigs?.length || 0, 'gigs found');
+      if (gigs && gigs.length > 0) {
+        console.log('[Dashboard] Gig details:', gigs.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
+      }
 
       // Defensive check before processing gigs
       if (currentBand?.id !== bandId) {
@@ -330,6 +336,7 @@ export default function DashboardPage() {
         }
 
         console.log('[Dashboard] Setting gigs for band:', bandId, gigsWithSetlists.length, 'gigs');
+        console.log('[Dashboard] Processed gigs:', gigsWithSetlists.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
         setUpcomingGigs(gigsWithSetlists);
         setCurrentDataBandId(bandId);
       }
