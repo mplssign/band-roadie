@@ -562,14 +562,6 @@ export default function DashboardPage() {
   const potentialGigs = safeUpcomingGigs.filter(g => g.is_potential);
   const confirmedGigs = safeUpcomingGigs.filter(g => !g.is_potential);
 
-  // Debug logging for gig display issues
-  console.log('[Dashboard Render] Current band:', currentBand?.id);
-  console.log('[Dashboard Render] Current data band:', currentDataBandId);
-  console.log('[Dashboard Render] Total upcoming gigs:', upcomingGigs.length);
-  console.log('[Dashboard Render] Safe upcoming gigs:', safeUpcomingGigs.length);
-  console.log('[Dashboard Render] Potential gigs:', potentialGigs.length);
-  console.log('[Dashboard Render] Confirmed gigs:', confirmedGigs.length);
-
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
       <div className="px-6 max-w-5xl mx-auto space-y-6">
