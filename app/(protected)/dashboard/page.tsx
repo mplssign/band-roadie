@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -83,6 +83,7 @@ export default function DashboardPage() {
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
   const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadDashboardDataRef = useRef<(() => Promise<void>) | null>(null);
   const [currentDataBandId, setCurrentDataBandId] = useState<string | null>(null);
 
   // Unified drawer state for add/edit
@@ -381,6 +382,9 @@ export default function DashboardPage() {
     }
   }, [currentBand?.id]);
 
+  // Store the function in a ref for stable access
+  loadDashboardDataRef.current = loadDashboardData;
+
   // Handler to open edit rehearsal drawer
   const openEditRehearsal = useCallback((rehearsal: Rehearsal) => {
     setEditEvent(rehearsalToEventPayload(rehearsal));
@@ -399,8 +403,11 @@ export default function DashboardPage() {
     setDrawerOpen(false);
     setEditEvent(undefined);
     setDrawerMode('add');
-    loadDashboardData(); // Refresh the dashboard data
-  }, [loadDashboardData]);
+    // Use ref to call loadDashboardData without dependency issues
+    if (loadDashboardDataRef.current) {
+      loadDashboardDataRef.current();
+    }
+  }, []);
 
   // Handler to create new setlist (matches Setlists page behavior)
   const handleCreateSetlist = useCallback(async () => {
@@ -459,18 +466,18 @@ export default function DashboardPage() {
       setUpcomingGigs([]);
       setCurrentDataBandId(null);
 
-      // Refetch data for new band (if available)
-      // Note: useEffect will also trigger, but this ensures immediate state clearing
-      if (currentBand?.id) {
-        loadDashboardData();
-      }
+      // Don't call loadDashboardData here - let useEffect handle it
+      // This prevents duplicate calls and race conditions
     }
   });
 
   useEffect(() => {
-    if (currentBand?.id) loadDashboardData();
-    else if (!bandsLoading) setLoading(false);
-  }, [bandsLoading, currentBand?.id, loadDashboardData]);
+    if (currentBand?.id) {
+      loadDashboardData();
+    } else if (!bandsLoading) {
+      setLoading(false);
+    }
+  }, [bandsLoading, currentBand?.id]);
 
   // Skeleton for Potential Gig card
   const PotentialGigSkeleton = () => (
