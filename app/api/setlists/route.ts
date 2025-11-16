@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch setlists' }, { status: 500 });
     }
 
-    // Add song count to each setlist
+    // Add song count to each setlist and remove duplicates
     const setlistsWithCounts =
       setlists?.map((setlist: any) => ({
         ...setlist,
@@ -78,7 +78,24 @@ export async function GET(request: NextRequest) {
         setlist_songs: undefined, // Remove the setlist_songs array from response
       })) || [];
 
-    return NextResponse.json({ setlists: setlistsWithCounts });
+    // Remove duplicate "All Songs" setlists, keeping the first one
+    const deduplicatedSetlists = setlistsWithCounts.reduce((acc: any[], setlist: any) => {
+      const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
+      
+      if (isAllSongs) {
+        // Check if we already have an "All Songs" setlist
+        const hasAllSongs = acc.some(s => s.setlist_type === 'all_songs' || s.name === 'All Songs');
+        if (!hasAllSongs) {
+          acc.push(setlist);
+        }
+      } else {
+        acc.push(setlist);
+      }
+      
+      return acc;
+    }, []);
+
+    return NextResponse.json({ setlists: deduplicatedSetlists });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     const isForbidden = errorMessage.includes('Forbidden') || errorMessage.includes('not a member');
@@ -90,16 +107,17 @@ export async function GET(request: NextRequest) {
 async function ensureAllSongsSetlist(bandId: string): Promise<string> {
   const supabase = await createClient();
   
-  // Check if "All Songs" already exists - use name check as fallback for backward compatibility
+  // Check if "All Songs" already exists using both setlist_type and name for comprehensive check
   const { data: existing } = await supabase
     .from('setlists')
-    .select('id')
+    .select('id, name, setlist_type')
     .eq('band_id', bandId)
-    .eq('name', 'All Songs')
-    .single();
+    .or('setlist_type.eq.all_songs,name.eq.All Songs')
+    .order('created_at', { ascending: true })
+    .limit(1);
     
-  if (existing) {
-    return existing.id;
+  if (existing && existing.length > 0) {
+    return existing[0].id;
   }
   
   // Create "All Songs" setlist - only include setlist_type if column exists
@@ -132,45 +150,46 @@ async function ensureAllSongsSetlist(bandId: string): Promise<string> {
   }
   
   // Backfill with existing songs from other setlists
-  const { data: existingSongs } = await supabase
-    .from('setlist_songs')
-    .select(`
-      song_id,
-      duration_seconds,
-      bpm,
-      tuning,
-      songs!inner(title, artist)
-    `)
-    .in('setlist_id', 
-      await supabase
-        .from('setlists')
-        .select('id')
-        .eq('band_id', bandId)
-        .neq('name', 'All Songs') // Use name check instead of setlist_type for backward compatibility
-        .then(result => result.data?.map(s => s.id) || [])
-    );
+  const { data: otherSetlists } = await supabase
+    .from('setlists')
+    .select('id')
+    .eq('band_id', bandId)
+    .neq('id', newSetlist.id); // Use ID instead of name for more accurate filtering
     
-  if (existingSongs && existingSongs.length > 0) {
-    // Get unique songs and add them to "All Songs"
-    const uniqueSongs = existingSongs.reduce((acc: any[], song) => {
-      if (!acc.find(s => s.song_id === song.song_id)) {
-        acc.push(song);
-      }
-      return acc;
-    }, []);
-    
-    const songsToInsert = uniqueSongs.map((song, index) => ({
-      setlist_id: newSetlist.id,
-      song_id: song.song_id,
-      position: index + 1,
-      duration_seconds: song.duration_seconds,
-      bpm: song.bpm,
-      tuning: song.tuning || 'standard'
-    }));
-    
-    await supabase
+  if (otherSetlists && otherSetlists.length > 0) {
+    const { data: existingSongs } = await supabase
       .from('setlist_songs')
-      .insert(songsToInsert);
+      .select(`
+        song_id,
+        duration_seconds,
+        bpm,
+        tuning,
+        songs!inner(title, artist)
+      `)
+      .in('setlist_id', otherSetlists.map(s => s.id));
+      
+    if (existingSongs && existingSongs.length > 0) {
+      // Get unique songs and add them to "All Songs"
+      const uniqueSongs = existingSongs.reduce((acc: any[], song) => {
+        if (!acc.find(s => s.song_id === song.song_id)) {
+          acc.push(song);
+        }
+        return acc;
+      }, []);
+      
+      const songsToInsert = uniqueSongs.map((song, index) => ({
+        setlist_id: newSetlist.id,
+        song_id: song.song_id,
+        position: index + 1,
+        duration_seconds: song.duration_seconds,
+        bpm: song.bpm,
+        tuning: song.tuning || 'standard'
+      }));
+      
+      await supabase
+        .from('setlist_songs')
+        .insert(songsToInsert);
+    }
   }
   
   return newSetlist.id;
