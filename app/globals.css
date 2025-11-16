@@ -141,11 +141,12 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* Prevent content from being hidden by iOS notch/home indicator */
+  /* Safe area utilities for PWA and mobile devices */
   .safe-top {
     top: env(safe-area-inset-top);
   }
 
+  /* Safe area bottom utility */
   .safe-bottom {
     bottom: env(safe-area-inset-bottom);
   }
