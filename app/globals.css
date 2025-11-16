@@ -146,7 +146,7 @@
     top: env(safe-area-inset-top);
   }
 
-  /* Safe area bottom utility */
+  /* Safe area bottom utility for iOS devices */
   .safe-bottom {
     bottom: env(safe-area-inset-bottom);
   }
