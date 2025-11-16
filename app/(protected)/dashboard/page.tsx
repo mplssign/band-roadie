@@ -228,9 +228,11 @@ export default function DashboardPage() {
         setCurrentDataBandId(bandId);
       }
 
-      // Fetch upcoming gigs
+      // Fetch upcoming gigs and all potential gigs
       console.log('[Dashboard] Fetching gigs for band:', bandId, 'from date:', todayStr);
-      const { data: gigs, error: gigsError } = await supabase
+      
+      // First get all potential gigs for this band
+      const { data: potentialGigs, error: potentialError } = await supabase
         .from('gigs')
         .select(`
           *,
@@ -240,9 +242,28 @@ export default function DashboardPage() {
           )
         `)
         .eq('band_id', bandId)
+        .eq('is_potential', true)
+        .order('date', { ascending: true });
+        
+      // Then get upcoming confirmed gigs
+      const { data: confirmedGigs, error: confirmedError } = await supabase
+        .from('gigs')
+        .select(`
+          *,
+          setlists (
+            id,
+            name
+          )
+        `)
+        .eq('band_id', bandId)
+        .eq('is_potential', false)
         .gte('date', todayStr)
         .order('date', { ascending: true })
         .limit(5);
+        
+      // Combine both arrays, prioritizing potential gigs
+      const gigs = [...(potentialGigs || []), ...(confirmedGigs || [])];
+      const gigsError = potentialError || confirmedError;
 
       console.log('[Dashboard] Raw gigs data:', gigs?.length || 0, 'gigs found');
       if (gigs && gigs.length > 0) {
@@ -329,15 +350,24 @@ export default function DashboardPage() {
           )
         );
 
+        // Sort gigs to prioritize potential gigs at the top, then by date
+        const sortedGigs = gigsWithSetlists.sort((a, b) => {
+          // Potential gigs always come first
+          if (a.is_potential && !b.is_potential) return -1;
+          if (!a.is_potential && b.is_potential) return 1;
+          // If both are potential or both are confirmed, sort by date
+          return 0; // Keep original order for same type
+        });
+
         // Final defensive check before setting gigs state
         if (currentBand?.id !== bandId) {
           console.warn('[Dashboard] Band changed during gigs processing, discarding results');
           return;
         }
 
-        console.log('[Dashboard] Setting gigs for band:', bandId, gigsWithSetlists.length, 'gigs');
-        console.log('[Dashboard] Processed gigs:', gigsWithSetlists.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
-        setUpcomingGigs(gigsWithSetlists);
+        console.log('[Dashboard] Setting gigs for band:', bandId, sortedGigs.length, 'gigs');
+        console.log('[Dashboard] Processed gigs:', sortedGigs.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
+        setUpcomingGigs(sortedGigs);
         setCurrentDataBandId(bandId);
       }
     } catch (error) {
