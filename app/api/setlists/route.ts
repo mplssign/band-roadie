@@ -78,18 +78,31 @@ export async function GET(request: NextRequest) {
         setlist_songs: undefined, // Remove the setlist_songs array from response
       })) || [];
 
-    // Remove duplicate "All Songs" setlists, keeping the first one
+    // Remove duplicate setlists by name, keeping the first occurrence
     const deduplicatedSetlists = setlistsWithCounts.reduce((acc: any[], setlist: any) => {
-      const isAllSongs = setlist.setlist_type === 'all_songs' || setlist.name === 'All Songs';
+      // Check if we already have a setlist with this name
+      const existingSetlist = acc.find(s => s.name === setlist.name);
       
-      if (isAllSongs) {
-        // Check if we already have an "All Songs" setlist
-        const hasAllSongs = acc.some(s => s.setlist_type === 'all_songs' || s.name === 'All Songs');
-        if (!hasAllSongs) {
-          acc.push(setlist);
-        }
-      } else {
+      if (!existingSetlist) {
+        // No duplicate found, add this setlist
         acc.push(setlist);
+      } else {
+        // Duplicate found, keep the one with the earlier creation date or higher priority
+        // For "All Songs" type setlists, prefer the one with setlist_type set
+        const isAllSongs = setlist.name === 'All Songs' || setlist.setlist_type === 'all_songs';
+        
+        if (isAllSongs) {
+          // For "All Songs", prefer the one with setlist_type defined
+          if (setlist.setlist_type === 'all_songs' && !existingSetlist.setlist_type) {
+            // Replace the existing one with this better one
+            const existingIndex = acc.indexOf(existingSetlist);
+            acc[existingIndex] = setlist;
+          }
+          // If existing already has setlist_type or this one doesn't, keep existing
+        } else {
+          // For other setlists, keep the first one (already in acc)
+          // This prevents duplicate "New Songs" or other duplicate names
+        }
       }
       
       return acc;
