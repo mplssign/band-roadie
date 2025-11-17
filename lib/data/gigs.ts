@@ -27,6 +27,7 @@ export interface GigData {
 export interface GigFilters {
   bandId: string;
   includePotential?: boolean;
+  onlyPotential?: boolean; // NEW: Filter to ONLY potential gigs
   windowDays?: number; // Number of days in the future to include (null = all future)
   includeAll?: boolean; // For Calendar view - includes past events too
 }
@@ -51,7 +52,13 @@ export async function fetchBandGigs(filters: GigFilters): Promise<{
   error: any;
 }> {
   const supabase = createClient();
-  const { bandId, includePotential = true, windowDays, includeAll = false } = filters;
+  const {
+    bandId,
+    includePotential = true,
+    onlyPotential = false,
+    windowDays,
+    includeAll = false,
+  } = filters;
 
   let query = supabase
     .from('gigs')
@@ -84,9 +91,14 @@ export async function fetchBandGigs(filters: GigFilters): Promise<{
   query = query.eq('event_type', 'gig');
 
   // Apply potential filter
-  if (includePotential === false) {
+  if (onlyPotential) {
+    // Filter to ONLY potential gigs
+    query = query.eq('is_potential', true);
+  } else if (includePotential === false) {
+    // Filter to ONLY confirmed gigs
     query = query.eq('is_potential', false);
   }
+  // If includePotential === true and onlyPotential === false, include both
 
   const { data, error } = await query.order('date', { ascending: true });
 
@@ -116,7 +128,7 @@ export async function fetchPotentialGigs(
 }> {
   return fetchBandGigs({
     bandId,
-    includePotential: true,
+    onlyPotential: true, // Only get potential gigs
     windowDays: windowDays || 120, // Default to 4 months
     includeAll: false,
   });

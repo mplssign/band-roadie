@@ -15,6 +15,7 @@ import {
 export interface UseGigsOptions {
   bandId?: string;
   includePotential?: boolean;
+  onlyPotential?: boolean; // NEW: Filter to ONLY potential gigs
   windowDays?: number;
   includeAll?: boolean;
   limit?: number;
@@ -37,6 +38,7 @@ export function useGigs(options: UseGigsOptions = {}): UseGigsResult {
   const {
     bandId,
     includePotential = true,
+    onlyPotential = false,
     windowDays,
     includeAll = false,
     limit,
@@ -74,6 +76,7 @@ export function useGigs(options: UseGigsOptions = {}): UseGigsResult {
       const filters: GigFilters = {
         bandId,
         includePotential,
+        onlyPotential,
         windowDays,
         includeAll,
       };
@@ -109,7 +112,7 @@ export function useGigs(options: UseGigsOptions = {}): UseGigsResult {
         setLoading(false);
       }
     }
-  }, [bandId, includePotential, windowDays, includeAll, limit, enabled]);
+  }, [bandId, includePotential, onlyPotential, windowDays, includeAll, limit, enabled]);
 
   // Clear data immediately when bandId changes
   useEffect(() => {
@@ -151,7 +154,7 @@ export function useGigs(options: UseGigsOptions = {}): UseGigsResult {
 export function usePotentialGigs(bandId?: string, enabled = true): UseGigsResult {
   return useGigs({
     bandId,
-    includePotential: true,
+    onlyPotential: true, // Only fetch potential gigs
     windowDays: 120,
     includeAll: false,
     enabled,
