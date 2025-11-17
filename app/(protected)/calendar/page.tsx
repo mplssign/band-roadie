@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
+import { useCalendarGigs } from '@/hooks/useGigs';
 import CalendarContent from './CalendarContent';
 import type { AddEventPayload, PotentialGigMemberResponse } from './AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/formatters';
@@ -77,11 +78,16 @@ export default function CalendarPage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Use the shared gig fetcher for consistency with Dashboard
+  const { gigs, loading: gigsLoading, error: gigsError } = useCalendarGigs(currentBand?.id, !!user);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) {
         router.push('/login');
       } else {
@@ -100,11 +106,11 @@ export default function CalendarPage() {
         setLoading(true);
         loadEvents();
       }
-    }
+    },
   });
 
   useEffect(() => {
-    if (currentBand?.id && user) {
+    if (currentBand?.id && user && !gigsLoading) {
       // Clear events immediately when switching bands
       setEvents([]);
       setLoading(true);
@@ -115,7 +121,7 @@ export default function CalendarPage() {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBand?.id, user]);
+  }, [currentBand?.id, user, gigs, gigsLoading]);
 
   const loadEvents = async () => {
     if (!currentBand?.id) {
@@ -139,9 +145,13 @@ export default function CalendarPage() {
       }
 
       if (rehearsals) {
-        rehearsals.forEach(rehearsal => {
+        rehearsals.forEach((rehearsal) => {
           // Validate date format
-          if (!rehearsal.date || typeof rehearsal.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(rehearsal.date)) {
+          if (
+            !rehearsal.date ||
+            typeof rehearsal.date !== 'string' ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(rehearsal.date)
+          ) {
             console.warn('Invalid rehearsal date format:', rehearsal);
             return;
           }
@@ -159,19 +169,9 @@ export default function CalendarPage() {
         });
       }
 
-      // Load gigs (both confirmed and potential)
-      const { data: gigs, error: gigsError } = await supabase
-        .from('gigs')
-        .select('*')
-        .eq('band_id', currentBand.id)
-        .order('date', { ascending: true });
-
-      if (gigsError) {
-        console.error('Error loading gigs:', gigsError);
-      }
-
-      if (gigs) {
-        gigs.forEach(gig => {
+      // Load gigs (both confirmed and potential) - now from shared hook
+      if (gigs && gigs.length > 0) {
+        gigs.forEach((gig) => {
           // Validate date format
           if (!gig.date || typeof gig.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(gig.date)) {
             console.warn('Invalid gig date format:', gig);
@@ -183,15 +183,18 @@ export default function CalendarPage() {
             date: gig.date,
             type: 'gig',
             title: gig.name,
-            time: formatTimeRange(gig.start_time, gig.end_time),
+            time:
+              gig.start_time && gig.end_time
+                ? formatTimeRange(gig.start_time, gig.end_time)
+                : undefined,
             location: gig.location,
             start_time: gig.start_time,
             end_time: gig.end_time,
             is_potential: gig.is_potential,
             setlist_id: gig.setlist_id ?? null,
             setlist_name: gig.setlist_name ?? null,
-            optional_member_ids: Array.isArray(gig.optional_member_ids) ? gig.optional_member_ids : null,
-            member_responses: Array.isArray(gig.member_responses) ? gig.member_responses : null,
+            optional_member_ids: gig.optional_member_ids ?? null,
+            member_responses: gig.member_responses ?? null,
           });
         });
       }
@@ -210,7 +213,16 @@ export default function CalendarPage() {
 
       const fallbackBlockDates = (blockDates as unknown as BlockDateRow[]) ?? [];
 
-      const blockColorPalette = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
+      const blockColorPalette = [
+        '#ef4444',
+        '#f97316',
+        '#eab308',
+        '#22c55e',
+        '#06b6d4',
+        '#3b82f6',
+        '#8b5cf6',
+        '#ec4899',
+      ];
       const getBlockoutColor = (name: string) => {
         if (!name) return '#ec4899';
         let hash = 0;
@@ -224,7 +236,7 @@ export default function CalendarPage() {
       const blockRecords = fallbackBlockDates;
 
       // Get all unique user IDs to fetch user info efficiently
-      const userIds = Array.from(new Set(blockRecords.map(bd => bd.user_id).filter(Boolean)));
+      const userIds = Array.from(new Set(blockRecords.map((bd) => bd.user_id).filter(Boolean)));
 
       // Fetch user info for all users at once
       const usersMap = new Map();
@@ -236,7 +248,7 @@ export default function CalendarPage() {
             .in('id', userIds);
 
           if (users) {
-            users.forEach(user => {
+            users.forEach((user) => {
               usersMap.set(user.id, user);
             });
           }
@@ -247,8 +259,10 @@ export default function CalendarPage() {
 
       // Group consecutive blockout days into ranges
       const blockoutRows: BlockoutRow[] = blockRecords
-        .filter(bd => bd.date && typeof bd.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bd.date))
-        .map(bd => ({
+        .filter(
+          (bd) => bd.date && typeof bd.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bd.date),
+        )
+        .map((bd) => ({
           id: bd.id,
           user_id: bd.user_id || '',
           date: bd.date,
@@ -263,12 +277,16 @@ export default function CalendarPage() {
         // Get user info from our map
         const userInfo = range.user_id ? usersMap.get(range.user_id) : null;
 
-        const emailIdentifier = typeof userInfo?.email === 'string' ? userInfo.email.split('@')[0] : 'Member';
+        const emailIdentifier =
+          typeof userInfo?.email === 'string' ? userInfo.email.split('@')[0] : 'Member';
         const firstName = (userInfo?.first_name || emailIdentifier || 'Band').trim();
         const lastName = userInfo?.last_name?.trim() || '';
-        const displayName = [firstName, lastName].filter(Boolean).join(' ') || emailIdentifier || 'Band Member';
+        const displayName =
+          [firstName, lastName].filter(Boolean).join(' ') || emailIdentifier || 'Band Member';
         const initialsBase = (firstName || displayName).trim();
-        const initials = (initialsBase.slice(0, 1) + (lastName.slice(0, 1) || '')).toUpperCase() || displayName.substring(0, 2).toUpperCase();
+        const initials =
+          (initialsBase.slice(0, 1) + (lastName.slice(0, 1) || '')).toUpperCase() ||
+          displayName.substring(0, 2).toUpperCase();
         const color = getBlockoutColor(displayName);
 
         blockoutRanges.push({
@@ -309,22 +327,21 @@ export default function CalendarPage() {
 
     try {
       if (event.type === 'rehearsal') {
-        const { error } = await supabase
-          .from('rehearsals')
-          .insert([{
+        const { error } = await supabase.from('rehearsals').insert([
+          {
             band_id: currentBand.id,
             date: event.date,
             start_time: toTwentyFourHour(event.startTime),
             end_time: toTwentyFourHour(event.endTime),
-            location: event.location || 'TBD'
-          }]);
+            location: event.location || 'TBD',
+          },
+        ]);
 
         if (error) throw error;
         // Recurring logic can be handled in a follow-up workflow using event.recurring
       } else {
-        const { error } = await supabase
-          .from('gigs')
-          .insert([{
+        const { error } = await supabase.from('gigs').insert([
+          {
             band_id: currentBand.id,
             name: event.title || 'Untitled Gig',
             date: event.date,
@@ -334,7 +351,8 @@ export default function CalendarPage() {
             is_potential: false,
             setlist_id: null,
             setlist_name: null,
-          }]);
+          },
+        ]);
 
         if (error) throw error;
       }
@@ -345,7 +363,12 @@ export default function CalendarPage() {
     }
   };
 
-  const addBlockout = async (blockout: { startDate: string; endDate: string; reason: string; id?: string }) => {
+  const addBlockout = async (blockout: {
+    startDate: string;
+    endDate: string;
+    reason: string;
+    id?: string;
+  }) => {
     if (!currentBand?.id || !user?.id) {
       console.error('Missing band or user information');
       return;
@@ -378,7 +401,7 @@ export default function CalendarPage() {
         if (relatedRecords && relatedRecords.length > 0) {
           const targetDate = new Date(targetRecord.date);
           const sortedDates = relatedRecords
-            .map(record => ({ id: record.id, date: new Date(record.date) }))
+            .map((record) => ({ id: record.id, date: new Date(record.date) }))
             .sort((a, b) => a.date.getTime() - b.date.getTime());
 
           let rangeStart = -1;
@@ -415,7 +438,9 @@ export default function CalendarPage() {
           }
 
           if (rangeStart !== -1 && rangeEnd !== -1) {
-            const idsToDelete = sortedDates.slice(rangeStart, rangeEnd + 1).map(record => record.id);
+            const idsToDelete = sortedDates
+              .slice(rangeStart, rangeEnd + 1)
+              .map((record) => record.id);
             if (idsToDelete.length > 0) {
               const { error: deleteError } = await supabase
                 .from('block_dates')
@@ -444,7 +469,11 @@ export default function CalendarPage() {
       }
 
       const blockDates: BlockDateRow[] = [];
-      for (let cursor = new Date(start); cursor.getTime() <= end.getTime(); cursor.setDate(cursor.getDate() + 1)) {
+      for (
+        let cursor = new Date(start);
+        cursor.getTime() <= end.getTime();
+        cursor.setDate(cursor.getDate() + 1)
+      ) {
         blockDates.push({
           user_id: user.id,
           band_id: currentBand.id,
@@ -457,12 +486,10 @@ export default function CalendarPage() {
         throw new Error('No blockout dates to save');
       }
 
-      const { error } = await supabase
-        .from('block_dates')
-        .upsert(blockDates, {
-          onConflict: 'user_id,band_id,date',
-          ignoreDuplicates: false
-        });
+      const { error } = await supabase.from('block_dates').upsert(blockDates, {
+        onConflict: 'user_id,band_id,date',
+        ignoreDuplicates: false,
+      });
 
       if (error) throw error;
 
@@ -482,28 +509,39 @@ export default function CalendarPage() {
   }
 
   const nextRehearsal = events
-    .filter(e => e.type === 'rehearsal' && new Date(e.date) >= new Date())
+    .filter((e) => e.type === 'rehearsal' && new Date(e.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
   const nextGig = events
-    .filter(e => e.type === 'gig' && new Date(e.date) >= new Date())
+    .filter((e) => e.type === 'gig' && new Date(e.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
 
   return (
     <CalendarContent
       key={currentBand?.id || 'no-band'}
       events={{
-        nextRehearsal: nextRehearsal ? {
-          date: new Date(nextRehearsal.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' }),
-          time: nextRehearsal.start_time && nextRehearsal.end_time ? formatTimeRange(nextRehearsal.start_time, nextRehearsal.end_time) : 'Time TBD',
-          location: nextRehearsal.location || ''
-        } : undefined,
-        nextGig: nextGig ? {
-          name: nextGig.title,
-          date: nextGig.date,
-          location: nextGig.location || ''
-        } : undefined,
-        calendarEvents: events
+        nextRehearsal: nextRehearsal
+          ? {
+              date: new Date(nextRehearsal.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+              }),
+              time:
+                nextRehearsal.start_time && nextRehearsal.end_time
+                  ? formatTimeRange(nextRehearsal.start_time, nextRehearsal.end_time)
+                  : 'Time TBD',
+              location: nextRehearsal.location || '',
+            }
+          : undefined,
+        nextGig: nextGig
+          ? {
+              name: nextGig.title,
+              date: nextGig.date,
+              location: nextGig.location || '',
+            }
+          : undefined,
+        calendarEvents: events,
       }}
       user={user}
       loading={loading}

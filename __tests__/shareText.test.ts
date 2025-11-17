@@ -10,27 +10,27 @@ describe('buildShareText', () => {
           artist: 'Night Ranger',
           tuning: 'standard',
           durationSec: 263, // 4:23
-          bpm: undefined
+          bpm: undefined,
         },
         {
           title: 'Psycho Killer',
           artist: 'Talking Heads',
-          tuning: 'standard', 
+          tuning: 'standard',
           durationSec: 260, // 4:20
-          bpm: undefined
+          bpm: undefined,
         },
         {
           title: 'Song Without Artist',
           artist: undefined,
           tuning: undefined,
           durationSec: 180, // 3:00
-          bpm: 120
-        }
-      ]
+          bpm: 120,
+        },
+      ],
     };
 
     const result = buildShareText(testSetlist);
-    
+
     const expectedOutput = `Setlist: New Songs
 Songs: 3 • Total Duration: 11:43
 
@@ -53,11 +53,11 @@ Tuning: standard • 3:00 • 120 BPM`;
   it('should handle empty setlist', () => {
     const testSetlist = {
       name: 'Empty Setlist',
-      songs: []
+      songs: [],
     };
 
     const result = buildShareText(testSetlist);
-    
+
     const expectedOutput = `Setlist: Empty Setlist
 Songs: 0 • Total Duration: 0:00
 
@@ -76,23 +76,23 @@ Songs: 0 • Total Duration: 0:00
           artist: 'Artist',
           tuning: undefined,
           durationSec: 45, // 0:45
-          bpm: undefined
+          bpm: undefined,
         },
         {
-          title: 'Long Song', 
+          title: 'Long Song',
           artist: 'Artist',
           tuning: undefined,
           durationSec: 3665, // 1:01:05
-          bpm: undefined
-        }
-      ]
+          bpm: undefined,
+        },
+      ],
     };
 
     const result = buildShareText(testSetlist);
-    
+
     // Check header duration (total)
     expect(result).toContain('Total Duration: 1:01:50');
-    
+
     // Check individual song durations
     expect(result).toContain('Tuning: standard • 0:45 • — BPM');
     expect(result).toContain('Tuning: standard • 1:01:05 • — BPM');

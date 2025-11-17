@@ -10,11 +10,10 @@
 
   // Nice-to-haves for shadcn/tailwind DX
   "editor.quickSuggestions": { "strings": true },
-  "tailwindCSS.experimental.classRegex": [
-    "cn\\(([^)]*)\\)",
-    "cva\\(([^)]*)\\)"
-  ],
+  "tailwindCSS.experimental.classRegex": ["cn\\(([^)]*)\\)", "cva\\(([^)]*)\\)"],
 
   // Suppress false positive CSS conflicts in UI components using CSS custom properties
-  "tailwindCSS.lint.cssConflict": "ignore"
+  "tailwindCSS.lint.cssConflict": "ignore",
+  "editor.fontSize": 16,
+  "editor.defaultFormatter": "esbenp.prettier-vscode"
 }

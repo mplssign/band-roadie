@@ -7,16 +7,17 @@ import { useRouter } from 'next/navigation';
 import { Plus, CalendarDays, MapPin } from 'lucide-react';
 import { useBands } from '@/contexts/BandsContext';
 import { useBandChange } from '@/hooks/useBandChange';
+import { useDashboardGigs } from '@/hooks/useGigs';
 import { createClient } from '@/lib/supabase/client';
 import { GradientBorderButton } from '@/components/ui/gradient-border-button';
 import type { EventPayload } from '@/app/(protected)/calendar/AddEventDrawer';
 import { formatTimeRange } from '@/lib/utils/time';
+import type { GigData } from '@/lib/data/gigs';
 
 // Lazy load the drawer to avoid initial bundle cost
-const AddEventDrawer = dynamic(
-  () => import('@/app/(protected)/calendar/AddEventDrawer'),
-  { ssr: false }
-);
+const AddEventDrawer = dynamic(() => import('@/app/(protected)/calendar/AddEventDrawer'), {
+  ssr: false,
+});
 
 interface Rehearsal {
   id: string;
@@ -30,58 +31,68 @@ interface Rehearsal {
   setlist_name?: string;
 }
 
-interface Gig {
-  id: string;
-  name: string;
-  date: string;
-  start_time?: string;
-  end_time?: string;
-  location: string;
-  is_potential?: boolean;
-  setlist_id?: string;
-  setlist_name?: string;
+// Use the unified GigData interface
+type Gig = GigData & {
+  time?: string;
   yesCount?: number;
   noCount?: number;
   notRespondedCount?: number;
-}
+};
 
 function formatDateForDisplay(dateString: string): string {
   if (!dateString) return '';
-  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const [y, m, d] = dateString.split('-').map((n) => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function formatDateForPotentialGig(dateString: string): string {
   if (!dateString) return '';
-  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const [y, m, d] = dateString.split('-').map((n) => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatDateWithYear(dateString: string): string {
   if (!dateString) return '';
-  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const [y, m, d] = dateString.split('-').map((n) => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatDateForRehearsalCard(dateString: string): string {
   if (!dateString) return '';
-  const [y, m, d] = dateString.split('-').map(n => parseInt(n, 10));
+  const [y, m, d] = dateString.split('-').map((n) => parseInt(n, 10));
   const date = new Date(y, m - 1, d);
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 // Shared section title styling
-const sectionTitle = "text-xl md:text-2xl font-semibold tracking-tight text-foreground";
+const sectionTitle = 'text-xl md:text-2xl font-semibold tracking-tight text-foreground';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { currentBand, bands, loading: bandsLoading } = useBands();
 
+  // Use the unified gig data hooks
+  const {
+    potential: potentialGigsResult,
+    upcoming: upcomingGigsResult,
+    loading: gigsLoading,
+    error: gigsError,
+  } = useDashboardGigs(currentBand?.id, !bandsLoading);
+
   const [nextRehearsal, setNextRehearsal] = useState<Rehearsal | null>(null);
-  const [upcomingGigs, setUpcomingGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
   const loadDashboardDataRef = useRef<(() => Promise<void>) | null>(null);
   const [currentDataBandId, setCurrentDataBandId] = useState<string | null>(null);
@@ -120,7 +131,10 @@ export default function DashboardPage() {
     const dateStr = rehearsal.raw_date || rehearsal.date;
     const dateObj = new Date(dateStr + 'T00:00:00');
     const { hour, minute, ampm } = parseTime(rehearsal.start_time || '19:00');
-    const duration = calculateDuration(rehearsal.start_time || '19:00', rehearsal.end_time || '21:00');
+    const duration = calculateDuration(
+      rehearsal.start_time || '19:00',
+      rehearsal.end_time || '21:00',
+    );
 
     return {
       id: rehearsal.id,
@@ -162,10 +176,10 @@ export default function DashboardPage() {
 
   const loadDashboardData = useCallback(async () => {
     if (!currentBand?.id) return;
-    
+
     const bandId = currentBand.id;
     console.log('[Dashboard] Loading data for band:', bandId);
-    
+
     try {
       setLoading(true);
       const supabase = createClient();
@@ -189,7 +203,7 @@ export default function DashboardPage() {
 
       if (rehearsals && rehearsals.length) {
         const r = rehearsals[0];
-        
+
         // Fetch setlist name if rehearsal has a setlist
         let setlist_name = undefined;
         if (r.setlist_id) {
@@ -207,7 +221,7 @@ export default function DashboardPage() {
           console.warn('[Dashboard] Band changed during setlist fetch, discarding results');
           return;
         }
-        
+
         const rehearsalData = {
           id: r.id,
           date: formatDateForDisplay(r.date),
@@ -217,9 +231,9 @@ export default function DashboardPage() {
           end_time: r.end_time,
           raw_date: r.date,
           setlist_id: r.setlist_id,
-          setlist_name
+          setlist_name,
         };
-        
+
         console.log('[Dashboard] Setting rehearsal for band:', bandId, rehearsalData.date);
         setNextRehearsal(rehearsalData);
         setCurrentDataBandId(bandId);
@@ -229,153 +243,12 @@ export default function DashboardPage() {
         setCurrentDataBandId(bandId);
       }
 
-      // Fetch upcoming gigs and all potential gigs
-      console.log('[Dashboard] Fetching gigs for band:', bandId, 'from date:', todayStr);
-      
-      // First get all potential gigs for this band
-      const { data: potentialGigs, error: potentialError } = await supabase
-        .from('gigs')
-        .select(`
-          *,
-          setlists (
-            id,
-            name
-          )
-        `)
-        .eq('band_id', bandId)
-        .eq('is_potential', true)
-        .order('date', { ascending: true });
-        
-      // Then get upcoming confirmed gigs
-      const { data: confirmedGigs, error: confirmedError } = await supabase
-        .from('gigs')
-        .select(`
-          *,
-          setlists (
-            id,
-            name
-          )
-        `)
-        .eq('band_id', bandId)
-        .eq('is_potential', false)
-        .gte('date', todayStr)
-        .order('date', { ascending: true })
-        .limit(5);
-        
-      // Combine both arrays, prioritizing potential gigs
-      const gigs = [...(potentialGigs || []), ...(confirmedGigs || [])];
-      const gigsError = potentialError || confirmedError;
-
-      console.log('[Dashboard] Raw gigs data:', gigs?.length || 0, 'gigs found');
-      if (gigs && gigs.length > 0) {
-        console.log('[Dashboard] Gig details:', gigs.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
-      }
-
-      // Defensive check before processing gigs
-      if (currentBand?.id !== bandId) {
-        console.warn('[Dashboard] Band changed during gigs fetch, discarding results');
-        return;
-      }
-
-      if (gigsError) {
-        console.error('Error fetching gigs:', gigsError);
-        setUpcomingGigs([]);
-      } else {
-        const gigsWithSetlists = (
-          await Promise.all(
-            (gigs || []).map(async (g: any) => {
-              // Get setlist name if gig has a setlist
-              let setlist_name = undefined;
-              if (g.setlist_id) {
-                const { data: setlist } = await supabase
-                  .from('setlists')
-                  .select('name')
-                  .eq('id', g.setlist_id)
-                  .eq('band_id', bandId)
-                  .single();
-                setlist_name = setlist?.name;
-              }
-
-              // Get response counts for potential gigs
-              let yesCount = 0;
-              let noCount = 0; 
-              let notRespondedCount = 0;
-              
-              if (g.is_potential) {
-                // Get all band members (active only)
-                const { data: allMembers } = await supabase
-                  .from('band_members')
-                  .select('id, user_id')
-                  .eq('band_id', bandId)
-                  .eq('is_active', true);
-
-                // Get gig member responses
-                const { data: responses } = await supabase
-                  .from('gig_member_responses')
-                  .select('band_member_id, response')
-                  .eq('gig_id', g.id);
-
-                // Get optional members for this gig
-                const { data: optionalMembers } = await supabase
-                  .from('gig_optional_members')
-                  .select('band_member_id')
-                  .eq('gig_id', g.id);
-
-                const optionalMemberIds = new Set((optionalMembers || []).map(om => om.band_member_id));
-                const requiredMembers = (allMembers || []).filter(m => !optionalMemberIds.has(m.id));
-                const responsesMap = new Map((responses || []).map(r => [r.band_member_id, r.response]));
-
-                // Count responses for required members only
-                yesCount = requiredMembers.filter(m => responsesMap.get(m.id) === 'yes').length;
-                noCount = requiredMembers.filter(m => responsesMap.get(m.id) === 'no').length;
-                notRespondedCount = requiredMembers.filter(m => !responsesMap.has(m.id)).length;
-              }
-
-              return {
-                id: g.id,
-                name: g.name,
-                date: formatDateForDisplay(g.date),
-                time: g.start_time ? formatTimeRange(g.start_time, g.end_time, g.date) : 'TBD',
-                location: g.venue || g.location || 'TBD',
-                venue: g.venue,
-                start_time: g.start_time,
-                end_time: g.end_time,
-                is_potential: g.is_potential,
-                setlist_id: g.setlist_id,
-                setlist_name,
-                yesCount,
-                noCount,
-                notRespondedCount
-              };
-            })
-          )
-        );
-
-        // Sort gigs to prioritize potential gigs at the top, then by date
-        const sortedGigs = gigsWithSetlists.sort((a, b) => {
-          // Potential gigs always come first
-          if (a.is_potential && !b.is_potential) return -1;
-          if (!a.is_potential && b.is_potential) return 1;
-          // If both are potential or both are confirmed, sort by date
-          return 0; // Keep original order for same type
-        });
-
-        // Final defensive check before setting gigs state
-        if (currentBand?.id !== bandId) {
-          console.warn('[Dashboard] Band changed during gigs processing, discarding results');
-          return;
-        }
-
-        console.log('[Dashboard] Setting gigs for band:', bandId, sortedGigs.length, 'gigs');
-        console.log('[Dashboard] Processed gigs:', sortedGigs.map(g => ({ id: g.id, name: g.name, date: g.date, is_potential: g.is_potential })));
-        setUpcomingGigs(sortedGigs);
-        setCurrentDataBandId(bandId);
-      }
+      // Note: Gigs are now fetched via useDashboardGigs hook
+      console.log('[Dashboard] Gigs are managed by useDashboardGigs hook');
     } catch (error) {
       console.error('[Dashboard] Error loading data:', error);
-      // On error, clear data to prevent showing stale info
+      // On error, clear rehearsal data to prevent showing stale info
       setNextRehearsal(null);
-      setUpcomingGigs([]);
       setCurrentDataBandId(null);
     } finally {
       setLoading(false);
@@ -390,7 +263,7 @@ export default function DashboardPage() {
     setEditEvent(rehearsalToEventPayload(rehearsal));
     setDrawerMode('edit');
     setDrawerOpen(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const closeDrawer = useCallback(() => {
@@ -419,7 +292,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           band_id: currentBand.id,
-          name: 'New Setlist'
+          name: 'New Setlist',
         }),
       });
 
@@ -440,7 +313,7 @@ export default function DashboardPage() {
     setEditEvent(gigToEventPayload(gig));
     setDrawerMode('edit');
     setDrawerOpen(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handler to open add event drawer
@@ -455,20 +328,20 @@ export default function DashboardPage() {
   useBandChange({
     onBandChange: () => {
       console.log('[Dashboard] Band changed, clearing state and refetching data');
-      
+
       // Close any open drawers
       setDrawerOpen(false);
       setEditEvent(undefined);
       setDrawerMode('add');
 
-      // Clear stale state immediately and synchronously
+      // Clear stale rehearsal state immediately and synchronously
       setNextRehearsal(null);
-      setUpcomingGigs([]);
       setCurrentDataBandId(null);
 
+      // Gigs are automatically cleared by the useDashboardGigs hook when bandId changes
       // Don't call loadDashboardData here - let useEffect handle it
       // This prevents duplicate calls and race conditions
-    }
+    },
   });
 
   useEffect(() => {
@@ -534,9 +407,7 @@ export default function DashboardPage() {
         <div className="px-4 pt-4 space-y-6">
           <PotentialGigSkeleton />
           <NextRehearsalSkeleton />
-          <div className="text-center text-zinc-400 text-sm py-8">
-            Loading dashboard...
-          </div>
+          <div className="text-center text-zinc-400 text-sm py-8">Loading dashboard...</div>
         </div>
       </div>
     );
@@ -548,19 +419,29 @@ export default function DashboardPage() {
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold mb-4">Welcome to Band Roadie!</h2>
           <p className="text-zinc-300 mb-8">
-            You&apos;re officially backstage — but your band&apos;s not here yet. Fire up a new band or text your drummer (they&apos;re late as usual) to add you. Let&apos;s make some noise.
+            You&apos;re officially backstage — but your band&apos;s not here yet. Fire up a new band
+            or text your drummer (they&apos;re late as usual) to add you. Let&apos;s make some
+            noise.
           </p>
         </div>
       </div>
     );
   }
 
-  // Find potential gigs and confirmed gigs
-  // Only show data that matches current band to prevent data bleed
-  // Allow showing data if currentDataBandId is null (initial state) but currentBand exists
-  const safeUpcomingGigs = (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? upcomingGigs : [];
-  const potentialGigs = safeUpcomingGigs.filter(g => g.is_potential);
-  const confirmedGigs = safeUpcomingGigs.filter(g => !g.is_potential);
+  // Transform hook data into display format with response counts
+  // The hooks handle band switching automatically, so no need for currentDataBandId check
+  const potentialGigs: Gig[] = potentialGigsResult.potentialGigs.map((g) => ({
+    ...g,
+    time: g.start_time ? formatTimeRange(g.start_time, g.end_time, g.date) : 'TBD',
+    yesCount: 0, // TODO: Fetch response counts
+    noCount: 0,
+    notRespondedCount: 0,
+  }));
+
+  const confirmedGigs: Gig[] = upcomingGigsResult.confirmedGigs.map((g) => ({
+    ...g,
+    time: g.start_time ? formatTimeRange(g.start_time, g.end_time, g.date) : 'TBD',
+  }));
 
   return (
     <main className="min-h-screen bg-black text-white pb-40 pt-6">
@@ -586,15 +467,28 @@ export default function DashboardPage() {
                       <div className="text-right">
                         <div className="flex items-center gap-2 mb-1">
                           <CalendarDays className="w-4 h-4 text-white/80" />
-                          <span className="text-sm font-medium text-white">{formatDateForPotentialGig(potentialGigs[0].date)}</span>
+                          <span className="text-sm font-medium text-white">
+                            {formatDateForPotentialGig(potentialGigs[0].date)}
+                          </span>
                         </div>
                         {potentialGigs[0].start_time && potentialGigs[0].end_time && (
                           <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg
+                              className="w-4 h-4 text-white/80"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
                               <circle cx="12" cy="12" r="10" strokeWidth="2" />
                               <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
                             </svg>
-                            <span className="text-sm font-medium text-white">{formatTimeRange(potentialGigs[0].start_time, potentialGigs[0].end_time, potentialGigs[0].date)}</span>
+                            <span className="text-sm font-medium text-white">
+                              {formatTimeRange(
+                                potentialGigs[0].start_time,
+                                potentialGigs[0].end_time,
+                                potentialGigs[0].date,
+                              )}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -602,20 +496,28 @@ export default function DashboardPage() {
 
                     {/* Title Block: Event title (2 lines max) and location */}
                     <div className="mb-4">
-                      <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">{potentialGigs[0].name}</h3>
-                      <div className="text-white/90 text-base truncate">{potentialGigs[0].location}</div>
+                      <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">
+                        {potentialGigs[0].name}
+                      </h3>
+                      <div className="text-white/90 text-base truncate">
+                        {potentialGigs[0].location}
+                      </div>
                     </div>
 
                     {/* Bottom Section: Response Summary */}
                     <div className="text-sm text-white/90 truncate">
-                      Yes ({potentialGigs[0].yesCount || 0}) • No ({potentialGigs[0].noCount || 0}) • Not Responded ({potentialGigs[0].notRespondedCount || 0})
+                      Yes ({potentialGigs[0].yesCount || 0}) • No ({potentialGigs[0].noCount || 0})
+                      • Not Responded ({potentialGigs[0].notRespondedCount || 0})
                     </div>
                   </div>
                 </button>
               </div>
             ) : (
               /* Multiple potential gigs - horizontal scroll */
-              <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              <div
+                className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
                 {potentialGigs.map((gig) => (
                   <div key={gig.id} className="flex-shrink-0 snap-start" style={{ width: '320px' }}>
                     <button
@@ -628,20 +530,31 @@ export default function DashboardPage() {
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <span className="text-base">⚠️</span>
-                            <span className="text-base font-semibold text-white">Potential Gig</span>
+                            <span className="text-base font-semibold text-white">
+                              Potential Gig
+                            </span>
                           </div>
                           <div className="text-right">
                             <div className="flex items-center gap-2 mb-1">
                               <CalendarDays className="w-4 h-4 text-white/80" />
-                              <span className="text-sm font-medium text-white">{formatDateForPotentialGig(gig.date)}</span>
+                              <span className="text-sm font-medium text-white">
+                                {formatDateForPotentialGig(gig.date)}
+                              </span>
                             </div>
                             {gig.start_time && gig.end_time && (
                               <div className="flex items-center gap-2">
-                                <svg className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg
+                                  className="w-4 h-4 text-white/80"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
                                   <circle cx="12" cy="12" r="10" strokeWidth="2" />
                                   <path strokeWidth="2" strokeLinecap="round" d="M12 6v6l4 2" />
                                 </svg>
-                                <span className="text-sm font-medium text-white">{formatTimeRange(gig.start_time, gig.end_time, gig.date)}</span>
+                                <span className="text-sm font-medium text-white">
+                                  {formatTimeRange(gig.start_time, gig.end_time, gig.date)}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -649,13 +562,16 @@ export default function DashboardPage() {
 
                         {/* Title Block: Event title (2 lines max) and location */}
                         <div className="mb-4">
-                          <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">{gig.name}</h3>
+                          <h3 className="text-xl font-bold text-white leading-tight mb-2 line-clamp-2">
+                            {gig.name}
+                          </h3>
                           <div className="text-white/90 text-base truncate">{gig.location}</div>
                         </div>
 
                         {/* Bottom Section: Response Summary */}
                         <div className="text-sm text-white/90 truncate">
-                          Yes ({gig.yesCount || 0}) • No ({gig.noCount || 0}) • Not Responded ({gig.notRespondedCount || 0})
+                          Yes ({gig.yesCount || 0}) • No ({gig.noCount || 0}) • Not Responded (
+                          {gig.notRespondedCount || 0})
                         </div>
                       </div>
                     </button>
@@ -667,7 +583,9 @@ export default function DashboardPage() {
         )}
 
         {/* Next Rehearsal */}
-        {nextRehearsal && (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? (
+        {nextRehearsal &&
+        (currentDataBandId === currentBand?.id ||
+          (currentDataBandId === null && currentBand?.id)) ? (
           <div
             role="button"
             tabIndex={0}
@@ -691,7 +609,9 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 text-white font-medium text-lg mb-2.5 min-h-[28px]">
                 <span className="flex-shrink-0">{nextRehearsal.time}</span>
                 <span className="text-white/60 flex-shrink-0">•</span>
-                <span className="truncate">{formatDateForRehearsalCard(nextRehearsal.raw_date || '')}</span>
+                <span className="truncate">
+                  {formatDateForRehearsalCard(nextRehearsal.raw_date || '')}
+                </span>
               </div>
 
               {/* Location line with setlist badge */}
@@ -699,10 +619,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <MapPin className="w-4 h-4 text-white/70 flex-shrink-0" />
-                    <span
-                      className="text-white/90 text-sm truncate"
-                      title={nextRehearsal.location}
-                    >
+                    <span className="text-white/90 text-sm truncate" title={nextRehearsal.location}>
                       {nextRehearsal.location}
                     </span>
                   </div>
@@ -728,12 +645,14 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        ) : (currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id)) ? (
+        ) : currentDataBandId === currentBand?.id ||
+          (currentDataBandId === null && currentBand?.id) ? (
           <section className="rounded-2xl overflow-hidden bg-zinc-900">
             <div className="p-6">
               <h2 className="text-xl font-semibold text-white mb-3">No Rehearsal Scheduled</h2>
               <p className="text-white/80 text-sm mb-5">
-                The stage is empty and the amps are cold. Time to crank it up and get the band back together!
+                The stage is empty and the amps are cold. Time to crank it up and get the band back
+                together!
               </p>
               <button
                 onClick={() => openAddEvent('rehearsal')}
@@ -748,12 +667,19 @@ export default function DashboardPage() {
 
         {/* Upcoming Gigs */}
         <section>
-          <h2 className={sectionTitle + " mb-4"}>Upcoming Gigs</h2>
+          <h2 className={sectionTitle + ' mb-4'}>Upcoming Gigs</h2>
           {confirmedGigs.length > 0 ? (
-            <div className="flex gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div
+              className="flex gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
               {confirmedGigs.map((gig) => {
                 return (
-                  <div key={gig.id} className="flex-shrink-0 snap-start" style={{ maxWidth: '320px' }}>
+                  <div
+                    key={gig.id}
+                    className="flex-shrink-0 snap-start"
+                    style={{ maxWidth: '320px' }}
+                  >
                     <GradientBorderButton
                       onClick={() => openEditGig(gig)}
                       gradientClass="bg-rose-500"
@@ -792,8 +718,9 @@ export default function DashboardPage() {
                             height={48}
                             className="ml-6"
                             style={{
-                              filter: 'brightness(0) saturate(100%) invert(26%) sepia(8%) saturate(381%) hue-rotate(185deg) brightness(94%) contrast(87%)',
-                              transform: 'scale(-1, -1)'
+                              filter:
+                                'brightness(0) saturate(100%) invert(26%) sepia(8%) saturate(381%) hue-rotate(185deg) brightness(94%) contrast(87%)',
+                              transform: 'scale(-1, -1)',
                             }}
                           />
                         </div>
@@ -817,7 +744,8 @@ export default function DashboardPage() {
             <div className="text-center text-zinc-500 text-sm py-4">
               No confirmed gigs scheduled yet.
             </div>
-          ) : currentDataBandId === currentBand?.id || (currentDataBandId === null && currentBand?.id) ? (
+          ) : currentDataBandId === currentBand?.id ||
+            (currentDataBandId === null && currentBand?.id) ? (
             <section className="rounded-2xl overflow-hidden bg-zinc-900">
               <div className="p-6">
                 <h2 className="text-xl font-semibold text-white mb-3">No upcoming gigs.</h2>
@@ -839,8 +767,11 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <section>
-          <h2 className={sectionTitle + " mb-4"}>Quick Actions</h2>
-          <div className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          <h2 className={sectionTitle + ' mb-4'}>Quick Actions</h2>
+          <div
+            className="flex gap-4 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
             <div className="flex-shrink-0 snap-start">
               <GradientBorderButton
                 onClick={() => openAddEvent('rehearsal')}
