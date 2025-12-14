@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/models/gig.dart';
+import '../../app/services/supabase_client.dart';
 import '../bands/active_band_controller.dart';
 import 'gig_repository.dart';
 
@@ -124,6 +125,46 @@ class GigNotifier extends Notifier<GigState> {
 
   /// Refresh gigs (for pull-to-refresh or retry)
   Future<void> refresh() => loadGigs();
+
+  /// Submit RSVP "Yes" for a gig
+  Future<void> rsvpYes(String gigId) async {
+    final bandId = _bandId;
+    final userId = supabase.auth.currentUser?.id;
+    if (bandId == null || userId == null) return;
+
+    try {
+      await _repository.submitRsvp(
+        gigId: gigId,
+        bandId: bandId,
+        userId: userId,
+        response: 'yes',
+      );
+      // Refresh gigs to update UI
+      await loadGigs();
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to submit RSVP: $e');
+    }
+  }
+
+  /// Submit RSVP "No" for a gig
+  Future<void> rsvpNo(String gigId) async {
+    final bandId = _bandId;
+    final userId = supabase.auth.currentUser?.id;
+    if (bandId == null || userId == null) return;
+
+    try {
+      await _repository.submitRsvp(
+        gigId: gigId,
+        bandId: bandId,
+        userId: userId,
+        response: 'no',
+      );
+      // Refresh gigs to update UI
+      await loadGigs();
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to submit RSVP: $e');
+    }
+  }
 
   /// Clear all gig state (e.g., on logout)
   void reset() {

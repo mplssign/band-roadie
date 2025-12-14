@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/design_tokens.dart';
+
 // ============================================================================
 // EMPTY SECTION CARD
-// Reusable card for empty states with animated CTA button.
+// Reusable card for empty states with animated CTA button and Figma polish.
 // ============================================================================
 
 class EmptySectionCard extends StatefulWidget {
@@ -27,29 +29,27 @@ class EmptySectionCard extends StatefulWidget {
 
 class _EmptySectionCardState extends State<EmptySectionCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _popController;
-  late Animation<double> _popAnimation;
+  late AnimationController _buttonController;
+  late Animation<double> _buttonScale;
 
   @override
   void initState() {
     super.initState();
-    // Pop animation for CTA button
-    _popController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+    _buttonController = AnimationController(
+      duration: AppDurations.medium,
       vsync: this,
     );
-    _popAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _popController, curve: Curves.elasticOut),
+    _buttonScale = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _buttonController, curve: AppCurves.rubberband),
     );
-    // Start animation after a brief delay
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) _popController.forward();
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted) _buttonController.forward();
     });
   }
 
   @override
   void dispose() {
-    _popController.dispose();
+    _buttonController.dispose();
     super.dispose();
   }
 
@@ -57,53 +57,77 @@ class _EmptySectionCardState extends State<EmptySectionCard>
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(Spacing.space24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155), width: 1),
+        color: AppColors.cardBg,
+        borderRadius: BorderRadius.circular(Spacing.cardRadius),
+        border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Column(
         children: [
-          Icon(widget.icon, color: const Color(0xFF64748B), size: 40),
-          const SizedBox(height: 12),
+          // Icon with subtle background
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceDark,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(widget.icon, color: AppColors.textMuted, size: 28),
+          ),
+
+          const SizedBox(height: Spacing.space16),
+
+          // Title
           Text(
             widget.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-            ),
+            style: AppTextStyles.cardTitle.copyWith(fontSize: 17),
           ),
-          const SizedBox(height: 6),
+
+          const SizedBox(height: Spacing.space8),
+
+          // Subtitle
           Text(
             widget.subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+            style: AppTextStyles.cardSubtitle.copyWith(
+              color: AppColors.textMuted,
+            ),
           ),
-          const SizedBox(height: 16),
-          // CTA button with pop animation
+
+          const SizedBox(height: Spacing.space20),
+
+          // CTA button with scale animation
           ScaleTransition(
-            scale: _popAnimation,
+            scale: _buttonScale,
             child: OutlinedButton(
               onPressed: widget.onButtonPressed ?? () {},
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
+                foregroundColor: AppColors.accent,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
+                  horizontal: Spacing.space20,
+                  vertical: Spacing.space12,
                 ),
-                side: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                side: BorderSide(
+                  color: AppColors.accent.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(Spacing.buttonRadius),
                 ),
               ),
-              child: Text(
-                widget.buttonLabel,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add_rounded, size: 18),
+                  const SizedBox(width: Spacing.space6),
+                  Text(
+                    widget.buttonLabel,
+                    style: AppTextStyles.button.copyWith(
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

@@ -1,58 +1,146 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/design_tokens.dart';
+
+// ============================================================================
+// QUICK ACTIONS ROW
+// Horizontal row of action chips with Figma polish and hover states.
+// ============================================================================
+
 class QuickActionsRow extends StatelessWidget {
   const QuickActionsRow({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: Spacing.space12,
+      runSpacing: Spacing.space12,
       children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            letterSpacing: -0.45,
-          ),
+        _QuickActionChip(
+          icon: Icons.music_note_rounded,
+          label: 'Schedule Rehearsal',
+          onPressed: () {},
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: const [
-            _QuickActionButton(label: '+ Schedule Rehearsal'),
-            _QuickActionButton(label: '+ Create Setlist'),
-            _QuickActionButton(label: '+ Create Gig'),
-          ],
+        _QuickActionChip(
+          icon: Icons.queue_music_rounded,
+          label: 'Create Setlist',
+          onPressed: () {},
+        ),
+        _QuickActionChip(
+          icon: Icons.event_rounded,
+          label: 'Add Gig',
+          onPressed: () {},
+        ),
+        _QuickActionChip(
+          icon: Icons.person_add_rounded,
+          label: 'Invite Member',
+          onPressed: () {},
         ),
       ],
     );
   }
 }
 
-class _QuickActionButton extends StatelessWidget {
+class _QuickActionChip extends StatefulWidget {
+  final IconData icon;
   final String label;
+  final VoidCallback? onPressed;
 
-  const _QuickActionButton({required this.label});
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
+
+  @override
+  State<_QuickActionChip> createState() => _QuickActionChipState();
+}
+
+class _QuickActionChipState extends State<_QuickActionChip>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _hoverController;
+  late Animation<double> _scaleAnimation;
+  bool _isPressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hoverController = AnimationController(
+      duration: AppDurations.fast,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.96,
+    ).animate(CurvedAnimation(parent: _hoverController, curve: AppCurves.ease));
+  }
+
+  @override
+  void dispose() {
+    _hoverController.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails _) {
+    setState(() => _isPressed = true);
+    _hoverController.forward();
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    setState(() => _isPressed = false);
+    _hoverController.reverse();
+  }
+
+  void _handleTapCancel() {
+    setState(() => _isPressed = false);
+    _hoverController.reverse();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: () {},
-      style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        side: const BorderSide(color: Color(0xFF2563EB), width: 2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.31,
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      onTap: widget.onPressed ?? () {},
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.space16,
+            vertical: Spacing.space12,
+          ),
+          decoration: BoxDecoration(
+            color: _isPressed ? AppColors.cardBgElevated : AppColors.cardBg,
+            borderRadius: BorderRadius.circular(Spacing.buttonRadius),
+            border: Border.all(
+              color: _isPressed
+                  ? AppColors.accent.withValues(alpha: 0.4)
+                  : AppColors.borderSubtle,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 18,
+                color: _isPressed ? AppColors.accent : AppColors.textMuted,
+              ),
+              const SizedBox(width: Spacing.space8),
+              Text(
+                widget.label,
+                style: AppTextStyles.label.copyWith(
+                  color: _isPressed
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

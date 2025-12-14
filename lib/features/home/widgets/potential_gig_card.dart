@@ -1,184 +1,433 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class PotentialGigCard extends StatelessWidget {
-  final String venueName;
-  final String location;
-  final String dateTime;
-  final int yesCount;
-  final int noCount;
-  final int notRespondedCount;
+import '../../../app/models/gig.dart';
+import '../../../app/theme/design_tokens.dart';
+import '../../gigs/gig_controller.dart';
 
-  const PotentialGigCard({
-    super.key,
-    this.venueName = 'The Blue Note',
-    this.location = 'Downtown',
-    this.dateTime = 'Saturday, Jan 15 • 8:00 PM',
-    this.yesCount = 3,
-    this.noCount = 1,
-    this.notRespondedCount = 2,
-  });
+// ============================================================================
+// POTENTIAL GIG CARD
+// Card for a potential gig that needs RSVP. Features a subtle pulse animation
+// to convey urgency and rubberband entrance for playful feel.
+// ============================================================================
+
+class PotentialGigCard extends ConsumerStatefulWidget {
+  final Gig gig;
+
+  const PotentialGigCard({super.key, required this.gig});
+
+  @override
+  ConsumerState<PotentialGigCard> createState() => _PotentialGigCardState();
+}
+
+class _PotentialGigCardState extends ConsumerState<PotentialGigCard>
+    with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  late AnimationController _entranceController;
+  late Animation<double> _entranceScale;
+  late Animation<Offset> _entranceSlide;
+  bool _isResponding = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Pulse animation for urgency
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    // Rubberband entrance animation
+    _entranceController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _entranceScale = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _entranceController, curve: AppCurves.rubberband),
+    );
+
+    _entranceSlide =
+        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: AppCurves.slideIn,
+          ),
+        );
+
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) _entranceController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _entranceController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleRsvp(bool attending) async {
+    if (_isResponding) return;
+    setState(() => _isResponding = true);
+
+    try {
+      if (attending) {
+        await ref.read(gigProvider.notifier).rsvpYes(widget.gig.id);
+      } else {
+        await ref.read(gigProvider.notifier).rsvpNo(widget.gig.id);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isResponding = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF59E0B), width: 2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row with badge
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+    final gig = widget.gig;
+
+    return SlideTransition(
+      position: _entranceSlide,
+      child: ScaleTransition(
+        scale: _entranceScale,
+        child: AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            final pulseValue = _pulseAnimation.value;
+
+            return Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Spacing.cardRadius),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.cardBg,
+                    Color.lerp(
+                      AppColors.cardBg,
+                      AppColors.accent.withValues(alpha: 0.12),
+                      pulseValue * 0.4,
+                    )!,
+                  ],
                 ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: Color.lerp(
+                    AppColors.accent.withValues(alpha: 0.3),
+                    AppColors.accent.withValues(alpha: 0.6),
+                    pulseValue * 0.5,
+                  )!,
+                  width: 1.5,
                 ),
-                child: const Text(
-                  'POTENTIAL GIG',
-                  style: TextStyle(
-                    color: Color(0xFFF59E0B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(
+                      alpha: 0.08 + pulseValue * 0.08,
+                    ),
+                    blurRadius: 20 + pulseValue * 12,
+                    spreadRadius: pulseValue * 4,
                   ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(Spacing.space20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Urgency badge with glow
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Spacing.space12,
+                        vertical: Spacing.space6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(Spacing.chipRadius),
+                        border: Border.all(
+                          color: AppColors.accent.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(
+                              alpha: 0.15 * pulseValue,
+                            ),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.notifications_active_rounded,
+                            size: 14,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: Spacing.space6),
+                          Text(
+                            'HEY! ARE YOU IN?',
+                            style: AppTextStyles.badge.copyWith(
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: Spacing.space16),
+
+                    // Gig name
+                    Text(
+                      gig.name,
+                      style: AppTextStyles.cardTitle.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+
+                    const SizedBox(height: Spacing.space12),
+
+                    // Location row
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: Spacing.space6),
+                        Expanded(
+                          child: Text(
+                            gig.location,
+                            style: AppTextStyles.cardSubtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Spacing.space6),
+
+                    // Date row
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: Spacing.space6),
+                        Text(
+                          _formatDate(gig.date),
+                          style: AppTextStyles.cardSubtitle,
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Spacing.space24),
+
+                    // RSVP buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _RsvpButton(
+                            label: "Can't Make It",
+                            isOutlined: true,
+                            isLoading: false,
+                            onPressed: _isResponding
+                                ? null
+                                : () => _handleRsvp(false),
+                          ),
+                        ),
+                        const SizedBox(width: Spacing.space12),
+                        Expanded(
+                          flex: 2,
+                          child: _RsvpButton(
+                            label: "I'm In!",
+                            emoji: '🤘',
+                            isOutlined: false,
+                            isLoading: _isResponding,
+                            onPressed: _isResponding
+                                ? null
+                                : () => _handleRsvp(true),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-
-          const SizedBox(height: 14),
-
-          // Venue name
-          Text(
-            venueName,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.45,
-            ),
-          ),
-          const SizedBox(height: 4),
-
-          // Location
-          Row(
-            children: [
-              const Icon(
-                Icons.location_on_outlined,
-                color: Color(0xFF94A3B8),
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                location,
-                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-
-          // Date/time
-          Text(
-            dateTime,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Divider
-          Container(height: 1, color: const Color(0xFF334155)),
-
-          const SizedBox(height: 16),
-
-          // RSVP counts
-          Row(
-            children: [
-              _RsvpBadge(
-                label: 'Yes',
-                count: yesCount,
-                color: const Color(0xFF22C55E),
-              ),
-              const SizedBox(width: 8),
-              const Text('•', style: TextStyle(color: Color(0xFF64748B))),
-              const SizedBox(width: 8),
-              _RsvpBadge(
-                label: 'No',
-                count: noCount,
-                color: const Color(0xFFEF4444),
-              ),
-              const SizedBox(width: 8),
-              const Text('•', style: TextStyle(color: Color(0xFF64748B))),
-              const SizedBox(width: 8),
-              _RsvpBadge(
-                label: 'Not Responded',
-                count: notRespondedCount,
-                color: const Color(0xFF94A3B8),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Review / RSVP button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () {},
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFF59E0B),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: const BorderSide(color: Color(0xFFF59E0B), width: 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Review / RSVP',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+
+    if (difference == 0) {
+      return 'Today — better not flake!';
+    } else if (difference == 1) {
+      return 'Tomorrow';
+    } else if (difference < 7) {
+      return 'In $difference days';
+    } else {
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return '${months[date.month - 1]} ${date.day}';
+    }
+  }
 }
 
-class _RsvpBadge extends StatelessWidget {
+/// RSVP button with micro-interaction
+class _RsvpButton extends StatefulWidget {
   final String label;
-  final int count;
-  final Color color;
+  final String? emoji;
+  final bool isOutlined;
+  final bool isLoading;
+  final VoidCallback? onPressed;
 
-  const _RsvpBadge({
+  const _RsvpButton({
     required this.label,
-    required this.count,
-    required this.color,
+    this.emoji,
+    required this.isOutlined,
+    required this.isLoading,
+    this.onPressed,
   });
 
   @override
+  State<_RsvpButton> createState() => _RsvpButtonState();
+}
+
+class _RsvpButtonState extends State<_RsvpButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _tapController;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _tapController = AnimationController(
+      duration: AppDurations.fast,
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _tapController, curve: AppCurves.ease));
+  }
+
+  @override
+  void dispose() {
+    _tapController.dispose();
+    super.dispose();
+  }
+
+  void _handleTapDown(TapDownDetails _) {
+    if (widget.onPressed != null) _tapController.forward();
+  }
+
+  void _handleTapUp(TapUpDetails _) {
+    _tapController.reverse();
+  }
+
+  void _handleTapCancel() {
+    _tapController.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$label ($count)',
-          style: TextStyle(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.isOutlined
+            ? OutlinedButton(
+                onPressed: widget.onPressed,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textSecondary,
+                  side: BorderSide(color: AppColors.borderMuted),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Spacing.space14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Spacing.buttonRadius),
+                  ),
+                ),
+                child: Text(
+                  widget.label,
+                  style: AppTextStyles.button.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              )
+            : FilledButton(
+                onPressed: widget.onPressed,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: Spacing.space14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Spacing.buttonRadius),
+                  ),
+                ),
+                child: widget.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.label,
+                            style: AppTextStyles.button.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (widget.emoji != null) ...[
+                            const SizedBox(width: Spacing.space6),
+                            Text(
+                              widget.emoji!,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
+                        ],
+                      ),
+              ),
+      ),
     );
   }
 }

@@ -94,4 +94,41 @@ class GigRepository {
 
     return response.map<Gig>((json) => Gig.fromJson(json)).toList();
   }
+
+  // ==========================================================================
+  // RSVP METHODS
+  // ==========================================================================
+
+  /// Submit an RSVP response for the current user.
+  /// Uses upsert to handle both insert and update cases.
+  Future<void> submitRsvp({
+    required String gigId,
+    required String bandId,
+    required String userId,
+    required String response, // 'yes' or 'no'
+  }) async {
+    await supabase.from('gig_responses').upsert({
+      'gig_id': gigId,
+      'band_id': bandId,
+      'user_id': userId,
+      'response': response,
+      'updated_at': DateTime.now().toIso8601String(),
+    }, onConflict: 'gig_id,user_id');
+  }
+
+  /// Get the current user's RSVP for a specific gig (if any).
+  Future<String?> getCurrentUserRsvp({
+    required String gigId,
+    required String userId,
+  }) async {
+    final response = await supabase
+        .from('gig_responses')
+        .select('response')
+        .eq('gig_id', gigId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return response['response'] as String?;
+  }
 }

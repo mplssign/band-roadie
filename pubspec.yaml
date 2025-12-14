@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.12.0
+  flutter_dotenv: ^5.2.1
   go_router: ^17.0.1
   flutter_riverpod: ^3.0.3
   flutter_svg: ^2.2.3
@@ -62,6 +63,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Assets - include .env file for runtime config
+  assets:
+    - .env
 
   # To add assets to your application, add an assets section, like this:
   # assets:

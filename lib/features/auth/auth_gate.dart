@@ -33,14 +33,25 @@ class _AuthGateState extends State<AuthGate> {
     _session = supabase.auth.currentSession;
     _initialized = true;
 
-    // Listen for auth state changes (login, logout, token refresh)
-    _authSubscription = supabase.auth.onAuthStateChange.listen((data) {
-      if (mounted) {
-        setState(() {
-          _session = data.session;
-        });
-      }
-    });
+    debugPrint(
+      '[AuthGate] Initial session: ${_session != null ? "present" : "null"}',
+    );
+
+    // Listen for auth state changes (login, logout, token refresh, deep link callback)
+    _authSubscription = supabase.auth.onAuthStateChange.listen(
+      (data) {
+        debugPrint('[AuthGate] Auth state changed: ${data.event.name}');
+
+        if (mounted) {
+          setState(() {
+            _session = data.session;
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('[AuthGate] Auth error: $error');
+      },
+    );
 
     if (mounted) {
       setState(() {});

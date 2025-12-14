@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/theme/design_tokens.dart';
+
 // ============================================================================
 // NO BAND STATE
-// Shown when user has zero band memberships. Includes animated CTA buttons.
+// Shown when user has zero band memberships. Includes staggered entrance
+// animations with rubberband feel for the CTA buttons.
 // ============================================================================
 
 class NoBandState extends StatefulWidget {
@@ -13,185 +16,259 @@ class NoBandState extends StatefulWidget {
 }
 
 class _NoBandStateState extends State<NoBandState>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _popController;
-  late Animation<double> _popAnimation;
+    with TickerProviderStateMixin {
+  late AnimationController _entranceController;
+  late AnimationController _buttonController;
+
+  late Animation<double> _iconFade;
+  late Animation<Offset> _iconSlide;
+  late Animation<double> _titleFade;
+  late Animation<Offset> _titleSlide;
+  late Animation<double> _bodyFade;
+  late Animation<double> _createButtonScale;
+  late Animation<double> _joinButtonFade;
 
   @override
   void initState() {
     super.initState();
-    // Pop animation for CTA button
-    _popController = AnimationController(
+
+    // Main entrance controller
+    _entranceController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    // Button pop controller with rubberband
+    _buttonController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    _popAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _popController, curve: Curves.elasticOut),
+
+    // Icon: fade + slide up
+    _iconFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
     );
-    // Start animation after a brief delay for visual effect
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _popController.forward();
+    _iconSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+          ),
+        );
+
+    // Title: staggered fade + slide
+    _titleFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.2, 0.6, curve: Curves.easeOut),
+      ),
+    );
+    _titleSlide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: const Interval(0.2, 0.6, curve: Curves.easeOutCubic),
+          ),
+        );
+
+    // Body fade
+    _bodyFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.35, 0.7, curve: Curves.easeOut),
+      ),
+    );
+
+    // Create button with rubberband scale
+    _createButtonScale = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _buttonController, curve: AppCurves.rubberband),
+    );
+
+    // Join button fade in
+    _joinButtonFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _buttonController,
+        curve: const Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
+    );
+
+    // Start animations with stagger
+    _entranceController.forward();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _buttonController.forward();
     });
   }
 
   @override
   void dispose() {
-    _popController.dispose();
+    _entranceController.dispose();
+    _buttonController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B).withValues(alpha: 0.5),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {},
-        ),
-        title: const Text(
-          'BandRoadie',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: const Color(0xFF334155),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.bolt, color: Color(0xFFF59E0B), size: 20),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.scaffoldBg,
       body: Container(
         width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1E1E1E), Color(0xFF0F172A)],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: Spacing.space32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Spacer(flex: 2),
 
-                // Music icon
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.music_note_rounded,
-                    size: 48,
-                    color: Color(0xFF3B82F6),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Title
-                const Text(
-                  'Welcome to Band Roadie!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // Body copy
-                const Text(
-                  "You're officially backstage — but your band's not here yet. "
-                  "Fire up a new band or text your drummer (they're late as usual) "
-                  "to add you. Let's make some noise.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    height: 1.6,
+                // Animated music icon with glow
+                SlideTransition(
+                  position: _iconSlide,
+                  child: FadeTransition(
+                    opacity: _iconFade,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.15),
+                            blurRadius: 40,
+                            spreadRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.music_note_rounded,
+                        size: 56,
+                        color: AppColors.accent,
+                      ),
+                    ),
                   ),
                 ),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: Spacing.space40),
 
-                // Create Band button with pop animation
+                // Animated title
+                SlideTransition(
+                  position: _titleSlide,
+                  child: FadeTransition(
+                    opacity: _titleFade,
+                    child: Text(
+                      'Welcome, Roadie!',
+                      textAlign: TextAlign.center,
+                      style: AppTextStyles.displayLarge.copyWith(
+                        fontSize: 28,
+                        letterSpacing: -0.8,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: Spacing.space16),
+
+                // Animated body copy with roadie humor
+                FadeTransition(
+                  opacity: _bodyFade,
+                  child: Text(
+                    "You're backstage, but your band's MIA.\n"
+                    "Start your own crew or bug your drummer\n"
+                    "(they're late, shocker) to invite you.",
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body.copyWith(
+                      fontSize: 16,
+                      height: 1.6,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: Spacing.space48),
+
+                // Create Band button with rubberband pop
                 ScaleTransition(
-                  scale: _popAnimation,
+                  scale: _createButtonScale,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () {},
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: Spacing.space16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            Spacing.buttonRadius,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.add_rounded, size: 20),
+                          const SizedBox(width: Spacing.space8),
+                          Text(
+                            'Create a Band',
+                            style: AppTextStyles.button.copyWith(
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: Spacing.space16),
+
+                // Join Band button
+                FadeTransition(
+                  opacity: _joinButtonFade,
                   child: SizedBox(
                     width: double.infinity,
                     child: OutlinedButton(
                       onPressed: () {},
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        side: const BorderSide(
-                          color: Color(0xFF2563EB),
-                          width: 2,
+                        foregroundColor: AppColors.textPrimary,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: Spacing.space16,
+                        ),
+                        side: BorderSide(
+                          color: AppColors.borderMuted,
+                          width: 1.5,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(
+                            Spacing.buttonRadius,
+                          ),
                         ),
                       ),
-                      child: const Text(
-                        '+ Create a Band',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      child: Text(
+                        'Join Existing Band',
+                        style: AppTextStyles.button.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: Spacing.space24),
 
-                // Join Band button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      side: const BorderSide(
-                        color: Color(0xFF475569),
-                        width: 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Join a Band',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                // Subtle hint
+                FadeTransition(
+                  opacity: _bodyFade,
+                  child: Text(
+                    'Got an invite code? Tap "Join" above.',
+                    style: AppTextStyles.label.copyWith(
+                      color: AppColors.textDisabled,
                     ),
                   ),
                 ),
