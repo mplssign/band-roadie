@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Performance optimizations */
+html {
+  touch-action: manipulation;
+  /* Enable GPU acceleration */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  /* Optimize font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Optimize scrolling */
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Optimize repaints */
+body {
+  /* Enable GPU acceleration */
+  will-change: scroll-position;
+  /* Optimize transforms */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Hide scrollbars globally while maintaining functionality */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Webkit */
+}
+
+/* Gradient animations and utilities */
+@keyframes gradient-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-gradient-border {
+  position: relative;
+  padding: 2px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.animate-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(from 0deg, #dc2626, #7c3aed, #2563eb, #dc2626);
+  animation: gradient-spin var(--grad-speed, 3s) linear infinite;
+}
+
+.animate-gradient-border::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #18181b;
+  border-radius: calc(0.75rem - 2px);
+  z-index: 1;
+}
+
+.animate-gradient-border > * {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Rose-Violet animated gradient border variant */
+.animate-gradient-border-rose-violet {
+  position: relative;
+  padding: 2px;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.animate-gradient-border-rose-violet::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, #f43f5e, #9333ea, #f43f5e);
+  animation: gradient-spin var(--grad-speed, 3s) linear infinite;
+}
+
+.animate-gradient-border-rose-violet::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  background: #18181b;
+  border-radius: calc(0.75rem - 2px);
+  z-index: 1;
+}
+
+.animate-gradient-border-rose-violet > * {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+/* Background gradient utilities */
+.bg-gradient-gig {
+  background-image: linear-gradient(135deg, #f43f5e, #eab308);
+}
+
+.bg-gradient-rehearsal {
+  background-image: linear-gradient(135deg, #2563eb, #9333ea);
+}
+
+/* Disable animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-border,
+  .animate-gradient-border-rose-violet {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,160 @@
+
+> band-roadie@1.4.1 dev /Users/tony/apps/band-roadie
+> npm run prebuild && next dev
+
+
+> band-roadie@1.4.1 prebuild
+> node scripts/generate-version.js
+
+  ▲ Next.js 14.2.33
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+  - Experiments (use with caution):
+    · turbo
+
+ ✓ Starting...
+ ✓ Ready in 1479ms
+ ✓ Compiled /middleware in 281ms (145 modules)
+ ○ Compiling / ...
+ ✓ Compiled / in 2.1s (796 modules)
+Critical error in Home component: Error: NEXT_REDIRECT
+    at getRedirectError (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:49:19)
+    at redirect (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:60:11)
+    at Home (webpack-internal:///(rsc)/./app/page.tsx:34:70) {
+  digest: 'NEXT_REDIRECT;replace;/auth/verify-client?next=%2Fdashboard&source=landing;307;',
+  mutableCookies: p { _parsed: Map(0) {}, _headers: Headers {} }
+}
+ HEAD / 307 in 2317ms
+ ✓ Compiled in 265ms (347 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (118kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+Critical error in Home component: Error: NEXT_REDIRECT
+    at getRedirectError (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:49:19)
+    at redirect (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:60:11)
+    at Home (webpack-internal:///(rsc)/./app/page.tsx:34:70) {
+  digest: 'NEXT_REDIRECT;replace;/auth/verify-client?next=%2Fdashboard&source=landing;307;',
+  mutableCookies: p { _parsed: Map(0) {}, _headers: Headers {} }
+}
+ HEAD / 307 in 25ms
+ ✓ Compiled in 288ms (347 modules)
+ ✓ Compiled in 174ms (347 modules)
+ ✓ Compiled in 232ms (492 modules)
+ ✓ Compiled / in 127ms (427 modules)
+Critical error in Home component: Error: NEXT_REDIRECT
+    at getRedirectError (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:49:19)
+    at redirect (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:60:11)
+    at Home (webpack-internal:///(rsc)/./app/page.tsx:34:70) {
+  digest: 'NEXT_REDIRECT;replace;/auth/verify-client?next=%2Fdashboard&source=landing;307;',
+  mutableCookies: p { _parsed: Map(0) {}, _headers: Headers {} }
+}
+ GET / 307 in 234ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 602ms (783 modules)
+ GET /login 200 in 692ms
+ HEAD /login 200 in 16ms
+ HEAD /login 200 in 22ms
+ GET /login 200 in 20ms
+ ✓ Compiled /_not-found in 303ms (691 modules)
+ GET /_next/static/chunks/main.js 404 in 400ms
+ ⨯ Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+ssr@0.5.2_@supabase+supabase-js@2.74.0/node_modules/@supabase/ssr/dist/module/createServerClient.js:19:87)
+    at Object.middleware [as handler] (webpack-internal:///(middleware)/./middleware.ts:51:87)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:197:31)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/async-storage/request-async-storage-wrapper.js:105:24)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:188:122)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/lib/trace/tracer.js:115:36)
+ ○ Compiling /_error ...
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled /_error in 617ms (918 modules)
+ GET /sw.js 404 in 1ms
+ ⨯ Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+    at ServerResponse.appendHeader (node:_http_outgoing:711:11)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+digest: "706413186"
+ GET /login 200 in 278ms
+ ⨯ Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+ssr@0.5.2_@supabase+supabase-js@2.74.0/node_modules/@supabase/ssr/dist/module/createServerClient.js:19:87)
+    at Object.middleware [as handler] (webpack-internal:///(middleware)/./middleware.ts:51:87)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:197:31)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/async-storage/request-async-storage-wrapper.js:105:24)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:188:122)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/lib/trace/tracer.js:115:36)
+ GET /sw.js 404 in 6ms
+ ⨯ Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+    at ServerResponse.appendHeader (node:_http_outgoing:711:11)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+digest: "706413186"
+ GET /login 200 in 32ms
+ ⨯ Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+ssr@0.5.2_@supabase+supabase-js@2.74.0/node_modules/@supabase/ssr/dist/module/createServerClient.js:19:87)
+    at Object.middleware [as handler] (webpack-internal:///(middleware)/./middleware.ts:51:87)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:197:31)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/async-storage/request-async-storage-wrapper.js:105:24)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:188:122)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/lib/trace/tracer.js:115:36)
+ GET /sw.js 404 in 2ms
+ ⨯ Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+    at ServerResponse.appendHeader (node:_http_outgoing:711:11)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+digest: "706413186"
+ ✓ Compiled / in 124ms (476 modules)
+Critical error in Home component: Error: NEXT_REDIRECT
+    at getRedirectError (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:49:19)
+    at redirect (webpack-internal:///(rsc)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/client/components/redirect.js:60:11)
+    at Home (webpack-internal:///(rsc)/./app/page.tsx:34:70) {
+  digest: 'NEXT_REDIRECT;replace;/auth/verify-client?next=%2Fdashboard&source=landing;307;',
+  mutableCookies: p { _parsed: Map(0) {}, _headers: Headers {} }
+}
+ GET / 307 in 257ms
+ ⨯ Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+ssr@0.5.2_@supabase+supabase-js@2.74.0/node_modules/@supabase/ssr/dist/module/createServerClient.js:19:87)
+    at Object.middleware [as handler] (webpack-internal:///(middleware)/./middleware.ts:51:87)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:197:31)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/async-storage/request-async-storage-wrapper.js:105:24)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:188:122)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/lib/trace/tracer.js:115:36)
+ GET /dashboard 404 in 0ms
+ ⨯ Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+    at ServerResponse.appendHeader (node:_http_outgoing:711:11)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+digest: "706413186"
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 18ms
+ GET /login 200 in 119ms
+ ⚠ Cross origin request detected from bandroadie.com to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ Error: Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL.
+    at validateSupabaseUrl (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/lib/helpers.js:62:15)
+    at new SupabaseClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/SupabaseClient.js:53:90)
+    at createClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+supabase-js@2.74.0/node_modules/@supabase/supabase-js/dist/module/index.js:63:12)
+    at createServerClient (webpack-internal:///(middleware)/./node_modules/.pnpm/@supabase+ssr@0.5.2_@supabase+supabase-js@2.74.0/node_modules/@supabase/ssr/dist/module/createServerClient.js:19:87)
+    at Object.middleware [as handler] (webpack-internal:///(middleware)/./middleware.ts:51:87)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:197:31)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+    at Object.wrap (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/async-storage/request-async-storage-wrapper.js:105:24)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/web/adapter.js:188:122)
+    at eval (webpack-internal:///(middleware)/./node_modules/.pnpm/next@14.2.33_@babel+core@7.28.4_babel-plugin-macros@3.1.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/esm/server/lib/trace/tracer.js:115:36)
+ GET /dashboard 404 in 1ms
+ ⨯ Error [ERR_HTTP_HEADERS_SENT]: Cannot append headers after they are sent to the client
+    at ServerResponse.appendHeader (node:_http_outgoing:711:11)
+    at AsyncLocalStorage.run (node:async_hooks:346:14)
+digest: "706413186"
+ GET /.well-known/appspecific/com.chrome.devtools.json 404 in 14ms
+ GET /apple-touch-icon-precomposed.png 404 in 14ms
+ ELIFECYCLE  Command failed.
+[?25h
