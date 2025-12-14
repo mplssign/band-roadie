@@ -1,0 +1,97 @@
+import '../../app/models/gig.dart';
+import '../../app/services/supabase_client.dart';
+
+// ============================================================================
+// GIG REPOSITORY
+// Handles all gig-related data fetching.
+//
+// ISOLATION RULES (NON-NEGOTIABLE):
+// - Every query REQUIRES a non-null bandId
+// - If bandId is null, we throw an error or return empty — NEVER query all gigs
+// - Supabase RLS should also enforce this, but we add client-side checks
+// ============================================================================
+
+/// Exception thrown when attempting to fetch gigs without a band context.
+class NoBandSelectedError extends Error {
+  final String message;
+  NoBandSelectedError([
+    this.message =
+        'No band selected. Cannot fetch gigs without a band context.',
+  ]);
+
+  @override
+  String toString() => 'NoBandSelectedError: $message';
+}
+
+class GigRepository {
+  /// Fetches all gigs for the specified band.
+  ///
+  /// IMPORTANT: bandId is REQUIRED. If null, throws NoBandSelectedError.
+  /// This prevents accidental cross-band data leakage.
+  Future<List<Gig>> fetchGigsForBand(String? bandId) async {
+    // =========================================
+    // BAND ISOLATION CHECK — NON-NEGOTIABLE
+    // =========================================
+    if (bandId == null || bandId.isEmpty) {
+      throw NoBandSelectedError();
+    }
+
+    final response = await supabase
+        .from('gigs')
+        .select()
+        .eq('band_id', bandId)
+        .order('date', ascending: true);
+
+    return response.map<Gig>((json) => Gig.fromJson(json)).toList();
+  }
+
+  /// Fetches only potential (unconfirmed) gigs for the specified band.
+  Future<List<Gig>> fetchPotentialGigs(String? bandId) async {
+    if (bandId == null || bandId.isEmpty) {
+      throw NoBandSelectedError();
+    }
+
+    final response = await supabase
+        .from('gigs')
+        .select()
+        .eq('band_id', bandId)
+        .eq('is_potential', true)
+        .order('date', ascending: true);
+
+    return response.map<Gig>((json) => Gig.fromJson(json)).toList();
+  }
+
+  /// Fetches only confirmed gigs for the specified band.
+  Future<List<Gig>> fetchConfirmedGigs(String? bandId) async {
+    if (bandId == null || bandId.isEmpty) {
+      throw NoBandSelectedError();
+    }
+
+    final response = await supabase
+        .from('gigs')
+        .select()
+        .eq('band_id', bandId)
+        .eq('is_potential', false)
+        .order('date', ascending: true);
+
+    return response.map<Gig>((json) => Gig.fromJson(json)).toList();
+  }
+
+  /// Fetches upcoming gigs (date >= now) for the specified band.
+  Future<List<Gig>> fetchUpcomingGigs(String? bandId) async {
+    if (bandId == null || bandId.isEmpty) {
+      throw NoBandSelectedError();
+    }
+
+    final now = DateTime.now().toIso8601String();
+
+    final response = await supabase
+        .from('gigs')
+        .select()
+        .eq('band_id', bandId)
+        .gte('date', now)
+        .order('date', ascending: true);
+
+    return response.map<Gig>((json) => Gig.fromJson(json)).toList();
+  }
+}

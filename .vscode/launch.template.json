@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "BandRoadie (macOS)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "macos",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=your-anon-key-here"
+      ]
+    },
+    {
+      "name": "BandRoadie (iOS Simulator)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "iPhone 16",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=your-anon-key-here"
+      ]
+    },
+    {
+      "name": "BandRoadie (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "chrome",
+      "args": [
+        "--dart-define=SUPABASE_URL=https://YOUR_PROJECT.supabase.co",
+        "--dart-define=SUPABASE_ANON_KEY=your-anon-key-here"
+      ]
+    }
+  ]
+}
