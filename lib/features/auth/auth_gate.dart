@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/services/supabase_client.dart';
-import '../home/home_screen.dart';
+import '../shell/app_shell.dart';
 import 'login_screen.dart';
 
 // Re-export supabase client for backward compatibility
@@ -76,9 +76,9 @@ class _AuthGateState extends State<AuthGate> {
       );
     }
 
-    // Session exists -> show home
+    // Session exists -> show app shell with all tabs
     if (_session != null) {
-      return const HomeScreen();
+      return const AppShell();
     }
 
     // No session -> show login

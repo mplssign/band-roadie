@@ -1,5 +1,5 @@
-name: tonyholmes
-description: "A new Flutter project."
+name: bandroadie
+description: "Gig and setlist management for bands."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -41,10 +41,18 @@ dependencies:
   flutter_svg: ^2.2.3
   google_fonts: ^6.3.3
   intl: ^0.20.2
+  image_picker: ^1.2.1
+  shared_preferences: ^2.2.2
+  share_plus: ^10.1.4
+  url_launcher: ^6.3.1
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  # Golden testing toolkit
+  golden_toolkit: ^0.15.0
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -52,6 +60,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

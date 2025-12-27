@@ -8,6 +8,8 @@
 // Schema: public.gigs
 // ============================================================================
 
+import '../utils/time_formatter.dart';
+
 class Gig {
   final String id;
   final String bandId;
@@ -24,6 +26,10 @@ class Gig {
   /// Potential gigs show RSVP UI. Confirmed gigs show as scheduled.
   final bool isPotential;
 
+  /// List of user IDs for band members required for this potential gig.
+  /// Empty set means all members are required (default behavior).
+  final Set<String> requiredMemberIds;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -39,6 +45,7 @@ class Gig {
     this.setlistName,
     this.notes,
     required this.isPotential,
+    this.requiredMemberIds = const {},
     required this.createdAt,
     required this.updatedAt,
   });
@@ -57,6 +64,7 @@ class Gig {
       setlistName: json['setlist_name'] as String?,
       notes: json['notes'] as String?,
       isPotential: json['is_potential'] as bool? ?? false,
+      requiredMemberIds: _parseRequiredMemberIds(json['required_member_ids']),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -75,14 +83,25 @@ class Gig {
       'setlist_name': setlistName,
       'notes': notes,
       'is_potential': isPotential,
+      'required_member_ids': requiredMemberIds.toList(),
     };
+  }
+
+  /// Parse required_member_ids from database (can be null, List, or array)
+  static Set<String> _parseRequiredMemberIds(dynamic value) {
+    if (value == null) return {};
+    if (value is List) {
+      return value.map((e) => e.toString()).toSet();
+    }
+    return {};
   }
 
   /// Returns true if this is a confirmed (not potential) gig
   bool get isConfirmed => !isPotential;
 
   /// Formatted time range (e.g., "7:30 PM - 10:30 PM")
-  String get timeRange => '$startTime - $endTime';
+  /// Uses TimeFormatter to ensure consistent 12-hour format display.
+  String get timeRange => TimeFormatter.formatRange(startTime, endTime);
 
   @override
   String toString() => 'Gig(id: $id, name: $name, isPotential: $isPotential)';

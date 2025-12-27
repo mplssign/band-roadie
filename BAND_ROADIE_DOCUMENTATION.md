@@ -133,7 +133,7 @@ band-roadie/
 
 ### 5. Setlist Management
 - **Setlist Creation:** Build song lists for performances
-- **Song Library:** Maintain band's song repertoire
+- **Catalog:** Maintain band's master song repertoire (single source of truth)
 - **Drag-and-Drop Ordering:** Intuitive song arrangement
 - **BPM Tracking:** Monitor song tempo for smooth transitions
 - **Tuning Information:** Track instrument tunings per song
@@ -285,6 +285,101 @@ NEXT_PUBLIC_APP_URL=             # Application base URL
 - **Dashboard Redesign:** Modern dark theme with improved UX
 - **Profile Management:** Complete profile setup and editing
 - **Invitation System:** Email-based band invitations with custom templates
+- **Bulk Add Songs (Flutter):** Full-featured overlay for importing songs from spreadsheets
+
+### Bulk Add Songs Feature (Flutter App)
+
+The Bulk Add Songs feature allows users to quickly import multiple songs from a spreadsheet into their setlist and band Catalog.
+
+**UI Flow:**
+1. User taps "Bulk Paste" button on Setlist Detail screen
+2. Modal overlay opens with multi-line text input
+3. User pastes tab-delimited data (or 2+ space separated)
+4. Live preview shows parsed rows with validation status
+5. Invalid rows display inline error badges; warnings display inline warning badges
+6. "Add Songs" button becomes enabled when valid rows exist
+7. On submit: songs are created in Supabase and added to both Catalog and current setlist
+
+**UI Copy:**
+- Title: "Bulk Add Songs"
+- Subtext Line 1: "Paste data from your Spreadsheet"
+- Subtext Line 2: "Columns: ARTIST, SONG, BPM, TUNING"
+- Helper: "You can also type song info by typing ARTIST, then hitting the Tab key, SONG, then Tab, BPM, then Tab, TUNING."
+
+**Expected Input Format:**
+```
+ARTIST    SONG    BPM    TUNING
+The Beatles    Come Together    82    Standard
+Led Zeppelin    Whole Lotta Love    91    Drop D
+```
+
+**Row Limits:**
+- Maximum 500 rows per paste
+- If >500 rows pasted, shows error banner and processes only first 500
+
+**Parsing Rules:**
+- Columns: ARTIST, SONG (required), BPM (optional), TUNING (optional)
+- Delimiter: TAB preferred, falls back to 2+ spaces
+- BPM: Integer 1-300 or empty; invalid BPM → warning (row still valid, BPM set to null)
+- Tuning normalization: Maps common variations to internal IDs
+  - "Standard", "E Standard", "E", "Standard (E A D G B e)" → `standard_e`
+  - "Half-Step", "Eb Standard", "E♭" → `half_step_down`
+  - "Drop D", "Drop D tuning" → `drop_d`
+  - "Drop C", "Drop B", "Drop A", etc.
+  - "Open G", "Open G (D G D G B D)" → `open_g`
+  - Parenthetical info and trailing "tuning" word are stripped before matching
+  - Unknown tuning → warning (row still valid, tuning set to null)
+- De-duplication: Same artist+song (case-insensitive) within batch → only first processed
+- Missing song title → error (row invalid)
+
+**Database Behavior:**
+1. Ensures Catalog setlist exists for the band
+2. For each valid row: Create/upsert song in `public.songs` (de-duped by band_id + title + artist)
+3. Add song to Catalog setlist (always)
+4. Add song to current setlist (if not already Catalog)
+5. Duplicate inserts silently ignored (unique constraint)
+
+**Files:**
+- `lib/features/setlists/models/bulk_song_row.dart` - Parsed row model with warning support
+- `lib/features/setlists/services/bulk_song_parser.dart` - Pure parsing logic with fuzzy tuning matching
+- `lib/features/setlists/widgets/bulk_add_songs_overlay.dart` - Overlay UI with 500-row limit
+- `lib/features/setlists/setlist_repository.dart` - `bulkAddSongs()` method
+
+### Share Setlist Feature (Flutter App)
+
+The Share Setlist feature allows users to share a plain-text version of their setlist via the native share sheet.
+
+**UI Flow:**
+1. User taps the Share icon (iOS share icon) in the Setlist Detail action buttons row
+2. Native share sheet opens with formatted plain-text content
+3. User can share via Messages, Mail, Notes, AirDrop, etc.
+
+**Output Format:**
+```
+Setlist Name
+49 songs • 1h 39m
+
+Song Title
+Artist Name                       125 BPM • Standard
+
+Another Song
+Another Artist                    - BPM • Drop D
+```
+
+**Formatting Rules:**
+- **Header:** Setlist name on line 1, song count + total duration on line 2
+- **Duration format:** `< 60 min` → "Xm" or "Xm Ys", `>= 60 min` → "Hh Mm"
+- **Song block:** Title on first line, artist + BPM/tuning on second line
+- **Two-column alignment:** Artist left-aligned, BPM/tuning right-aligned within 56-char width
+- **BPM:** Shows "- BPM" if null/zero, otherwise "{bpm} BPM"
+- **Tuning:** Uses short badge labels (Standard, Half-Step, Drop D, etc.)
+- **Overflow handling:** If artist + metadata exceeds width, metadata wraps to indented next line
+
+**Dependencies:**
+- `share_plus: ^10.1.4` - Native share sheet integration
+
+**Files:**
+- `lib/features/setlists/setlist_detail_screen.dart` - `_handleShare()` and formatting helpers
 
 ### Active Issues
 - **Supabase Connection Timeouts:** Intermittent connection issues causing authentication delays

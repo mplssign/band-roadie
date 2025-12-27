@@ -1,0 +1,13 @@
+# Android Release Signing Configuration
+# DO NOT commit this file to version control!
+# 
+# Instructions:
+# 1. Generate a keystore:
+#    keytool -genkey -v -keystore ~/bandroadie-release-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias bandroadie
+#
+# 2. Fill in the values below:
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=bandroadie
+storeFile=/Users/YOUR_USERNAME/bandroadie-release-key.jks

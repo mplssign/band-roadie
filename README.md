@@ -71,6 +71,8 @@ The app uses `bandroadie://login-callback` for magic link authentication.
 
 ## Project Structure
 
+See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for the complete folder and file structure (auto-generated).
+
 ```
 lib/
 ├── main.dart                  # App entry point
@@ -83,6 +85,26 @@ lib/
     └── home/
         ├── home_screen.dart   # Main dashboard
         └── widgets/           # Reusable UI components
+```
+
+## Development Setup
+
+### Enable Git Hooks
+
+To auto-update the project structure documentation on each commit:
+
+```bash
+# Enable the custom hooks directory
+git config core.hooksPath .githooks
+
+# Test the generator
+./scripts/gen_structure.sh
+```
+
+### Regenerate Project Structure Manually
+
+```bash
+./scripts/gen_structure.sh
 ```
 
 ## Tech Stack

@@ -47,9 +47,9 @@
 
 - No band scoping needed (roles are global)
 
-### `/api/songs` - Song library
+### `/api/songs` - Catalog (song master list)
 
-- Special case: Songs are global but confirmed tunings are band-specific
+- Songs are accessed via band's Catalog setlist
 - May need partial scoping for tuning confirmations
 
 ### `/api/bands` - Band CRUD

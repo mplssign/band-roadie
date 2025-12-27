@@ -1,3 +1,29 @@
+## [1.3.0] - 2025-12-23
+
+### Added
+- feat(songs): External Song Lookup via backend APIs
+  - Search songs from online databases when not found in Catalog
+  - Songs automatically added to Catalog when selected
+  - BPM enriched automatically when available
+- feat(edge-functions): New Supabase Edge Functions for external APIs
+  - Token caching and rate limit handling
+- feat(setlists): Edit icon to rename setlists from detail page
+- feat(setlists): "+ New" button in Setlists header
+
+### Changed
+- refactor(song-lookup): Updated overlay to show "In Catalog" and "External Results" sections
+- refactor(song-lookup): External results now show album artwork and BPM when available
+- refactor(setlists): Removed FAB from Setlists screen, moved to header button
+
+### Fixed
+- fix(setlists): Setlist name now updates immediately after rename
+- fix(setlists): Setlist cards now display correct song count and duration after mutations
+  - Added database triggers to recompute `total_duration` on INSERT/UPDATE/DELETE
+  - Flutter now refreshes setlist list after add, delete, bulk add, and undo operations
+  - Migration backfills existing setlists with accurate duration stats
+
+---
+
 ## [1.2.4] - 2025-10-17
 
 ### Added

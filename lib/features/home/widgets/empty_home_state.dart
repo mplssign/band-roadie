@@ -1,7 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/theme/design_tokens.dart';
-import 'bottom_nav_bar.dart';
 import 'empty_section_card.dart';
 import 'home_app_bar.dart';
 import 'quick_actions_row.dart';
@@ -14,7 +16,28 @@ import 'section_header.dart';
 // ============================================================================
 
 class EmptyHomeState extends StatefulWidget {
-  const EmptyHomeState({super.key});
+  final String bandName;
+  final String? bandAvatarColor;
+  final String? bandImageUrl;
+  final File? localImageFile;
+  final VoidCallback onMenuTap;
+  final VoidCallback onAvatarTap;
+  final VoidCallback? onScheduleRehearsal;
+  final VoidCallback? onCreateGig;
+  final VoidCallback? onCreateSetlist;
+
+  const EmptyHomeState({
+    super.key,
+    required this.bandName,
+    required this.onMenuTap,
+    required this.onAvatarTap,
+    this.bandAvatarColor,
+    this.bandImageUrl,
+    this.localImageFile,
+    this.onScheduleRehearsal,
+    this.onCreateGig,
+    this.onCreateSetlist,
+  });
 
   @override
   State<EmptyHomeState> createState() => _EmptyHomeStateState();
@@ -81,97 +104,95 @@ class _EmptyHomeStateState extends State<EmptyHomeState>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
-      body: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        slivers: [
-          // App bar
-          HomeAppBar(
-            bandName: 'BandRoadie',
-            onMenuTap: () {},
-            onSignOut: () {},
-          ),
-
-          // Main content
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Spacing.pagePadding,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: Spacing.space32),
-
-                  // Empty hero message
-                  _buildAnimatedSection(0, _EmptyHeroSection()),
-
-                  const SizedBox(height: Spacing.space40),
-
-                  // Rehearsal section
-                  _buildAnimatedSection(
-                    1,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        SectionHeader(title: 'NEXT REHEARSAL'),
-                        SizedBox(height: Spacing.space12),
-                        EmptySectionCard(
-                          icon: Icons.music_note_rounded,
-                          title: 'Nothing scheduled',
-                          subtitle: 'Your drummer is probably relieved.',
-                          buttonLabel: 'Schedule Rehearsal',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Spacing.space40),
-
-                  // Gigs section
-                  _buildAnimatedSection(
-                    2,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        SectionHeader(title: 'UPCOMING GIGS'),
-                        SizedBox(height: Spacing.space12),
-                        EmptySectionCard(
-                          icon: Icons.event_available_rounded,
-                          title: 'No gigs booked',
-                          subtitle: "The world clearly isn't ready yet.",
-                          buttonLabel: 'Create Gig',
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Spacing.space48),
-
-                  // Quick actions
-                  _buildAnimatedSection(
-                    3,
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        SectionHeader(title: 'QUICK ACTIONS'),
-                        SizedBox(height: Spacing.space16),
-                        QuickActionsRow(),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Spacing.space32),
-                ],
-              ),
-            ),
-          ),
-        ],
+    // Note: No Scaffold here - the parent (AppShell or HomeScreen) provides it
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
       ),
-      bottomNavigationBar: const BottomNavBar(),
+      slivers: [
+        // App bar - wrapped in SliverToBoxAdapter since HomeAppBar is not a sliver
+        SliverToBoxAdapter(
+          child: HomeAppBar(
+            bandName: widget.bandName,
+            onMenuTap: widget.onMenuTap,
+            onAvatarTap: widget.onAvatarTap,
+            bandAvatarColor: widget.bandAvatarColor,
+            bandImageUrl: widget.bandImageUrl,
+            localImageFile: widget.localImageFile,
+          ),
+        ),
+
+        // Main content
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: Spacing.pagePadding),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: Spacing.space32),
+
+                // Empty hero message
+                _buildAnimatedSection(0, _EmptyHeroSection()),
+
+                const SizedBox(height: 34),
+
+                // Rehearsal section
+                _buildAnimatedSection(
+                  1,
+                  EmptySectionCard(
+                    title: 'No Rehearsal Scheduled',
+                    subtitle: 'The stage is empty and the amps are cold.',
+                    buttonLabel: 'Schedule Rehearsal',
+                    onButtonPressed: widget.onScheduleRehearsal,
+                  ),
+                ),
+
+                const SizedBox(height: 34),
+
+                // Gigs section
+                _buildAnimatedSection(
+                  2,
+                  EmptySectionCard(
+                    title: 'No Upcoming Gigs',
+                    subtitle:
+                        'The spotlight awaits — time to book your next show.',
+                    buttonLabel: 'Create Gig',
+                    onButtonPressed: widget.onCreateGig,
+                  ),
+                ),
+
+                const SizedBox(height: 17),
+
+                // Quick actions
+                _buildAnimatedSection(
+                  3,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SectionHeader(title: 'Quick Actions'),
+                      const SizedBox(height: Spacing.space16),
+                      QuickActionsRow(
+                        onScheduleRehearsal: widget.onScheduleRehearsal,
+                        onCreateGig: widget.onCreateGig,
+                        onCreateSetlist: widget.onCreateSetlist,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom padding for nav bar (extra space to scroll past)
+                SizedBox(
+                  height:
+                      Spacing.space48 +
+                      Spacing.bottomNavHeight +
+                      MediaQuery.of(context).padding.bottom +
+                      32, // Extra scroll clearance
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -183,18 +204,7 @@ class _EmptyHeroSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(Spacing.space24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.accent.withValues(alpha: 0.08), AppColors.cardBg],
-        ),
-        borderRadius: BorderRadius.circular(Spacing.cardRadius),
-        border: Border.all(
-          color: AppColors.accent.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
+      decoration: BrandButton.decoration,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -220,7 +230,11 @@ class _EmptyHeroSection extends StatelessWidget {
                   children: [
                     Text(
                       "Let's get this show started!",
-                      style: AppTextStyles.cardTitle.copyWith(fontSize: 18),
+                      style: GoogleFonts.ubuntu(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: Spacing.space4),
                     Text(

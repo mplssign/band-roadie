@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// BandRoadie App Theme
 /// Dark mode only, Material 3, rose accent (#F43F5E)
+/// Font: Ubuntu (Google Fonts) - App name uses Rock Salt
 class AppTheme {
   AppTheme._();
 
@@ -221,51 +223,58 @@ class AppTheme {
       iconTheme: const IconThemeData(color: Colors.white, size: 24),
 
       // ----------------------------------------
-      // TEXT
+      // TEXT (Ubuntu font)
       // ----------------------------------------
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          color: Colors.white,
-          fontSize: 32,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-        headlineMedium: TextStyle(
-          color: Colors.white,
-          fontSize: 26,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
-        ),
-        headlineSmall: TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          letterSpacing: -0.3,
-        ),
-        titleLarge: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        ),
-        titleMedium: TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
-        titleSmall: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-        ),
-        bodyLarge: TextStyle(color: Colors.white, fontSize: 16),
-        bodyMedium: TextStyle(color: Colors.white, fontSize: 14),
-        bodySmall: TextStyle(color: Colors.white70, fontSize: 12),
-        labelLarge: TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
+      textTheme: GoogleFonts.ubuntuTextTheme(
+        const TextTheme(
+          headlineLarge: TextStyle(
+            color: Colors.white,
+            fontSize: 32,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          headlineMedium: TextStyle(
+            color: Colors.white,
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+          ),
+          headlineSmall: TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
+          titleLarge: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+          titleMedium: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          titleSmall: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          bodyLarge: TextStyle(color: Colors.white, fontSize: 16),
+          bodyMedium: TextStyle(color: Colors.white, fontSize: 14),
+          bodySmall: TextStyle(color: Colors.white70, fontSize: 12),
+          labelLarge: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
+
+      // ----------------------------------------
+      // DEFAULT FONT FAMILY
+      // ----------------------------------------
+      fontFamily: GoogleFonts.ubuntu().fontFamily,
 
       // ----------------------------------------
       // DIVIDER
@@ -283,6 +292,8 @@ class AppTheme {
         contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         behavior: SnackBarBehavior.floating,
+        // Softer, slower animation for enter/exit
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       ),
     );
   }

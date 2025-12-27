@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/models/gig.dart';
@@ -22,6 +23,9 @@ class GigState {
   final bool isLoading;
   final String? error;
 
+  /// The band ID this state was loaded for (null if never loaded)
+  final String? loadedBandId;
+
   const GigState({
     this.allGigs = const [],
     this.upcomingGigs = const [],
@@ -29,6 +33,7 @@ class GigState {
     this.confirmedGigs = const [],
     this.isLoading = false,
     this.error,
+    this.loadedBandId,
   });
 
   /// Returns true if there are any gigs at all
@@ -59,6 +64,7 @@ class GigState {
     bool? isLoading,
     String? error,
     bool clearError = false,
+    String? loadedBandId,
   }) {
     return GigState(
       allGigs: allGigs ?? this.allGigs,
@@ -67,6 +73,7 @@ class GigState {
       confirmedGigs: confirmedGigs ?? this.confirmedGigs,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
+      loadedBandId: loadedBandId ?? this.loadedBandId,
     );
   }
 }
@@ -100,7 +107,11 @@ class GigNotifier extends Notifier<GigState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      loadedBandId: bandId,
+    );
 
     try {
       // Fetch all gigs in parallel
@@ -117,10 +128,37 @@ class GigNotifier extends Notifier<GigState> {
         potentialGigs: results[2],
         confirmedGigs: results[3],
         isLoading: false,
+        clearError: true,
+        loadedBandId: bandId,
       );
-    } catch (e) {
+
+      debugPrint(
+        '[GigController] load for band $bandId -> ${results[0].length} gigs, error=null',
+      );
+    } on NoBandSelectedError {
+      // This is expected when no band is selected - not an error state
+      debugPrint('[GigController] No band selected, returning empty state');
+      state = const GigState();
+    } catch (e, stackTrace) {
+      // Log detailed error for debugging
+      debugPrint('═══════════════════════════════════════════════════════════');
+      debugPrint('[GigController] Error loading gigs:');
+      debugPrint('  Error: $e');
+      debugPrint('  Type: ${e.runtimeType}');
+      debugPrint('  Stack: $stackTrace');
+      debugPrint('═══════════════════════════════════════════════════════════');
+
       state = state.copyWith(isLoading: false, error: e.toString());
+      debugPrint(
+        '[GigController] load for band $bandId -> 0 gigs, error=${e.toString()}',
+      );
     }
+  }
+
+  /// Reset state for band change — clears error and lists, sets loading
+  void resetForBandChange() {
+    debugPrint('[GigController] resetForBandChange');
+    state = const GigState(isLoading: true);
   }
 
   /// Refresh gigs (for pull-to-refresh or retry)

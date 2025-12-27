@@ -1,12 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/models/rehearsal.dart';
 import '../../../app/theme/design_tokens.dart';
+import '../../../app/utils/time_formatter.dart';
 
 // ============================================================================
 // REHEARSAL CARD
-// Card showing the next upcoming rehearsal with Figma-polished layout.
-// Features a gradient accent bar and interactive feedback.
+// Figma: 361x111px, radius 16, border 1px gray-400 (#9ca3af)
+// Gradient fill: blue-600 (#2563EB) to purple-600 (#9333EA) - ANIMATED
+// "Next Rehearsal" title, date/time, location with pin, "Setlist" link,
+// "New Songs" chip (92x32, radius 16, accent bg)
 // ============================================================================
 
 class RehearsalCard extends StatefulWidget {
@@ -21,228 +26,232 @@ class RehearsalCard extends StatefulWidget {
 
 class _RehearsalCardState extends State<RehearsalCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _tapController;
-  late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
+  late AnimationController _gradientController;
+  late Animation<Alignment> _beginAlignment;
+  late Animation<Alignment> _endAlignment;
 
   @override
   void initState() {
     super.initState();
-    _tapController = AnimationController(
-      duration: AppDurations.fast,
+    _gradientController = AnimationController(
+      duration: const Duration(seconds: 6),
       vsync: this,
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.98,
-    ).animate(CurvedAnimation(parent: _tapController, curve: AppCurves.ease));
+    )..repeat(reverse: true);
+
+    _beginAlignment =
+        TweenSequence<Alignment>([
+          TweenSequenceItem(
+            tween: Tween(begin: Alignment.centerLeft, end: Alignment.topLeft),
+            weight: 1,
+          ),
+          TweenSequenceItem(
+            tween: Tween(begin: Alignment.topLeft, end: Alignment.topCenter),
+            weight: 1,
+          ),
+        ]).animate(
+          CurvedAnimation(parent: _gradientController, curve: Curves.easeInOut),
+        );
+
+    _endAlignment =
+        TweenSequence<Alignment>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: Alignment.centerRight,
+              end: Alignment.bottomRight,
+            ),
+            weight: 1,
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: Alignment.bottomRight,
+              end: Alignment.bottomCenter,
+            ),
+            weight: 1,
+          ),
+        ]).animate(
+          CurvedAnimation(parent: _gradientController, curve: Curves.easeInOut),
+        );
   }
 
   @override
   void dispose() {
-    _tapController.dispose();
+    _gradientController.dispose();
     super.dispose();
-  }
-
-  void _handleTapDown(TapDownDetails _) {
-    setState(() => _isPressed = true);
-    _tapController.forward();
-  }
-
-  void _handleTapUp(TapUpDetails _) {
-    setState(() => _isPressed = false);
-    _tapController.reverse();
-  }
-
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-    _tapController.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
       onTap: widget.onTap ?? () {},
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedContainer(
-          duration: AppDurations.fast,
-          decoration: BoxDecoration(
-            color: _isPressed ? AppColors.cardBgElevated : AppColors.cardBg,
-            borderRadius: BorderRadius.circular(Spacing.cardRadius),
-            border: Border.all(
-              color: _isPressed
-                  ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-                  : AppColors.borderSubtle,
-              width: 1,
+      child: AnimatedBuilder(
+        animation: _gradientController,
+        builder: (context, child) {
+          return Container(
+            height: Spacing.rehearsalCardHeight, // 111px
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: _beginAlignment.value,
+                end: _endAlignment.value,
+                colors: const [
+                  Color(0xFF2563EB), // blue-600
+                  Color(0xFF9333EA), // purple-600
+                ],
+              ),
+              borderRadius: BorderRadius.circular(Spacing.cardRadius), // 16px
+              border: Border.all(
+                color: const Color(0xFF9CA3AF), // gray-400
+                width: 1,
+              ),
             ),
-            boxShadow: _isPressed
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                      blurRadius: 12,
-                      spreadRadius: 2,
+            padding: const EdgeInsets.all(Spacing.space16),
+            child: child,
+          );
+        },
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title "Next Rehearsal"
+                  Text(
+                    'Next Rehearsal',
+                    style: GoogleFonts.ubuntu(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.23,
+                      color: Colors.white,
                     ),
-                  ]
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(Spacing.cardRadius),
-            child: Row(
-              children: [
-                // Gradient accent bar
-                Container(
-                  width: 6,
-                  height: 130,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.rehearsalGradient,
                   ),
-                ),
 
-                // Content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(Spacing.space16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Status badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Spacing.space8,
-                            vertical: Spacing.space4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF3B82F6,
-                            ).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(
-                              Spacing.chipRadius,
-                            ),
-                          ),
-                          child: Text(
-                            'PRACTICE TIME',
-                            style: AppTextStyles.badge.copyWith(
-                              color: const Color(0xFF3B82F6),
-                            ),
-                          ),
-                        ),
+                  const SizedBox(height: Spacing.space8),
 
-                        const SizedBox(height: Spacing.space12),
+                  // Date and time
+                  Text(
+                    _formatDateAndTime(widget.rehearsal),
+                    style: AppTextStyles.callout.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
 
-                        // Title
-                        Text(
-                          'Band Rehearsal',
-                          style: AppTextStyles.cardTitle,
+                  const Spacer(),
+
+                  // Location row with pin icon
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 14,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          widget.rehearsal.location,
+                          style: AppTextStyles.footnote.copyWith(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
-                        const SizedBox(height: Spacing.space10),
-
-                        // Date and time row
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: 15,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: Spacing.space6),
-                            Text(
-                              _formatDateTime(widget.rehearsal.date),
-                              style: AppTextStyles.cardSubtitle.copyWith(
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        // Location
-                        const SizedBox(height: Spacing.space4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 15,
-                              color: AppColors.textMuted,
-                            ),
-                            const SizedBox(width: Spacing.space6),
-                            Expanded(
-                              child: Text(
-                                widget.rehearsal.location,
-                                style: AppTextStyles.cardSubtitle.copyWith(
-                                  fontSize: 13,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+            // Right content - Setlist label and New Songs pill in a row at bottom
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Setlist label + New Songs chip in a row
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // "Setlist" label (no underline, matches pill font size)
+                    Text(
+                      'Setlist',
+                      style: AppTextStyles.footnote.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ),
-
-                // Chevron
-                Padding(
-                  padding: const EdgeInsets.only(right: Spacing.space16),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: _isPressed
-                        ? AppColors.textSecondary
-                        : AppColors.textMuted,
-                    size: 24,
-                  ),
+                    const SizedBox(width: 8),
+                    // "New Songs" chip
+                    Container(
+                      width: 92,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(
+                          Spacing.chipRadius,
+                        ), // 16px
+                      ),
+                      child: Center(
+                        child: Text(
+                          'New Songs',
+                          style: AppTextStyles.footnote.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  String _formatDateTime(DateTime date) {
-    final now = DateTime.now();
-    final difference = date.difference(now).inDays;
+  /// Format the date and time using the actual startTime/endTime strings.
+  /// Uses TimeFormatter to ensure consistency with Edit drawer.
+  String _formatDateAndTime(Rehearsal rehearsal) {
+    final date = rehearsal.date;
+    final days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
 
-    String dayPart;
-    if (difference == 0) {
-      dayPart = 'Today';
-    } else if (difference == 1) {
-      dayPart = 'Tomorrow';
-    } else if (difference < 7) {
-      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      dayPart = days[date.weekday - 1];
-    } else {
-      final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      dayPart = '${months[date.month - 1]} ${date.day}';
+    final dayName = days[date.weekday - 1];
+    final monthName = months[date.month - 1];
+
+    // Parse the start time using shared TimeFormatter
+    final parsed = TimeFormatter.parse(rehearsal.startTime);
+    final formattedTime = parsed.format();
+
+    if (kDebugMode) {
+      debugPrint(
+        '[RehearsalCard] id=${rehearsal.id}, raw="${rehearsal.startTime}", formatted="$formattedTime"',
+      );
     }
 
-    final hour = date.hour > 12
-        ? date.hour - 12
-        : (date.hour == 0 ? 12 : date.hour);
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    final minute = date.minute.toString().padLeft(2, '0');
-
-    return '$dayPart at $hour:$minute $period';
+    return '$dayName $monthName ${date.day} • $formattedTime';
   }
 }

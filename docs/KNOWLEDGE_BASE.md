@@ -1,6 +1,6 @@
 # BandRoadie Knowledge Base
 
-> **Living Document** — Last updated: December 13, 2025
+> **Living Document** — Last updated: December 22, 2025
 
 This document captures everything known about the BandRoadie Flutter application. Update it as the project evolves.
 
@@ -206,12 +206,24 @@ docs/
 | profile_completed | boolean | |
 
 #### Other Tables (not yet modeled)
-- `setlists` — band setlists
 - `setlist_songs` — songs in a setlist (with position)
-- `songs` — song library (title, artist, BPM, tuning, lyrics, etc.)
+- `songs` — Catalog (master song list: title, artist, BPM, tuning, lyrics, etc.)
 - `song_notes` — band-specific notes on songs
 - `block_dates` — dates a member is unavailable
 - `profiles` — avatar/bio (separate from users)
+
+#### `setlists`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | PK, auto-generated |
+| band_id | uuid | FK → bands (required in app logic) |
+| name | text | Required, non-empty |
+| created_by | uuid | FK → auth.users |
+| created_at | timestamptz | Default: now() |
+| updated_at | timestamptz | Default: now() |
+| total_duration | int | Default: 0 (seconds) |
+
+**Note:** The `is_catalog` column may not exist in all environments. Code handles this gracefully by checking for Catalog by name ("Catalog") when needed.
 
 ---
 
@@ -365,6 +377,7 @@ All models in `lib/app/models/`:
 | `BandRepository` | bands/band_repository.dart | Fetches via band_members join |
 | `GigRepository` | gigs/gig_repository.dart | **Requires bandId** |
 | `RehearsalRepository` | rehearsals/rehearsal_repository.dart | **Requires bandId** |
+| `SetlistRepository` | setlists/setlist_repository.dart | **Requires bandId** |
 
 ### Key Methods
 ```dart
@@ -382,6 +395,14 @@ fetchUpcomingGigs(bandId) → List<Gig>   // date >= now
 fetchRehearsalsForBand(bandId) → List<Rehearsal>
 fetchUpcomingRehearsals(bandId) → List<Rehearsal>
 fetchNextRehearsal(bandId) → Rehearsal?
+
+// SetlistRepository
+fetchSetlistsForBand(bandId) → List<Setlist>
+createSetlist(bandId, name) → Setlist     // Creates new setlist
+renameSetlist(bandId, setlistId, newName) → Setlist
+deleteSetlist(bandId, setlistId) → void
+duplicateSetlist(bandId, setlistId) → String // Returns new setlist ID
+fetchSongsForSetlist(bandId, setlistId) → List<SetlistSong>
 ```
 
 ---
@@ -500,13 +521,23 @@ Template at `.vscode/launch.template.json`. Copy to `.vscode/launch.json` (gitig
 
 ### Future Work
 - [ ] Implement gig RSVP flow (yes/no responses)
-- [ ] Add band switching UI
-- [ ] Create band flow
-- [ ] Invite members flow
-- [ ] Setlist management
-- [ ] Song library
-- [ ] Calendar view
+- [x] Add band switching UI
+- [x] Create band flow
+- [x] Invite members flow
+- [x] Setlist management (create, rename, delete, duplicate, reorder songs)
+- [x] Catalog (master song list)
+- [x] Calendar view
 - [ ] Push notifications
+
+### Setlist Features (Implemented)
+- **SetlistsScreen** — List of all setlists for the active band
+- **SetlistDetailScreen** — View/edit songs in a setlist
+- **NewSetlistScreen** — Creates a new setlist and navigates to edit view
+- **Catalog** — Special setlist containing all songs for the band
+- **Bulk Paste** — Import songs from spreadsheet/CSV
+- **Song Lookup** — Search and add songs from Catalog
+- **Drag-to-Reorder** — Reorder songs within a setlist
+- **Share** — Export setlist as text for sharing
 
 ### Technical Debt
 - [ ] Move placeholder booleans to Riverpod providers

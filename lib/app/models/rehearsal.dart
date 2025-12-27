@@ -8,6 +8,8 @@
 // Schema: public.rehearsals
 // ============================================================================
 
+import '../utils/time_formatter.dart';
+
 class Rehearsal {
   final String id;
   final String bandId;
@@ -63,7 +65,8 @@ class Rehearsal {
   }
 
   /// Formatted time range (e.g., "6:00 PM - 9:00 PM")
-  String get timeRange => '$startTime - $endTime';
+  /// Uses TimeFormatter to ensure consistent 12-hour format display.
+  String get timeRange => TimeFormatter.formatRange(startTime, endTime);
 
   @override
   String toString() => 'Rehearsal(id: $id, date: $date, location: $location)';

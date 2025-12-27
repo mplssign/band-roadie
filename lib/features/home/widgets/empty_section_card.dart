@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/theme/design_tokens.dart';
+import '../../../components/ui/brand_action_button.dart';
 
 // ============================================================================
 // EMPTY SECTION CARD
@@ -8,7 +10,7 @@ import '../../../app/theme/design_tokens.dart';
 // ============================================================================
 
 class EmptySectionCard extends StatefulWidget {
-  final IconData icon;
+  final IconData? icon;
   final String title;
   final String subtitle;
   final String buttonLabel;
@@ -16,7 +18,7 @@ class EmptySectionCard extends StatefulWidget {
 
   const EmptySectionCard({
     super.key,
-    required this.icon,
+    this.icon,
     required this.title,
     required this.subtitle,
     required this.buttonLabel,
@@ -42,9 +44,20 @@ class _EmptySectionCardState extends State<EmptySectionCard>
     _buttonScale = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(parent: _buttonController, curve: AppCurves.rubberband),
     );
-    Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted) _buttonController.forward();
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Respect reduced motion accessibility setting
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    if (reduceMotion) {
+      _buttonController.value = 1.0; // Skip animation
+    } else if (!_buttonController.isCompleted) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) _buttonController.forward();
+      });
+    }
   }
 
   @override
@@ -64,24 +77,31 @@ class _EmptySectionCardState extends State<EmptySectionCard>
         border: Border.all(color: AppColors.borderSubtle, width: 1),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon with subtle background
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceDark,
-              borderRadius: BorderRadius.circular(16),
+          // Icon with subtle background (only if icon is provided)
+          if (widget.icon != null) ...[
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceDark,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(widget.icon, color: AppColors.textMuted, size: 28),
             ),
-            child: Icon(widget.icon, color: AppColors.textMuted, size: 28),
-          ),
+            const SizedBox(height: Spacing.space16),
+          ],
 
-          const SizedBox(height: Spacing.space16),
-
-          // Title
+          // Title (matches SectionHeader style: 16px bold)
           Text(
             widget.title,
-            style: AppTextStyles.cardTitle.copyWith(fontSize: 17),
+            style: GoogleFonts.ubuntu(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.25,
+            ),
           ),
 
           const SizedBox(height: Spacing.space8),
@@ -89,9 +109,12 @@ class _EmptySectionCardState extends State<EmptySectionCard>
           // Subtitle
           Text(
             widget.subtitle,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.cardSubtitle.copyWith(
+            textAlign: TextAlign.left,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
               color: AppColors.textMuted,
+              height: 1.4,
             ),
           ),
 
@@ -100,35 +123,10 @@ class _EmptySectionCardState extends State<EmptySectionCard>
           // CTA button with scale animation
           ScaleTransition(
             scale: _buttonScale,
-            child: OutlinedButton(
-              onPressed: widget.onButtonPressed ?? () {},
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.accent,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Spacing.space20,
-                  vertical: Spacing.space12,
-                ),
-                side: BorderSide(
-                  color: AppColors.accent.withValues(alpha: 0.5),
-                  width: 1.5,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Spacing.buttonRadius),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.add_rounded, size: 18),
-                  const SizedBox(width: Spacing.space6),
-                  Text(
-                    widget.buttonLabel,
-                    style: AppTextStyles.button.copyWith(
-                      color: AppColors.accent,
-                    ),
-                  ),
-                ],
-              ),
+            child: BrandActionButton(
+              label: widget.buttonLabel,
+              onPressed: widget.onButtonPressed,
+              icon: Icons.add_rounded,
             ),
           ),
         ],

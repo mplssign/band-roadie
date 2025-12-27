@@ -1,19 +1,29 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../app/models/gig.dart';
 import '../../../app/theme/design_tokens.dart';
+import '../../../app/utils/time_formatter.dart';
 
 // ============================================================================
 // CONFIRMED GIG CARD
-// Card showing a confirmed upcoming gig with Figma-polished layout.
-// Features date highlight, status indicator, and tap interaction.
+// Figma: 271x126px, radius 8
+// Animated rotating gradient border from blue (#2563EB) to rose (#F43F5E)
+// Layout: Title 20px, Location gray-400 16px, Date 17px bold, Time gray-400
 // ============================================================================
 
 class ConfirmedGigCard extends StatefulWidget {
   final Gig gig;
   final VoidCallback? onTap;
+  final int index; // Used to create unique random speed per card
 
-  const ConfirmedGigCard({super.key, required this.gig, this.onTap});
+  const ConfirmedGigCard({
+    super.key,
+    required this.gig,
+    this.onTap,
+    this.index = 0,
+  });
 
   @override
   State<ConfirmedGigCard> createState() => _ConfirmedGigCardState();
@@ -21,264 +31,191 @@ class ConfirmedGigCard extends StatefulWidget {
 
 class _ConfirmedGigCardState extends State<ConfirmedGigCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _tapController;
-  late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
+  late AnimationController _rotationController;
 
   @override
   void initState() {
     super.initState();
-    _tapController = AnimationController(
-      duration: AppDurations.fast,
+    // Create slightly different speed for each card (3-6 seconds based on index)
+    final random = math.Random(widget.index);
+    final durationSeconds = 3 + random.nextInt(4); // 3-6 seconds
+    _rotationController = AnimationController(
+      duration: Duration(seconds: durationSeconds),
       vsync: this,
-    );
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.98,
-    ).animate(CurvedAnimation(parent: _tapController, curve: AppCurves.ease));
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _tapController.dispose();
+    _rotationController.dispose();
     super.dispose();
-  }
-
-  void _handleTapDown(TapDownDetails _) {
-    setState(() => _isPressed = true);
-    _tapController.forward();
-  }
-
-  void _handleTapUp(TapUpDetails _) {
-    setState(() => _isPressed = false);
-    _tapController.reverse();
-  }
-
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-    _tapController.reverse();
   }
 
   @override
   Widget build(BuildContext context) {
-    final gig = widget.gig;
-
     return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
       onTap: widget.onTap ?? () {},
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: AnimatedContainer(
-          duration: AppDurations.fast,
-          decoration: BoxDecoration(
-            color: _isPressed ? AppColors.cardBgElevated : AppColors.cardBg,
-            borderRadius: BorderRadius.circular(Spacing.cardRadius),
-            border: Border.all(
-              color: _isPressed
-                  ? AppColors.success.withValues(alpha: 0.3)
-                  : AppColors.borderSubtle,
-              width: 1,
+      child: AnimatedBuilder(
+        animation: _rotationController,
+        builder: (context, child) {
+          return CustomPaint(
+            painter: _GradientBorderPainter(
+              rotation: _rotationController.value * 2 * math.pi,
+              borderWidth: 3,
+              borderRadius: Spacing.buttonRadius,
             ),
-            boxShadow: _isPressed
-                ? [
-                    BoxShadow(
-                      color: AppColors.success.withValues(alpha: 0.1),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
+            child: child,
+          );
+        },
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 200, maxWidth: 300),
+          height: Spacing.gigCardHeight, // 126px
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.space20,
+            vertical: Spacing.space16,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(Spacing.space16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date box with gradient
-                Container(
-                  width: 60,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: Spacing.space12,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.accent.withValues(alpha: 0.15),
-                        AppColors.accent.withValues(alpha: 0.08),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(Spacing.buttonRadius),
-                    border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _getMonthAbbr(gig.date.month),
-                        style: AppTextStyles.badge.copyWith(
-                          color: AppColors.accent,
-                          fontSize: 11,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        gig.date.day.toString(),
-                        style: AppTextStyles.displayMedium.copyWith(
-                          color: AppColors.accent,
-                          fontSize: 24,
-                          height: 1.1,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title - 20px Title3/Emphasized
+              Text(
+                widget.gig.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.45,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
 
-                const SizedBox(width: Spacing.space16),
+              const SizedBox(height: 2),
 
-                // Content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Confirmed badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Spacing.space8,
-                          vertical: Spacing.space4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(
-                            Spacing.chipRadius,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.check_circle_rounded,
-                              size: 12,
-                              color: AppColors.success,
-                            ),
-                            const SizedBox(width: Spacing.space4),
-                            Text(
-                              'LOCKED IN',
-                              style: AppTextStyles.badge.copyWith(
-                                color: AppColors.success,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: Spacing.space10),
-
-                      // Gig name
-                      Text(
-                        gig.name,
-                        style: AppTextStyles.cardTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: Spacing.space10),
-
-                      // Location row
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 15,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: Spacing.space6),
-                          Expanded(
-                            child: Text(
-                              gig.location,
-                              style: AppTextStyles.cardSubtitle.copyWith(
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: Spacing.space4),
-
-                      // Time row
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.access_time_rounded,
-                            size: 15,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(width: Spacing.space6),
-                          Text(
-                            _formatTime(gig.date),
-                            style: AppTextStyles.cardSubtitle.copyWith(
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+              // Location - 16px Callout/Regular, gray-400
+              Text(
+                widget.gig.location,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.31,
+                  color: Color(0xFF94A3B8), // gray-400
+                  height: 1.2,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
 
-                // Chevron
-                Padding(
-                  padding: const EdgeInsets.only(top: Spacing.space8),
-                  child: Icon(
-                    Icons.chevron_right_rounded,
-                    color: _isPressed
-                        ? AppColors.textSecondary
-                        : AppColors.textMuted,
-                    size: 24,
-                  ),
+              const Spacer(),
+
+              // Date - 17px Headline bold
+              Text(
+                _formatFullDate(widget.gig.date),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.43,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
                 ),
-              ],
-            ),
+              ),
+
+              const SizedBox(height: 2),
+
+              // Time - 16px Callout/Regular, gray-400
+              Text(
+                TimeFormatter.formatRange(
+                  widget.gig.startTime,
+                  widget.gig.endTime,
+                ),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.31,
+                  color: Color(0xFF94A3B8), // gray-400
+                  height: 1.2,
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  String _getMonthAbbr(int month) {
-    const months = [
-      'JAN',
-      'FEB',
-      'MAR',
-      'APR',
-      'MAY',
-      'JUN',
-      'JUL',
-      'AUG',
-      'SEP',
-      'OCT',
-      'NOV',
-      'DEC',
+  String _formatFullDate(DateTime date) {
+    final days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
     ];
-    return months[month - 1];
+    final months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${days[date.weekday % 7]}, ${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+}
+
+/// Custom painter for rotating gradient border
+class _GradientBorderPainter extends CustomPainter {
+  final double rotation;
+  final double borderWidth;
+  final double borderRadius;
+
+  _GradientBorderPainter({
+    required this.rotation,
+    required this.borderWidth,
+    required this.borderRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final rrect = RRect.fromRectAndRadius(
+      rect.deflate(borderWidth / 2),
+      Radius.circular(borderRadius),
+    );
+
+    // Seamless rotating gradient with smooth color transitions
+    final gradient = SweepGradient(
+      center: Alignment.center,
+      colors: const [
+        Color(0xFF2563EB), // blue-600
+        Color(0xFF7C3AED), // violet (midpoint blend)
+        Color(0xFFF43F5E), // rose-500
+        Color(0xFF7C3AED), // violet (midpoint blend)
+        Color(0xFF2563EB), // blue-600 (seamless)
+      ],
+      stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+      transform: GradientRotation(rotation),
+    );
+
+    final paint = Paint()
+      ..shader = gradient.createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+
+    canvas.drawRRect(rrect, paint);
   }
 
-  String _formatTime(DateTime date) {
-    final hour = date.hour > 12
-        ? date.hour - 12
-        : (date.hour == 0 ? 12 : date.hour);
-    final period = date.hour >= 12 ? 'PM' : 'AM';
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $period';
+  @override
+  bool shouldRepaint(_GradientBorderPainter oldDelegate) {
+    return oldDelegate.rotation != rotation;
   }
 }

@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/models/rehearsal.dart';
 import '../bands/active_band_controller.dart';
+import '../gigs/gig_repository.dart';
 import 'rehearsal_repository.dart';
 
 // ============================================================================
@@ -20,12 +22,16 @@ class RehearsalState {
   final bool isLoading;
   final String? error;
 
+  /// The band ID this state was loaded for (null if never loaded)
+  final String? loadedBandId;
+
   const RehearsalState({
     this.allRehearsals = const [],
     this.upcomingRehearsals = const [],
     this.nextRehearsal,
     this.isLoading = false,
     this.error,
+    this.loadedBandId,
   });
 
   /// Returns true if there are any rehearsals
@@ -42,6 +48,7 @@ class RehearsalState {
     String? error,
     bool clearError = false,
     bool clearNextRehearsal = false,
+    String? loadedBandId,
   }) {
     return RehearsalState(
       allRehearsals: allRehearsals ?? this.allRehearsals,
@@ -51,6 +58,7 @@ class RehearsalState {
           : (nextRehearsal ?? this.nextRehearsal),
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
+      loadedBandId: loadedBandId ?? this.loadedBandId,
     );
   }
 }
@@ -84,7 +92,11 @@ class RehearsalNotifier extends Notifier<RehearsalState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      loadedBandId: bandId,
+    );
 
     try {
       // Fetch rehearsals in parallel
@@ -99,10 +111,39 @@ class RehearsalNotifier extends Notifier<RehearsalState> {
         upcomingRehearsals: results[1] as List<Rehearsal>,
         nextRehearsal: results[2] as Rehearsal?,
         isLoading: false,
+        clearError: true,
+        loadedBandId: bandId,
       );
-    } catch (e) {
+
+      debugPrint(
+        '[RehearsalController] load for band $bandId -> ${(results[0] as List).length} rehearsals, error=null',
+      );
+    } on NoBandSelectedError {
+      // This is expected when no band is selected - not an error state
+      debugPrint(
+        '[RehearsalController] No band selected, returning empty state',
+      );
+      state = const RehearsalState();
+    } catch (e, stackTrace) {
+      // Log detailed error for debugging
+      debugPrint('═══════════════════════════════════════════════════════════');
+      debugPrint('[RehearsalController] Error loading rehearsals:');
+      debugPrint('  Error: $e');
+      debugPrint('  Type: ${e.runtimeType}');
+      debugPrint('  Stack: $stackTrace');
+      debugPrint('═══════════════════════════════════════════════════════════');
+
       state = state.copyWith(isLoading: false, error: e.toString());
+      debugPrint(
+        '[RehearsalController] load for band $bandId -> 0 rehearsals, error=${e.toString()}',
+      );
     }
+  }
+
+  /// Reset state for band change — clears error and lists, sets loading
+  void resetForBandChange() {
+    debugPrint('[RehearsalController] resetForBandChange');
+    state = const RehearsalState(isLoading: true);
   }
 
   /// Refresh rehearsals (for pull-to-refresh or retry)

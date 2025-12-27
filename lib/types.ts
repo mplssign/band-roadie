@@ -95,7 +95,8 @@ export interface Setlist {
   id: string;
   band_id: string;
   name: string;
-  setlist_type?: 'regular' | 'all_songs';
+  is_catalog?: boolean;
+  setlist_type?: 'regular' | 'catalog';
   songs: Song[];
   created_at: string;
   updated_at: string;

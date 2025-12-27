@@ -1,11 +1,11 @@
 {
-    "name": "tonyholmes",
-    "short_name": "tonyholmes",
+    "name": "BandRoadie",
+    "short_name": "BandRoadie",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#020617",
+    "theme_color": "#F43F5E",
+    "description": "Gig and setlist management for bands",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
