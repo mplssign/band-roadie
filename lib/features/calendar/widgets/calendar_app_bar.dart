@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/theme/design_tokens.dart';
 import '../../../shared/scroll/scroll_blur_notifier.dart';
@@ -76,16 +75,8 @@ class CalendarAppBar extends ConsumerWidget {
             ),
           ),
           const Spacer(),
-          // Centered app name
-          Text(
-            'BandRoadie',
-            style: GoogleFonts.getFont(
-              'Rock Salt',
-              color: AppColors.accent,
-              fontSize: 16,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
+          // Centered app logo
+          Image.asset('assets/images/bandroadie_stacked.png', height: 30),
           const Spacer(),
           // Avatar with band image/initials
           GestureDetector(

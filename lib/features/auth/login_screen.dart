@@ -40,7 +40,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _focusNode = FocusNode();
   final _emailHintController = FieldHintController();
@@ -51,6 +51,10 @@ class _LoginScreenState extends State<LoginScreen>
 
   // Single animation controller for coordinated entrance
   late AnimationController _animController;
+
+  // Keyboard-triggered logo shrink animation
+  late AnimationController _logoShrinkController;
+  late Animation<double> _logoShrinkScale;
 
   // Interval-based animations for staggered entrance
   late Animation<double> _titleOpacity;
@@ -68,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _initAnimations();
+    _initLogoShrinkAnimation();
     _initHintController();
   }
 
@@ -81,11 +86,30 @@ class _LoginScreenState extends State<LoginScreen>
   void _onEmailFocusChange() {
     if (_focusNode.hasFocus) {
       _emailHintController.onFocus();
+      // Shrink logo when keyboard appears
+      _logoShrinkController.forward();
+    } else {
+      // Restore logo when keyboard hides
+      _logoShrinkController.reverse();
     }
   }
 
   void _onEmailTextChange() {
     _emailHintController.onTextChanged(_emailController.text);
+  }
+
+  void _initLogoShrinkAnimation() {
+    _logoShrinkController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    // Shrink to 50% of the displayed size when keyboard is up
+    _logoShrinkScale = Tween<double>(begin: 1.0, end: 0.5).animate(
+      CurvedAnimation(
+        parent: _logoShrinkController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
   }
 
   void _initAnimations() {
@@ -95,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
     );
 
-    // Title: 0.00–0.35 (fade + scale)
+    // Title: 0.00–0.35 (fade + scale from 70% to 70% of maxWidth)
     _titleOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _animController,
@@ -177,6 +201,7 @@ class _LoginScreenState extends State<LoginScreen>
     _focusNode.dispose();
     _emailHintController.dispose();
     _animController.dispose();
+    _logoShrinkController.dispose();
     super.dispose();
   }
 
@@ -328,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen>
       mainAxisSize: MainAxisSize.min, // Shrink to content size for centering
       children: [
         // === TITLE ===
-        _buildTitle(),
+        _buildTitle(maxWidth: maxWidth),
 
         const SizedBox(height: 40),
 
@@ -353,19 +378,23 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   /// App title with fade + scale animation.
-  Widget _buildTitle() {
+  /// Starts at 70% size, shrinks to 50% when keyboard appears.
+  Widget _buildTitle({required double maxWidth}) {
+    // Logo displays at 70% of maxWidth
+    final logoWidth = maxWidth * 0.7;
+
     return FadeTransition(
       opacity: _titleOpacity,
       child: ScaleTransition(
         scale: _titleScale,
-        child: const Text(
-          'BandRoadie',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
+        child: AnimatedBuilder(
+          animation: _logoShrinkController,
+          builder: (context, child) =>
+              Transform.scale(scale: _logoShrinkScale.value, child: child),
+          child: Image.asset(
+            'assets/images/bandroadie_stacked.png',
+            width: logoWidth,
+            fit: BoxFit.contain,
           ),
         ),
       ),

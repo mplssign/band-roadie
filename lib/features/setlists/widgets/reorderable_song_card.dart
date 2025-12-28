@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -33,6 +34,7 @@ import 'tuning_picker_bottom_sheet.dart';
 
 class ReorderableSongCard extends StatefulWidget {
   final SetlistSong song;
+  final int index;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final Future<bool> Function(int bpm)? onBpmChanged;
@@ -43,6 +45,7 @@ class ReorderableSongCard extends StatefulWidget {
   const ReorderableSongCard({
     super.key,
     required this.song,
+    required this.index,
     this.onTap,
     this.onDelete,
     this.onBpmChanged,
@@ -87,16 +90,37 @@ class _ReorderableSongCardState extends State<ReorderableSongCard>
       begin: 1.0,
       end: 0.9,
     ).animate(CurvedAnimation(parent: _tapController, curve: Curves.easeInOut));
+
+    // Save on focus lost (blur)
+    _bpmFocus.addListener(_onBpmFocusChange);
+    _durationFocus.addListener(_onDurationFocusChange);
   }
 
   @override
   void dispose() {
+    _bpmFocus.removeListener(_onBpmFocusChange);
+    _durationFocus.removeListener(_onDurationFocusChange);
     _tapController.dispose();
     _bpmController.dispose();
     _durationController.dispose();
     _bpmFocus.dispose();
     _durationFocus.dispose();
     super.dispose();
+  }
+
+  // Focus change handlers - save on blur
+  void _onBpmFocusChange() {
+    if (!_bpmFocus.hasFocus && _isEditingBpm && !_isSaving) {
+      debugPrint('[ReorderableSongCard] BPM focus lost, triggering save');
+      _saveBpm();
+    }
+  }
+
+  void _onDurationFocusChange() {
+    if (!_durationFocus.hasFocus && _isEditingDuration && !_isSaving) {
+      debugPrint('[ReorderableSongCard] Duration focus lost, triggering save');
+      _saveDuration();
+    }
   }
 
   void _handleTapDown(TapDownDetails details) {
@@ -188,7 +212,11 @@ class _ReorderableSongCardState extends State<ReorderableSongCard>
       _editError = null;
     });
 
+    debugPrint(
+      '[ReorderableSongCard] Calling onBpmChanged with bpm=$bpm for song ${widget.song.id}',
+    );
     final success = await widget.onBpmChanged?.call(bpm) ?? false;
+    debugPrint('[ReorderableSongCard] onBpmChanged returned success=$success');
 
     setState(() {
       _isSaving = false;
@@ -337,14 +365,27 @@ class _ReorderableSongCardState extends State<ReorderableSongCard>
           ),
           child: Stack(
             children: [
-              // Drag handle icon - positioned 6px from left, 13px from top
+              // Drag handle area - only this region initiates reorder drag
+              // Covers left side of card from top to bottom
               Positioned(
-                left: SongCardLayout.dragHandleLeft,
-                top: 13,
-                child: Icon(
-                  Icons.drag_indicator_rounded,
-                  size: 24,
-                  color: AppColors.textSecondary.withValues(alpha: 0.6),
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: SongCardLayout.contentLeftPadding,
+                child: ReorderableDragStartListener(
+                  index: widget.index,
+                  child: Center(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: SongCardLayout.dragHandleLeft,
+                      ),
+                      child: Icon(
+                        Icons.drag_indicator_rounded,
+                        size: 24,
+                        color: AppColors.textSecondary.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
                 ),
               ),
 

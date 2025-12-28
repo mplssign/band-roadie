@@ -86,24 +86,21 @@ class SetlistSong {
   factory SetlistSong.fromSupabase(Map<String, dynamic> json) {
     final songData = json['songs'] as Map<String, dynamic>;
 
-    // Check for override values
-    final bpmOverride = json['bpm'] as int?;
-    final tuningOverride = json['tuning'] as String?;
-    final durationOverride = json['duration_seconds'] as int?;
-
+    // BPM, duration, and tuning are GLOBAL (stored on songs table)
+    // Position is per-setlist (stored on setlist_songs table)
     return SetlistSong(
       id: songData['id'] as String,
       title: songData['title'] as String? ?? 'Untitled',
       artist: songData['artist'] as String? ?? 'Unknown Artist',
-      bpm: bpmOverride ?? songData['bpm'] as int?,
-      durationSeconds:
-          durationOverride ?? songData['duration_seconds'] as int? ?? 0,
-      tuning: tuningOverride ?? songData['tuning'] as String?,
+      bpm: songData['bpm'] as int?,
+      durationSeconds: songData['duration_seconds'] as int? ?? 0,
+      tuning: songData['tuning'] as String?,
       albumArtwork: songData['album_artwork'] as String?,
       position: json['position'] as int? ?? 0,
-      hasBpmOverride: bpmOverride != null,
-      hasDurationOverride: durationOverride != null,
-      hasTuningOverride: tuningOverride != null,
+      // No more per-setlist overrides - values are global
+      hasBpmOverride: false,
+      hasDurationOverride: false,
+      hasTuningOverride: false,
     );
   }
 

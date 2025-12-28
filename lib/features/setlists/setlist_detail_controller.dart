@@ -134,6 +134,9 @@ class SetlistDetailState {
 
 /// Notifier for setlist detail - watches selectedSetlistProvider
 class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
+  String? _lastLoadedSetlistId;
+  SetlistDetailState? _cachedState;
+
   @override
   SetlistDetailState build() {
     // Watch the selected setlist - when it changes, reset and refetch
@@ -141,17 +144,45 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
 
     // If no setlist selected, return empty state
     if (!selected.isSelected) {
+      _lastLoadedSetlistId = null;
+      _cachedState = null;
       return const SetlistDetailState();
     }
 
-    // Trigger async load
-    Future.microtask(() => loadSongs());
+    // Only reload if the setlist ID actually changed
+    // This prevents losing optimistic updates when provider rebuilds
+    if (_lastLoadedSetlistId != selected.id) {
+      _lastLoadedSetlistId = selected.id;
+      _cachedState = null;
+      // Trigger async load
+      Future.microtask(() => loadSongs());
 
+      return SetlistDetailState(
+        setlistId: selected.id!,
+        setlistName: selected.name!,
+        isLoading: true,
+      );
+    }
+
+    // Setlist didn't change - return cached state (or create one if missing)
+    // This preserves optimistic updates like BPM changes
+    if (_cachedState != null) {
+      return _cachedState!.copyWith(setlistName: selected.name);
+    }
+
+    // Fallback: shouldn't happen, but return loading state
     return SetlistDetailState(
       setlistId: selected.id!,
       setlistName: selected.name!,
       isLoading: true,
     );
+  }
+
+  /// Override state setter to cache state for rebuild preservation
+  @override
+  set state(SetlistDetailState value) {
+    _cachedState = value;
+    super.state = value;
   }
 
   SetlistRepository get _repository => ref.read(setlistRepositoryProvider);
@@ -242,7 +273,8 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
   /// Apply sorting to a list of songs based on context.
   ///
   /// CATALOG: Alphabetical by artist (case-insensitive), then by title.
-  /// NON-CATALOG: By tuning priority, then by artist, then by title.
+  /// NON-CATALOG + Standard mode: Preserve user's custom order (from position column).
+  /// NON-CATALOG + Other modes: By tuning priority, then by artist, then by title.
   List<SetlistSong> _applySorting(
     List<SetlistSong> songs, {
     required bool isCatalog,
@@ -259,8 +291,12 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
         if (artistCompare != 0) return artistCompare;
         return a.title.toLowerCase().compareTo(b.title.toLowerCase());
       });
+    } else if (sortMode == TuningSortMode.standard) {
+      // Non-Catalog + Standard: Preserve user's custom order (database order)
+      // Songs are already ordered by position from the query, so no re-sorting needed
+      return sorted;
     } else {
-      // Non-Catalog: By tuning priority, then artist, then title
+      // Non-Catalog + Tuning mode: By tuning priority, then artist, then title
       sorted.sort((a, b) {
         final aPriority = TuningSortService.getTuningPriority(
           a.tuning,
@@ -467,7 +503,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
     state = state.copyWith(clearError: true);
   }
 
-  /// Update BPM override for a song in this setlist
+  /// Update BPM for a song (global - syncs across all setlists)
   ///
   /// Returns true if successful, false if validation fails or save fails.
   Future<bool> updateSongBpm(String songId, int bpm) async {
@@ -477,18 +513,28 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
       return false;
     }
 
+    final bandId = _bandId;
+    if (bandId == null) {
+      state = state.copyWith(error: 'No band selected');
+      return false;
+    }
+
     // Optimistic update
     final originalSongs = List<SetlistSong>.from(state.songs);
     final updatedSongs = state.songs.map((song) {
       if (song.id == songId) {
-        return song.copyWith(bpm: bpm, hasBpmOverride: true);
+        return song.copyWith(bpm: bpm);
       }
       return song;
     }).toList();
     state = state.copyWith(songs: updatedSongs);
 
     try {
+      debugPrint(
+        '[SetlistDetail] Calling updateSongBpmOverride with bandId=$bandId, songId=$songId, bpm=$bpm',
+      );
       await _repository.updateSongBpmOverride(
+        bandId: bandId,
         setlistId: state.setlistId,
         songId: songId,
         bpm: bpm,
@@ -506,15 +552,21 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
     }
   }
 
-  /// Clear BPM override for a song in this setlist
+  /// Clear BPM for a song (global - syncs across all setlists)
   ///
-  /// Reverts to the song's original BPM (shows "- BPM" if none).
+  /// Sets the BPM to null (shows "- BPM").
   Future<bool> clearSongBpm(String songId) async {
-    // Optimistic update - clear the override
+    final bandId = _bandId;
+    if (bandId == null) {
+      state = state.copyWith(error: 'No band selected');
+      return false;
+    }
+
+    // Optimistic update - clear the BPM
     final originalSongs = List<SetlistSong>.from(state.songs);
     final updatedSongs = state.songs.map((song) {
       if (song.id == songId) {
-        return song.copyWith(clearBpm: true, hasBpmOverride: false);
+        return song.copyWith(clearBpm: true);
       }
       return song;
     }).toList();
@@ -522,6 +574,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
 
     try {
       await _repository.clearSongBpmOverride(
+        bandId: bandId,
         setlistId: state.setlistId,
         songId: songId,
       );
@@ -538,7 +591,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
     }
   }
 
-  /// Update duration override for a song in this setlist
+  /// Update duration for a song (global - syncs across all setlists)
   ///
   /// Duration is in seconds. Must be between 30 and 1200 (20 minutes).
   Future<bool> updateSongDuration(String songId, int durationSeconds) async {
@@ -550,14 +603,17 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
       return false;
     }
 
+    final bandId = _bandId;
+    if (bandId == null) {
+      state = state.copyWith(error: 'No band selected');
+      return false;
+    }
+
     // Optimistic update
     final originalSongs = List<SetlistSong>.from(state.songs);
     final updatedSongs = state.songs.map((song) {
       if (song.id == songId) {
-        return song.copyWith(
-          durationSeconds: durationSeconds,
-          hasDurationOverride: true,
-        );
+        return song.copyWith(durationSeconds: durationSeconds);
       }
       return song;
     }).toList();
@@ -565,6 +621,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
 
     try {
       await _repository.updateSongDurationOverride(
+        bandId: bandId,
         setlistId: state.setlistId,
         songId: songId,
         durationSeconds: durationSeconds,
@@ -584,7 +641,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
     }
   }
 
-  /// Update tuning override for a song in this setlist
+  /// Update tuning for a song (global - syncs across all setlists)
   ///
   /// Uses optimistic update pattern:
   /// 1. Store original state
@@ -594,6 +651,12 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
   Future<bool> updateSongTuning(String songId, String tuning) async {
     if (tuning.isEmpty) {
       state = state.copyWith(error: 'Tuning cannot be empty');
+      return false;
+    }
+
+    final bandId = _bandId;
+    if (bandId == null) {
+      state = state.copyWith(error: 'No band selected');
       return false;
     }
 
@@ -607,7 +670,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
     // Optimistic update - apply immediately so UI feels instant
     final updatedSongs = state.songs.map((song) {
       if (song.id == songId) {
-        return song.copyWith(tuning: tuning, hasTuningOverride: true);
+        return song.copyWith(tuning: tuning);
       }
       return song;
     }).toList();
@@ -615,6 +678,7 @@ class SetlistDetailNotifier extends Notifier<SetlistDetailState> {
 
     try {
       await _repository.updateSongTuningOverride(
+        bandId: bandId,
         setlistId: state.setlistId,
         songId: songId,
         tuning: tuning,

@@ -576,7 +576,14 @@ class SetlistRepository {
             }
             continue; // Skip orphaned setlist_songs entries
           }
-          songs.add(SetlistSong.fromSupabase(json));
+          final song = SetlistSong.fromSupabase(json);
+          // Debug: log BPM values for songs with overrides
+          if (kDebugMode && json['bpm'] != null) {
+            debugPrint(
+              '[SetlistRepository] Song "${song.title}" has BPM override: ${json['bpm']}',
+            );
+          }
+          songs.add(song);
         } catch (parseError) {
           if (kDebugMode) {
             debugPrint('[SetlistRepository] Parse error for row: $json');
@@ -1219,110 +1226,235 @@ class SetlistRepository {
   }
 
   // ==========================================================================
-  // UPDATE SONG OVERRIDES
+  // UPDATE SONG OVERRIDES (Global - syncs across all setlists)
   // ==========================================================================
 
-  /// Updates the BPM override for a song in a specific setlist.
-  /// This allows the same song to have different BPMs in different setlists.
+  /// Updates the BPM for a song globally (syncs across all setlists).
+  /// 
+  /// This updates the songs.bpm value directly. Changes apply to all setlists
+  /// containing this song. Uses RPC to bypass RLS for legacy songs with NULL band_id.
   Future<void> updateSongBpmOverride({
+    required String bandId,
     required String setlistId,
     required String songId,
     required int bpm,
   }) async {
-    if (setlistId.isEmpty || songId.isEmpty) {
-      throw ArgumentError('setlistId and songId cannot be empty');
+    if (songId.isEmpty) {
+      throw ArgumentError('songId cannot be empty');
     }
     if (bpm < 20 || bpm > 300) {
       throw ArgumentError('BPM must be between 20 and 300');
     }
 
     try {
-      await supabase
-          .from('setlist_songs')
-          .update({'bpm': bpm})
-          .eq('setlist_id', setlistId)
-          .eq('song_id', songId);
+      debugPrint(
+        '[SetlistRepository] updateSongBpmOverride: songId=$songId, bpm=$bpm',
+      );
+
+      // Use RPC to bypass RLS (handles legacy songs with NULL band_id)
+      final response = await supabase.rpc(
+        'update_song_metadata',
+        params: {
+          'p_song_id': songId,
+          'p_band_id': bandId,
+          'p_bpm': bpm,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      if (result == null || result['success'] != true) {
+        final error = result?['error'] ?? 'Unknown error';
+        debugPrint('[SetlistRepository] RPC error: $error');
+        throw Exception(error);
+      }
 
       debugPrint(
-        '[SetlistRepository] Updated BPM to $bpm for song $songId in setlist $setlistId',
+        '[SetlistRepository] ✓ Updated BPM to $bpm for song $songId (global)',
       );
+    } on PostgrestException catch (e) {
+      // Fallback if RPC doesn't exist yet
+      if (e.code == 'PGRST202') {
+        debugPrint(
+          '[SetlistRepository] update_song_metadata RPC not found, using fallback',
+        );
+        await _updateSongBpmFallback(bandId: bandId, songId: songId, bpm: bpm);
+        return;
+      }
+      debugPrint('[SetlistRepository] Error updating song BPM: $e');
+      rethrow;
     } catch (e) {
-      debugPrint('[SetlistRepository] Error updating BPM override: $e');
+      debugPrint('[SetlistRepository] Error updating song BPM: $e');
       rethrow;
     }
   }
 
-  /// Clears the BPM override for a song in a specific setlist.
-  /// This reverts to the song's original BPM (or null if none).
+  /// Fallback for updating BPM when RPC is not available
+  Future<void> _updateSongBpmFallback({
+    required String bandId,
+    required String songId,
+    required int bpm,
+  }) async {
+    var result = await supabase
+        .from('songs')
+        .update({'bpm': bpm})
+        .eq('id', songId)
+        .eq('band_id', bandId)
+        .select('id, bpm');
+
+    if (result.isEmpty && bandId.isNotEmpty) {
+      result = await supabase
+          .from('songs')
+          .update({'bpm': bpm})
+          .eq('id', songId)
+          .select('id, bpm');
+    }
+
+    if (result.isEmpty) {
+      throw Exception('No matching song found');
+    }
+
+    debugPrint('[SetlistRepository] ✓ Updated BPM via fallback');
+  }
+
+  /// Clears the BPM for a song globally (syncs across all setlists).
+  /// Uses RPC to bypass RLS for legacy songs with NULL band_id.
   Future<void> clearSongBpmOverride({
+    required String bandId,
     required String setlistId,
     required String songId,
   }) async {
-    if (setlistId.isEmpty || songId.isEmpty) {
-      throw ArgumentError('setlistId and songId cannot be empty');
+    if (songId.isEmpty) {
+      throw ArgumentError('songId cannot be empty');
     }
 
     try {
-      await supabase
-          .from('setlist_songs')
-          .update({'bpm': null})
-          .eq('setlist_id', setlistId)
-          .eq('song_id', songId);
+      debugPrint(
+        '[SetlistRepository] clearSongBpmOverride: songId=$songId',
+      );
+
+      // Use RPC to bypass RLS (handles legacy songs with NULL band_id)
+      final response = await supabase.rpc(
+        'clear_song_metadata',
+        params: {
+          'p_song_id': songId,
+          'p_band_id': bandId,
+          'p_clear_bpm': true,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      if (result == null || result['success'] != true) {
+        final error = result?['error'] ?? 'Unknown error';
+        debugPrint('[SetlistRepository] RPC error: $error');
+        throw Exception(error);
+      }
 
       debugPrint(
-        '[SetlistRepository] Cleared BPM override for song $songId in setlist $setlistId',
+        '[SetlistRepository] ✓ Cleared BPM for song $songId (global)',
       );
+    } on PostgrestException catch (e) {
+      // Fallback if RPC doesn't exist yet
+      if (e.code == 'PGRST202') {
+        debugPrint(
+          '[SetlistRepository] clear_song_metadata RPC not found, using fallback',
+        );
+        await supabase
+            .from('songs')
+            .update({'bpm': null})
+            .eq('id', songId);
+        return;
+      }
+      debugPrint('[SetlistRepository] Error clearing song BPM: $e');
+      rethrow;
     } catch (e) {
-      debugPrint('[SetlistRepository] Error clearing BPM override: $e');
+      debugPrint('[SetlistRepository] Error clearing song BPM: $e');
       rethrow;
     }
   }
 
-  /// Updates the duration override for a song in a specific setlist.
-  /// Duration is in seconds.
+
+  /// Updates the duration for a song globally (syncs across all setlists).
+  /// Duration is in seconds. Uses RPC to bypass RLS for legacy songs with NULL band_id.
   Future<void> updateSongDurationOverride({
+    required String bandId,
     required String setlistId,
     required String songId,
     required int durationSeconds,
   }) async {
-    if (setlistId.isEmpty || songId.isEmpty) {
-      throw ArgumentError('setlistId and songId cannot be empty');
+    if (songId.isEmpty) {
+      throw ArgumentError('songId cannot be empty');
     }
     if (durationSeconds < 30 || durationSeconds > 1200) {
       throw ArgumentError('Duration must be between 30 seconds and 20 minutes');
     }
 
     try {
-      await supabase
-          .from('setlist_songs')
-          .update({'duration_seconds': durationSeconds})
-          .eq('setlist_id', setlistId)
-          .eq('song_id', songId);
+      debugPrint(
+        '[SetlistRepository] updateSongDurationOverride: songId=$songId, duration=$durationSeconds',
+      );
+
+      // Use RPC to bypass RLS (handles legacy songs with NULL band_id)
+      final response = await supabase.rpc(
+        'update_song_metadata',
+        params: {
+          'p_song_id': songId,
+          'p_band_id': bandId,
+          'p_duration_seconds': durationSeconds,
+        },
+      );
+
+      final result = response as Map<String, dynamic>?;
+      if (result == null || result['success'] != true) {
+        final error = result?['error'] ?? 'Unknown error';
+        debugPrint('[SetlistRepository] RPC error: $error');
+        throw Exception(error);
+      }
 
       debugPrint(
-        '[SetlistRepository] Updated duration to $durationSeconds for song $songId in setlist $setlistId',
+        '[SetlistRepository] ✓ Updated duration to $durationSeconds for song $songId (global)',
       );
+    } on PostgrestException catch (e) {
+      // Fallback if RPC doesn't exist yet
+      if (e.code == 'PGRST202') {
+        debugPrint(
+          '[SetlistRepository] update_song_metadata RPC not found, using fallback',
+        );
+        var result = await supabase
+            .from('songs')
+            .update({'duration_seconds': durationSeconds})
+            .eq('id', songId)
+            .eq('band_id', bandId)
+            .select('id, duration_seconds');
+
+        if (result.isEmpty && bandId.isNotEmpty) {
+          result = await supabase
+              .from('songs')
+              .update({'duration_seconds': durationSeconds})
+              .eq('id', songId)
+              .select('id, duration_seconds');
+        }
+        return;
+      }
+      debugPrint('[SetlistRepository] Error updating song duration: $e');
+      rethrow;
     } catch (e) {
-      debugPrint('[SetlistRepository] Error updating duration override: $e');
+      debugPrint('[SetlistRepository] Error updating song duration: $e');
       rethrow;
     }
   }
 
-  /// Updates the tuning override for a song in a specific setlist.
+  /// Updates the tuning for a song globally (syncs across all setlists).
+  /// Uses RPC to bypass RLS for legacy songs with NULL band_id.
   ///
-  /// IMPORTANT: This updates setlist_songs.tuning (the override), not songs.tuning.
   /// The tuning value should be a valid tuning ID (e.g., 'half_step_down', 'drop_d').
-  ///
-  /// Note: If the database still uses the legacy enum (pre-migration 052), only
-  /// 'standard', 'drop_d', 'half_step', and 'full_step' tunings are supported.
-  /// Newer tunings like 'drop_c', 'open_g' require migration 052 to be applied.
   Future<void> updateSongTuningOverride({
+    required String bandId,
     required String setlistId,
     required String songId,
     required String tuning,
   }) async {
-    if (setlistId.isEmpty || songId.isEmpty) {
-      throw ArgumentError('setlistId and songId cannot be empty');
+    if (songId.isEmpty) {
+      throw ArgumentError('songId cannot be empty');
     }
     if (tuning.isEmpty) {
       throw ArgumentError('Tuning cannot be empty');
@@ -1330,105 +1462,72 @@ class SetlistRepository {
 
     // Normalize tuning value for database compatibility (handles legacy enum)
     final dbTuning = tuningToDbEnum(tuning) ?? tuning;
-
-    // Check if this tuning might fail on legacy enum databases
     final isLegacySupported = isLegacyEnumSupported(tuning);
 
     if (kDebugMode) {
       debugPrint(
-        '[SetlistRepository] updateSongTuningOverride:\n'
-        '  setlistId: $setlistId\n'
-        '  songId: $songId\n'
-        '  tuning (input): $tuning\n'
-        '  tuning (db): $dbTuning\n'
-        '  legacyEnumSupported: $isLegacySupported',
+        '[SetlistRepository] updateSongTuning: songId=$songId, tuning=$tuning → $dbTuning',
       );
     }
 
     try {
-      // Diagnostic: Check if row exists first (dev-only)
-      if (kDebugMode) {
-        final existsCheck = await supabase
-            .from('setlist_songs')
-            .select('id, tuning, setlist_id, song_id')
-            .eq('setlist_id', setlistId)
-            .eq('song_id', songId)
-            .maybeSingle();
+      // Use RPC to bypass RLS (handles legacy songs with NULL band_id)
+      final response = await supabase.rpc(
+        'update_song_metadata',
+        params: {
+          'p_song_id': songId,
+          'p_band_id': bandId,
+          'p_tuning': dbTuning,
+        },
+      );
 
-        if (existsCheck == null) {
-          debugPrint(
-            '[SetlistRepository] ⚠️ PRE-CHECK FAILED: No setlist_songs row found for:\n'
-            '  setlistId: $setlistId\n'
-            '  songId: $songId\n'
-            '  This means the row does not exist or RLS is blocking SELECT.',
-          );
-        } else {
-          debugPrint(
-            '[SetlistRepository] ✓ PRE-CHECK: Row exists with id=${existsCheck['id']}, '
-            'current tuning=${existsCheck['tuning']}',
-          );
-        }
-      }
-
-      final response = await supabase
-          .from('setlist_songs')
-          .update({
-            'tuning': dbTuning,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('setlist_id', setlistId)
-          .eq('song_id', songId)
-          .select('id, tuning')
-          .maybeSingle();
-
-      if (response == null) {
-        if (kDebugMode) {
-          debugPrint(
-            '[SetlistRepository] ❌ UPDATE FAILED: No row returned after update.\n'
-            '  Possible causes:\n'
-            '  1. Row does not exist (setlist_songs entry missing)\n'
-            '  2. RLS blocked the UPDATE (band_id mismatch?)\n'
-            '  3. WITH CHECK clause failed on the RLS policy',
-          );
-        }
-        throw Exception(
-          'Failed to update tuning: no matching setlist_song found or access denied',
-        );
+      final result = response as Map<String, dynamic>?;
+      if (result == null || result['success'] != true) {
+        final error = result?['error'] ?? 'Unknown error';
+        debugPrint('[SetlistRepository] RPC error: $error');
+        throw Exception(error);
       }
 
       debugPrint(
-        '[SetlistRepository] ✓ Successfully updated tuning to ${response['tuning']} '
-        'for song $songId in setlist $setlistId',
+        '[SetlistRepository] ✓ Updated tuning to $dbTuning for song $songId (global)',
       );
     } on PostgrestException catch (e) {
-      // Check for legacy enum error (22P02 = invalid_text_representation)
+      // Fallback if RPC doesn't exist yet
+      if (e.code == 'PGRST202') {
+        debugPrint(
+          '[SetlistRepository] update_song_metadata RPC not found, using fallback',
+        );
+        var resp = await supabase
+            .from('songs')
+            .update({'tuning': dbTuning})
+            .eq('id', songId)
+            .eq('band_id', bandId)
+            .select('id, tuning')
+            .maybeSingle();
+
+        if (resp == null && bandId.isNotEmpty) {
+          resp = await supabase
+              .from('songs')
+              .update({'tuning': dbTuning})
+              .eq('id', songId)
+              .select('id, tuning')
+              .maybeSingle();
+        }
+        return;
+      }
+
       final isEnumError =
           e.code == '400' && e.message.contains('invalid input value for enum');
 
       if (isEnumError && !isLegacySupported) {
-        debugPrint(
-          '[SetlistRepository] ❌ Legacy enum error: "$tuning" not supported.\n'
-          '  The database needs migration 052 to support this tuning.\n'
-          '  Supported legacy values: standard, drop_d, half_step, full_step',
-        );
         throw Exception(
           'This tuning is not yet available. Please try Standard, Drop D, Half-Step, or Full-Step.',
         );
       }
-
-      debugPrint(
-        '[SetlistRepository] ❌ PostgrestException updating tuning override:\n'
-        '  code: ${e.code}\n'
-        '  message: ${e.message}\n'
-        '  details: ${e.details}\n'
-        '  hint: ${e.hint}\n'
-        '  setlistId: $setlistId\n'
-        '  songId: $songId\n'
-        '  tuning: $tuning → $dbTuning',
-      );
+      debugPrint('[SetlistRepository] ❌ PostgrestException: ${e.message}');
       rethrow;
     } catch (e) {
-      debugPrint('[SetlistRepository] ❌ Error updating tuning override: $e');
+      debugPrint('[SetlistRepository] ❌ Error updating tuning: $e');
       rethrow;
     }
   }

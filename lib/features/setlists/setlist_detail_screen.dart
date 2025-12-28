@@ -618,32 +618,28 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen>
                     onReorder: _handleReorder,
                     itemBuilder: (context, index) {
                       final song = state.songs[index];
-                      return ReorderableDragStartListener(
+                      return Padding(
                         key: ValueKey(song.id),
-                        index: index,
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                            bottom: Spacing.space12,
-                          ),
-                          child: ReorderableSongCard(
-                            song: song,
-                            onTap: () {
-                              // Future: Navigate to song detail
-                            },
-                            onDelete: () => _handleDelete(song.id, song.title),
-                            onBpmChanged: (bpm) => ref
-                                .read(setlistDetailProvider.notifier)
-                                .updateSongBpm(song.id, bpm),
-                            onBpmCleared: () => ref
-                                .read(setlistDetailProvider.notifier)
-                                .clearSongBpm(song.id),
-                            onDurationChanged: (durationSeconds) => ref
-                                .read(setlistDetailProvider.notifier)
-                                .updateSongDuration(song.id, durationSeconds),
-                            onTuningChanged: (tuning) => ref
-                                .read(setlistDetailProvider.notifier)
-                                .updateSongTuning(song.id, tuning),
-                          ),
+                        padding: const EdgeInsets.only(bottom: Spacing.space12),
+                        child: ReorderableSongCard(
+                          song: song,
+                          index: index,
+                          onTap: () {
+                            // Future: Navigate to song detail
+                          },
+                          onDelete: () => _handleDelete(song.id, song.title),
+                          onBpmChanged: (bpm) => ref
+                              .read(setlistDetailProvider.notifier)
+                              .updateSongBpm(song.id, bpm),
+                          onBpmCleared: () => ref
+                              .read(setlistDetailProvider.notifier)
+                              .clearSongBpm(song.id),
+                          onDurationChanged: (durationSeconds) => ref
+                              .read(setlistDetailProvider.notifier)
+                              .updateSongDuration(song.id, durationSeconds),
+                          onTuningChanged: (tuning) => ref
+                              .read(setlistDetailProvider.notifier)
+                              .updateSongTuning(song.id, tuning),
                         ),
                       );
                     },
