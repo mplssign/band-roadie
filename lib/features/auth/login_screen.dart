@@ -419,50 +419,53 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _emailController,
-              focusNode: _focusNode,
-              enabled: !_isLoading,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.done,
-              autocorrect: false,
-              style: const TextStyle(color: Colors.white),
-              onChanged: (_) => setState(() {
-                _selectedDomain = null;
-                _validationError = null;
-              }),
-              onSubmitted: (_) => _handleSubmit(),
-              decoration: InputDecoration(
-                hintText: 'you@email.com',
-                hintStyle: const TextStyle(color: Color(0xFF64748B)),
-                filled: true,
-                fillColor: const Color(0xFF1E293B),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: _validationError != null
-                      ? const BorderSide(color: Color(0xFFEF4444), width: 1.5)
-                      : BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: _validationError != null
-                        ? const Color(0xFFEF4444)
-                        : const Color(0xFFF43F5E),
-                    width: 1.5,
+            AutofillGroup(
+              child: TextField(
+                controller: _emailController,
+                focusNode: _focusNode,
+                enabled: !_isLoading,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.done,
+                autocorrect: false,
+                autofillHints: const [AutofillHints.email],
+                style: const TextStyle(color: Colors.white),
+                onChanged: (_) => setState(() {
+                  _selectedDomain = null;
+                  _validationError = null;
+                }),
+                onSubmitted: (_) => _handleSubmit(),
+                decoration: InputDecoration(
+                  hintText: 'you@email.com',
+                  hintStyle: const TextStyle(color: Color(0xFF64748B)),
+                  filled: true,
+                  fillColor: const Color(0xFF1E293B),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                ),
-                disabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: _validationError != null
+                        ? const BorderSide(color: Color(0xFFEF4444), width: 1.5)
+                        : BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: _validationError != null
+                          ? const Color(0xFFEF4444)
+                          : const Color(0xFFF43F5E),
+                      width: 1.5,
+                    ),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 18,
+                  ),
                 ),
               ),
             ),
