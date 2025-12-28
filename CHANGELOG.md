@@ -1,3 +1,27 @@
+## [1.3.1] - 2025-12-28
+
+### Fixed
+- fix(setlists): Restrict drag-to-reorder to grip icon area only
+  - Users can now scroll through song lists without accidentally triggering drag mode
+  - Drag handle covers left 36px of card (grip icon area)
+- fix(setlists): BPM, Duration, and Tuning edits now work for legacy songs
+  - Added `update_song_metadata` and `clear_song_metadata` RPC functions
+  - Functions use SECURITY DEFINER to bypass RLS for NULL band_id songs
+  - Repository uses RPC with fallback to direct update
+- fix(setlists): Standard tuning sort mode now preserves user's custom order
+  - Previously was sorting by tuning priority instead of respecting position
+
+### Added
+- feat(deployment): Flutter web app deployed to Vercel
+  - Live at https://bandroadie.com
+  - SPA routing configured for Flutter web
+
+### Changed
+- refactor(songs): ReorderableSongCard now accepts index parameter
+  - Drag listener moved inside card component for better encapsulation
+
+---
+
 ## [1.3.0] - 2025-12-23
 
 ### Added

@@ -2,96 +2,77 @@
 
 ## Application Overview
 
-**Band Roadie** is a comprehensive Progressive Web Application (PWA) designed for band management and coordination. Built with Next.js 14.2.33, TypeScript, and Supabase, it provides bands with tools to manage rehearsals, gigs, setlists, member coordination, and more.
+**Band Roadie** is a comprehensive cross-platform application designed for band management and coordination. Built with Flutter and Supabase, it provides bands with tools to manage rehearsals, gigs, setlists, member coordination, and more. The app runs on iOS, Android, macOS, and Web.
 
 ### Core Identity
 - **Name:** Band Roadie
-- **Version:** 1.2.3
+- **Version:** 1.3.1
 - **Tagline:** "Ultimate Band Management"
 - **Description:** Manage your band's rehearsals, gigs, and setlists
+- **Live Web App:** https://bandroadie.com
 
 ## Technology Stack
 
 ### Frontend
-- **Framework:** Next.js 14.1.0 with App Router
-- **Language:** TypeScript
-- **UI Components:** Radix UI primitives, Custom components
-- **Styling:** Tailwind CSS with custom dark theme
-- **State Management:** Zustand for band state
-- **Animation:** Framer Motion
-- **PWA Support:** next-pwa for offline capability
+- **Framework:** Flutter 3.38.5 with Dart 3.10.4
+- **State Management:** Riverpod for reactive state
+- **UI Design:** Custom dark theme with Rose accent (#f43f5e)
+- **Animation:** Flutter built-in animations + custom controllers
+- **Platforms:** iOS, Android, macOS, Web
 
 ### Backend & Database
-- **Backend:** Supabase (PostgreSQL + Auth + Real-time)
+- **Backend:** Supabase (PostgreSQL + Auth + Real-time + Edge Functions)
 - **Authentication:** Supabase Auth with PKCE flow and magic links
-- **Database:** PostgreSQL via Supabase
+- **Database:** PostgreSQL via Supabase with Row Level Security (RLS)
 - **Email:** Resend for transactional emails
 - **File Storage:** Supabase Storage
+- **Edge Functions:** Deno-based serverless functions for external API integrations
 
 ### Key Dependencies
-- React 18.2.0, React DOM 18.2.0
-- @supabase/ssr, @supabase/supabase-js
-- @dnd-kit/* for drag-and-drop functionality
-- @mui/material, @mui/x-date-pickers for advanced components
-- date-fns, dayjs for date handling
-- lucide-react for icons
-- zod for validation
+- `flutter_riverpod` - State management
+- `supabase_flutter` - Supabase SDK for Flutter
+- `go_router` - Declarative routing
+- `share_plus` - Native share sheet integration
+- `url_launcher` - External URL handling
+- `intl` - Internationalization and date formatting
 
 ## Application Architecture
 
 ### Directory Structure
 ```
 band-roadie/
-├── app/                          # Next.js App Router
-│   ├── (auth)/                   # Authentication route group
-│   │   ├── auth/callback/        # Magic link callbacks
-│   │   ├── login/                # Login page
-│   │   ├── logout/               # Logout page
-│   │   └── signup/               # Signup page
-│   ├── (protected)/              # Protected routes requiring authentication
-│   │   ├── layout.tsx            # Auth wrapper with profile validation
+├── lib/                          # Flutter source code
+│   ├── main.dart                 # App entry point
+│   ├── app/                      # App configuration
+│   │   ├── router/               # GoRouter configuration
+│   │   └── theme/                # Design tokens and theming
+│   ├── components/               # Shared UI components
+│   │   └── ui/                   # Base UI components
+│   ├── contexts/                 # App-wide contexts
+│   ├── features/                 # Feature modules
+│   │   ├── auth/                 # Authentication screens
 │   │   ├── bands/                # Band management
-│   │   ├── calendar/             # Event calendar
-│   │   ├── dashboard/            # Main dashboard
+│   │   ├── calendar/             # Calendar views
 │   │   ├── gigs/                 # Gig management
-│   │   ├── invite/               # Band invitation handling
+│   │   ├── home/                 # Home/Dashboard
 │   │   ├── members/              # Member management
 │   │   ├── profile/              # User profile
 │   │   ├── rehearsals/           # Rehearsal scheduling
-│   │   ├── setlists/             # Setlist creation/management
-│   │   └── settings/             # Application settings
-│   ├── api/                      # API routes
-│   │   ├── auth/                 # Authentication endpoints
-│   │   ├── bands/                # Band CRUD operations
-│   │   ├── invitations/          # Invitation system
-│   │   ├── profile/              # Profile management
-│   │   ├── setlists/             # Setlist operations
-│   │   ├── songs/                # Song management
-│   │   └── users/                # User operations
-│   ├── auth/callback/            # Server-side auth callback
-│   ├── globals.css               # Global styles
-│   ├── layout.tsx                # Root layout
-│   └── page.tsx                  # Home page (redirects to login)
-├── components/                   # Reusable UI components
-│   ├── auth/                     # Authentication components
-│   ├── bands/                    # Band-specific components
-│   ├── dashboard/                # Dashboard components
-│   ├── layout/                   # Layout components
-│   ├── members/                  # Member management components
-│   ├── navigation/               # Navigation components
-│   ├── setlists/                 # Setlist components
-│   └── ui/                       # Base UI components
-├── contexts/                     # React contexts
-├── hooks/                        # Custom React hooks
-├── lib/                          # Utility libraries
-│   ├── email/                    # Email templates
-│   ├── server/                   # Server utilities
-│   ├── supabase/                 # Supabase client configuration
-│   ├── utils/                    # General utilities
-│   ├── constants.ts              # Application constants
-│   └── types.ts                  # TypeScript type definitions
-├── migrations/                   # Database migrations
-└── public/                       # Static assets
+│   │   └── setlists/             # Setlist management
+│   │       ├── models/           # Data models
+│   │       ├── services/         # Business logic
+│   │       ├── tuning/           # Tuning helpers
+│   │       └── widgets/          # UI components
+│   └── shared/                   # Shared utilities
+├── assets/                       # Static assets (images, fonts)
+├── supabase/                     # Supabase configuration
+│   ├── functions/                # Edge Functions
+│   └── migrations/               # Database migrations
+├── ios/                          # iOS platform code
+├── android/                      # Android platform code
+├── macos/                        # macOS platform code
+├── web/                          # Web platform code
+└── test/                         # Unit and widget tests
 ```
 
 ## Core Features
@@ -134,19 +115,38 @@ band-roadie/
 ### 5. Setlist Management
 - **Setlist Creation:** Build song lists for performances
 - **Catalog:** Maintain band's master song repertoire (single source of truth)
-- **Drag-and-Drop Ordering:** Intuitive song arrangement
-- **BPM Tracking:** Monitor song tempo for smooth transitions
-- **Tuning Information:** Track instrument tunings per song
-- **Performance Notes:** Add performance-specific notes
+- **Drag-and-Drop Ordering:** Intuitive song arrangement via drag handle
+- **BPM Tracking:** Tap-to-edit BPM values with inline editing (20-300 range)
+- **Duration Tracking:** Tap-to-edit duration in mm:ss format
+- **Tuning Information:** Track instrument tunings per song with bottom sheet picker
+- **Tuning Sort Modes:** Sort by tuning groups (Standard first, then Half-Step, etc.)
+- **Custom Ordering:** Standard sort mode preserves user's custom song order
+- **Song Metadata RPC:** Server-side functions bypass RLS for legacy song updates
+- **Inline Editing:** Tap BPM, Duration, or Tuning badges to edit in place
+- **Override Indicators:** Rose border on badges when song has custom values
 
-### 6. Member Coordination
+### 6. Song Card UX
+- **Drag Handle:** Reorder songs by dragging the grip icon on left side only
+- **Scroll-Friendly:** Touching anywhere except drag handle scrolls normally
+- **Card Layout:** Title, Artist, Delete button, and metrics row (BPM, Duration, Tuning)
+- **Micro-Interactions:** Scale/opacity feedback on tap, elevation on drag
+- **Save on Blur:** Editing automatically saves when focus leaves the field
+
+### 7. Member Coordination
 - **Invitation System:** Email-based band invitations
 - **Member Directory:** View all band members and their roles
 - **Role Management:** Assign and manage member roles (vocals, guitar, etc.)
 - **Contact Information:** Access to member contact details
 - **Attendance Tracking:** Monitor member availability for events
 
-### 7. Profile Management
+### 8. External Song Lookup
+- **Search External APIs:** Find songs not in your Catalog from online databases
+- **Auto-Add to Catalog:** Selected external songs are automatically added
+- **BPM Enrichment:** BPM is pulled from external sources when available
+- **Album Artwork:** External results display album art when available
+- **Edge Functions:** Supabase Edge Functions handle API token caching and rate limits
+
+### 9. Profile Management
 - **Personal Information:** Name, phone, address, birthday
 - **Musical Roles:** Assign and manage musical roles/instruments
 - **Custom Roles:** Create custom roles beyond standard instruments
@@ -179,14 +179,14 @@ band-roadie/
 - **Magic Links:** Passwordless authentication via email
 - **PKCE:** Proof Key for Code Exchange for security
 - **Session Management:** Supabase handles session persistence
-- **Middleware Protection:** Route-level authentication checking
+- **Auth Gate:** App-level authentication checking with Riverpod
 - **Profile Validation:** Ensures complete profiles before access
 
 ### State Management
-- **Zustand Store:** Band state management (current band, band list)
-- **React Hooks:** Custom hooks for bands, authentication, UI state
+- **Riverpod:** Application-wide state management with providers
+- **StateNotifier:** Controllers for complex state (setlists, gigs, etc.)
+- **AsyncValue:** Loading, error, and data states handled uniformly
 - **Supabase Real-time:** Live updates for collaborative features
-- **Local State:** Component-level state for UI interactions
 
 ### Database Schema
 ```sql
@@ -199,38 +199,57 @@ band_invitations   # Email invitations to join bands
 -- Event Management
 rehearsals         # Rehearsal scheduling
 gigs               # Performance scheduling
-setlists           # Song collections for performances
+gig_responses      # Member attendance responses
+block_dates        # Member availability/unavailability
+
+-- Setlist Management
+setlists           # Song collections (including Catalog per band)
 songs              # Individual song information
+setlist_songs      # Many-to-many with position ordering
 
 -- Additional Features
 roles              # Custom role definitions
-tunings           # Instrument tuning information
-notifications     # User notifications
+tunings            # Instrument tuning definitions
 ```
 
-### API Architecture
-- **RESTful Endpoints:** Standard HTTP methods for CRUD operations
-- **Route Handlers:** Next.js 14 route handlers in `/api/` directory
-- **Server Actions:** Server-side form handling
-- **Real-time Subscriptions:** Supabase real-time for live updates
+### RPC Functions (Supabase)
+The app uses PostgreSQL functions with `SECURITY DEFINER` to handle operations that bypass Row Level Security:
 
-## PWA Features
+```sql
+-- Update song metadata (BPM, duration, tuning) for legacy songs
+update_song_metadata(p_song_id, p_band_id, p_bpm, p_duration_seconds, p_tuning)
 
-### Mobile Experience
-- **Responsive Design:** Optimized for mobile devices
-- **Touch Interactions:** Mobile-friendly touch targets
+-- Clear song metadata fields
+clear_song_metadata(p_song_id, p_band_id, p_clear_bpm, p_clear_duration, p_clear_tuning)
+```
+
+These RPCs are necessary because some legacy songs have `NULL` band_id values and would be blocked by RLS policies.
+
+### Flutter Architecture
+- **Feature-First:** Code organized by feature, not layer
+- **Repository Pattern:** Data access abstracted behind repositories
+- **Controllers:** StateNotifier classes manage feature state
+- **Widgets:** Stateless where possible, stateful for animations/editing
+
+## Cross-Platform Support
+
+### Platforms
+- **iOS:** Native iOS app via Flutter
+- **Android:** Native Android app via Flutter
+- **macOS:** Desktop app via Flutter
+- **Web:** Progressive Web App deployed to Vercel
+
+### Web Deployment (Vercel)
+- **URL:** https://bandroadie.com
+- **Build:** `flutter build web --release`
+- **Hosting:** Vercel with SPA routing configuration
+- **Caching:** Static assets cached with long TTLs
+
+### Mobile-First Design
+- **Responsive Design:** Optimized for mobile devices first
+- **Touch Interactions:** Large touch targets (48px minimum)
 - **Bottom Navigation:** Mobile-first navigation pattern
-- **Standalone Mode:** Full-screen app experience when installed
-
-### Offline Capability
-- **Service Worker:** Caches critical resources
-- **Offline Fallbacks:** Graceful degradation when offline
-- **Background Sync:** Sync data when connection restored
-
-### Installation
-- **Web App Manifest:** PWA installation prompts
-- **App Icons:** Branded icons for home screen
-- **Splash Screen:** Custom loading experience
+- **Gesture Support:** Swipe, drag, and tap gestures
 
 ## Security & Privacy
 
@@ -250,44 +269,66 @@ notifications     # User notifications
 
 ### Development Setup
 ```bash
-# Install dependencies
-pnpm install
+# Install Flutter dependencies
+flutter pub get
 
-# Start development server
-pnpm dev
+# Run on macOS
+flutter run -d macos
 
-# Run tests
-pnpm test
+# Run on iOS Simulator
+flutter run -d ios
 
-# Build for production
-pnpm build
+# Run on Chrome (Web)
+flutter run -d chrome
+
+# Build for web production
+flutter build web --release
+
+# Deploy to Vercel
+cd build/web && vercel --prod
 ```
 
 ### Environment Variables
 ```
-NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anonymous key
-SUPABASE_SERVICE_ROLE_KEY=       # Supabase service role key
-RESEND_API_KEY=                  # Resend email API key
-NEXT_PUBLIC_APP_URL=             # Application base URL
+# Set in Supabase Dashboard and app configuration
+SUPABASE_URL=              # Supabase project URL
+SUPABASE_ANON_KEY=         # Supabase anonymous key
+RESEND_API_KEY=            # Resend email API key (Edge Functions)
 ```
 
 ### Testing Strategy
-- **Unit Tests:** Jest for component and utility testing
-- **Integration Tests:** API endpoint testing
-- **E2E Testing:** User flow validation
-- **ESLint:** Code quality and consistency
+- **Unit Tests:** Dart tests for models, utilities, and services
+- **Widget Tests:** Flutter widget testing
+- **Integration Tests:** End-to-end user flow testing
+- **Analysis:** `flutter analyze` for static analysis
 
-## Current State & Known Issues
+## Current State & Recent Changes
 
-### Recent Development
-- **Authentication Flow:** Implemented magic link system with profile validation
-- **Dashboard Redesign:** Modern dark theme with improved UX
-- **Profile Management:** Complete profile setup and editing
-- **Invitation System:** Email-based band invitations with custom templates
-- **Bulk Add Songs (Flutter):** Full-featured overlay for importing songs from spreadsheets
+### Version 1.3.1 (December 2025)
 
-### Bulk Add Songs Feature (Flutter App)
+#### Song Card Drag Handle Fix
+- **Problem:** Touching anywhere on song cards would trigger drag-to-reorder, making scrolling difficult
+- **Solution:** Restricted drag initiation to only the grip icon area (left 36px of card)
+- **Files:** `reorderable_song_card.dart`, `setlist_detail_screen.dart`, `new_setlist_screen.dart`
+
+#### Song Metadata RPC Functions
+- **Problem:** BPM, Duration, and Tuning edits failed for legacy songs with NULL band_id due to RLS
+- **Solution:** Created `update_song_metadata` and `clear_song_metadata` PostgreSQL functions with SECURITY DEFINER
+- **Migration:** `064_update_song_metadata_rpc.sql`
+
+#### Standard Sort Mode Fix
+- **Problem:** "Standard" tuning sort mode was sorting songs instead of preserving user's custom order
+- **Solution:** Standard mode now returns songs in their database position order (user's custom order)
+- **File:** `setlist_detail_controller.dart`
+
+### Version 1.3.0 (December 2025)
+- External Song Lookup via Supabase Edge Functions
+- Supabase Edge Functions for API token caching
+- Edit icon to rename setlists from detail page
+- "+ New" button in Setlists header
+- Database triggers for accurate duration stats
+
+### Bulk Add Songs Feature
 
 The Bulk Add Songs feature allows users to quickly import multiple songs from a spreadsheet into their setlist and band Catalog.
 
@@ -382,26 +423,42 @@ Another Artist                    - BPM • Drop D
 - `lib/features/setlists/setlist_detail_screen.dart` - `_handleShare()` and formatting helpers
 
 ### Active Issues
-- **Supabase Connection Timeouts:** Intermittent connection issues causing authentication delays
-- **Rate Limiting:** Magic link generation can be rate-limited during testing
+- **Supabase RLS:** Legacy songs with NULL band_id require RPC functions for updates
 
 ### Planned Enhancements
 - **Calendar Integration:** Visual calendar for events
 - **Advanced Setlist Features:** Tempo mapping, key changes
-- **Mobile App:** Native iOS/Android applications
+- **Native App Store Releases:** iOS App Store and Google Play
 - **Payment Integration:** Premium features and subscriptions
+
+## Key Files Reference
+
+### Setlist Management
+| File | Purpose |
+|------|---------|
+| `lib/features/setlists/setlist_repository.dart` | Database operations, RPC calls |
+| `lib/features/setlists/setlist_detail_controller.dart` | State management, sorting logic |
+| `lib/features/setlists/setlist_detail_screen.dart` | Main setlist UI screen |
+| `lib/features/setlists/widgets/reorderable_song_card.dart` | Song card with inline editing |
+| `lib/features/setlists/services/bulk_song_parser.dart` | Bulk paste parsing logic |
+| `lib/features/setlists/tuning/tuning_helpers.dart` | Tuning normalization and display |
+
+### Database Migrations
+| Migration | Purpose |
+|-----------|---------|
+| `064_update_song_metadata_rpc.sql` | RPC functions for metadata updates |
 
 ## Support & Documentation
 
 ### User Support
 - **In-App Guidance:** Contextual help and onboarding
-- **Error Handling:** Graceful error messages and recovery
+- **Error Handling:** Graceful error messages with snackbar feedback
 - **Responsive Design:** Works across all device sizes
 
 ### Developer Resources
-- **TypeScript:** Full type safety throughout application
-- **Component Library:** Reusable UI components
-- **API Documentation:** Documented endpoints and data structures
-- **Database Migrations:** Version-controlled schema changes
+- **Dart/Flutter:** Full type safety throughout application
+- **Feature Modules:** Self-contained feature directories
+- **Repository Pattern:** Clean data access abstraction
+- **Database Migrations:** Version-controlled schema changes in `supabase/migrations/`
 
-This comprehensive documentation provides everything needed to understand, develop, and maintain the Band Roadie application. The app represents a complete band management solution with modern web technologies and user-centered design.
+This comprehensive documentation provides everything needed to understand, develop, and maintain the Band Roadie application. The app represents a complete band management solution with modern cross-platform technologies and user-centered design.
